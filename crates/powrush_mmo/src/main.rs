@@ -29,7 +29,6 @@ use crate::hand_ik::{fabrik_constrained, trik_two_bone};
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
-const YEAR_LENGTH_DAYS: f32 = 365.0;
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -236,7 +235,7 @@ fn main() {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            biome_season_interactions_system,
+            creature_weather_reactions_system,
             creature_behavior_cycle,
             player_breeding_mechanics,
             chunk_manager,
@@ -285,91 +284,36 @@ fn setup(
     ));
 }
 
-fn advance_time(
-    mut time: ResMut<WorldTime>,
-    game_time: Res<Time>,
-) {
-    time.time_of_day += game_time.delta_seconds() / DAY_LENGTH_SECONDS * 24.0;
-    if time.time_of_day >= 24.0 {
-        time.time_of_day -= 24.0;
-        time.day += 1.0;
-    }
-}
-
-fn get_current_season(world_time: &WorldTime) -> Season {
-    let year_progress = (world_time.day % YEAR_LENGTH_DAYS) / YEAR_LENGTH_DAYS;
-    match (year_progress * 4.0) as u32 {
-        0 => Season::Spring,
-        1 => Season::Summer,
-        2 => Season::Autumn,
-        _ => Season::Winter,
-    }
-}
-
-fn biome_season_interactions_system(
-    mut commands: Commands,
-    world_time: Res<WorldTime>,
-    player_query: Query<&Transform, With<Player>>,
-    chunk_query: Query<(&Chunk, &Transform)>,
+fn creature_weather_reactions_system(
     mut creature_query: Query<&mut Creature>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    weather: Res<WeatherManager>,
     time: Res<Time>,
 ) {
-    let season = get_current_season(&world_time);
-    let player_pos = player_query.single().translation;
-
-    // Find current biome mercy
-    let mut current_biome = Biome::Plains;
-    for (chunk, chunk_transform) in &chunk_query {
-        let local = player_pos - chunk_transform.translation;
-        if local.x.abs() < CHUNK_SIZE as f32 / 2.0 && local.z.abs() < CHUNK_SIZE as f32 / 2.0 {
-            current_biome = chunk.biome;
-            break;
-        }
-    }
-
-    // Biome-season specific effects mercy eternal
-    match (current_biome, season) {
-        (Biome::Forest, Season::Spring) => {
-            // Bloom particles + extra food spawn mercy
-            // Spawn flower particles
-            // Increase food resource spawn rate
-        }
-        (Biome::Tundra, Season::Winter) => {
-            // Heavy snow particles + creature slow mercy
-            for mut creature in &mut creature_query {
-                creature.dna.speed *= 0.7;  // Cold slow mercy
+    for mut creature in &mut creature_query {
+        match weather.current {
+            Weather::Rain => {
+                // Seek shelter mercy
+                if rand::thread_rng().gen_bool(0.1) {
+                    creature.state = CreatureState::Flee;
+                }
+                creature.hunger += time.delta_seconds() * 0.05;  // Wet slower foraging mercy
             }
-        }
-        (Biome::Desert, Season::Summer) => {
-            // Heat shimmer particles + thirst mechanic mercy
-            // Creature hunger faster mercy
-            for mut creature in &mut creature_query {
-                creature.hunger += time.delta_seconds() * 0.2;
+            Weather::Snow => {
+                // Huddle warm mercy
+                creature.state = CreatureState::Sleep;
+                creature.health -= time.delta_seconds() * 0.02;  // Cold mercy
             }
-        }
-        (Biome::Plains, Season::Autumn) => {
-            // Leaf fall particles + harvest bonus mercy
-        }
-        _ => {
-            // Default mercy
-        }
-    }
-
-    // Global seasonal effects mercy
-    match season {
-        Season::Spring => {
-            // Growth boost mercy
-        }
-        Season::Summer => {
-            // Heat mercy
-        }
-        Season::Autumn => {
-            // Harvest mercy
-        }
-        Season::Winter => {
-            // Cold mercy
+            Weather::Storm => {
+                // Flee storm mercy
+                creature.state = CreatureState::Flee;
+            }
+            Weather::Fog => {
+                // Camouflage bonus mercy
+                creature.dna.camouflage += 0.2;
+            }
+            Weather::Clear => {
+                // Normal behavior mercy
+            }
         }
     }
 }
@@ -385,7 +329,7 @@ impl Plugin for MercyResonancePlugin {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            biome_season_interactions_system,
+            creature_weather_reactions_system,
             creature_behavior_cycle,
             player_breeding_mechanics,
             player_inventory_ui,
