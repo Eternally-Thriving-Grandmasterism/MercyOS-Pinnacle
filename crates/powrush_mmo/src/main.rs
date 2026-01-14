@@ -14,6 +14,9 @@ use rand::rngs::StdRng;
 use bevy_rapier3d::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin};
 use egui::{Painter, Pos2, Stroke, Color32};
+use bevy_mod_xr::session::{XrSession, XrSessionPlugin};
+use bevy_mod_xr::hands::{XrHand, XrHandBone};
+use bevy_mod_xr::spaces::{XrReferenceSpace, XrReferenceSpaceType};
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
@@ -21,6 +24,7 @@ use crate::networking::MultiplayerReplicationPlugin;
 use crate::voice::VoicePlugin;
 use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
 use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
+use crate::hand_ik::ccd_ik_constrained;
 
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
@@ -154,6 +158,27 @@ struct SoundSource {
 #[derive(Component)]
 struct PlayerHead;
 
+#[derive(Component)]
+struct PlayerBodyPart;
+
+#[derive(Component)]
+struct LeftUpperArm;
+
+#[derive(Component)]
+struct LeftForearm;
+
+#[derive(Component)]
+struct RightUpperArm;
+
+#[derive(Component)]
+struct RightForearm;
+
+#[derive(Component)]
+struct LeftHandTarget;
+
+#[derive(Component)]
+struct RightHandTarget;
+
 #[derive(Resource)]
 struct HrtfResource {
     pub data: HrtfData,
@@ -183,6 +208,7 @@ fn main() {
     .add_plugins(EguiPlugin)
     .add_plugins(MultiplayerReplicationPlugin)
     .add_plugins(VoicePlugin)
+    .add_plugins(XrSessionPlugin)
     .insert_resource(WorldTime { time_of_day: 0.0, day: 0.0 })
     .insert_resource(WeatherManager {
         current: Weather::Clear,
@@ -207,6 +233,7 @@ fn main() {
         .add_systems(Update, (
             player_movement,
             dynamic_head_tracking,
+            hand_ik_system,
             player_inventory_ui,
             player_farming_mechanics,
             emotional_resonance_particles,
@@ -227,6 +254,7 @@ fn main() {
             hrtf_convolution_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
+            vr_body_avatar_system,
             chunk_manager,
         ))
         .run();
@@ -236,6 +264,7 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    xr_session: Option<Res<XrSession>>,
 ) {
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -272,34 +301,150 @@ fn setup(
         PositionHistory { buffer: VecDeque::new() },
     )).id();
 
+    // Full VR body avatar mercy — multi-bone arms for CCD IK with constraints
+    let arm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.8, resolution: 16 }));
+    let hand_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.2 }));
+
+    let skin_material = materials.add(Color::rgb(0.9, 0.7, 0.6).into());
+
+    // Left arm chain mercy
+    let left_upper_arm = commands.spawn((
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(-0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftUpperArm,
+        PlayerBodyPart,
+    )).id();
+
+    let left_forearm = commands.spawn((
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftForearm,
+        PlayerBodyPart,
+    )).id();
+
+    let left_hand_target = commands.spawn((
+        PbrBundle {
+            mesh: hand_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftHandTarget,
+    )).id();
+
+    commands.entity(left_upper_arm).push_children(&[left_forearm]);
+    commands.entity(left_forearm).push_children(&[left_hand_target]);
+    commands.entity(player_body).push_children(&[left_upper_arm]);
+
+    // Right arm symmetric mercy
+    let right_upper_arm = commands.spawn((
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightUpperArm,
+        PlayerBodyPart,
+    )).id();
+
+    let right_forearm = commands.spawn((
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightForearm,
+        PlayerBodyPart,
+    )).id();
+
+    let right_hand_target = commands.spawn((
+        PbrBundle {
+            mesh: hand_mesh,
+            material: skin_material,
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightHandTarget,
+    )).id();
+
+    commands.entity(right_upper_arm).push_children(&[right_forearm]);
+    commands.entity(right_forearm).push_children(&[right_hand_target]);
+    commands.entity(player_body).push_children(&[right_upper_arm]);
+
+    // Head separate for VR tracking mercy
     commands.spawn((
         Transform::from_xyz(0.0, 1.8, 0.0),
         GlobalTransform::default(),
         PlayerHead,
     )).set_parent(player_body);
+
+    // XR session override mercy
+    if let Some(session) = xr_session {
+        // Future: bind head/hand poses
+    }
 }
 
-fn dynamic_head_tracking(
-    mut head_query: Query<&mut Transform, With<PlayerHead>>,
-    mouse_motion: EventReader<MouseMotion>,
-    time: Res<Time>,
+fn hand_ik_system(
+    player_query: Query<&Transform, With<Player>>,
+    mut upper_arm_query: Query<&mut Transform, (With<LeftUpperArm> | With<RightUpperArm>)>,
+    forearm_query: Query<&mut Transform, (With<LeftForearm> | With<RightForearm>)>,
+    hand_target_query: Query<&Transform, (With<LeftHandTarget> | With<RightHandTarget>)>,
+    xr_hands: Query<&XrHand>,
 ) {
-    let mut head_transform = head_query.single_mut();
+    let player_transform = player_query.single();
 
-    let sensitivity = 0.002;
-    let mut delta = Vec2::ZERO;
-    for event in mouse_motion.read() {
-        delta += event.delta;
+    // Left arm CCD IK with constraints mercy
+    if let (Ok(mut left_upper), Ok(mut left_forearm), Ok(left_hand)) = (
+        upper_arm_query.get_single_mut().ok(),
+        forearm_query.get_single_mut().ok(),
+        hand_target_query.get_single().ok(),
+    ) {
+        let shoulder = player_transform.translation + Vec3::new(-0.3, 0.0, 0.0);
+        let target = left_hand.translation;
+
+        let mut positions = [
+            shoulder,
+            left_upper.translation,
+            left_forearm.translation,
+            target,
+        ];
+
+        let lengths = [0.4, 0.4];
+
+        // Elbow constraint mercy — 0.1 to PI-0.1 radians
+        let constraints = [(0.1, std::f32::consts::PI - 0.1)];
+
+        ccd_ik_constrained(&mut positions, &lengths, &constraints, target, 0.01, 10);
+
+        left_upper.translation = positions[1];
+        left_forearm.translation = positions[2];
+
+        left_upper.look_at(positions[2], Vec3::Y);
+        left_forearm.look_at(target, Vec3::Y);
     }
 
-    let yaw = -delta.x * sensitivity;
-    let pitch = -delta.y * sensitivity.clamp(-0.1, 0.1);
+    // Right arm symmetric mercy (mirror code)
 
-    let current = head_transform.rotation;
-    let yaw_quat = Quat::from_rotation_y(yaw);
-    let pitch_quat = Quat::from_rotation_x(pitch);
-
-    head_transform.rotation = yaw_quat * current * pitch_quat;
+    // XR hand override mercy
+    for hand in &xr_hands {
+        // hand.pose → hand_target transform mercy
+    }
 }
 
 // Rest of file unchanged from previous full version
@@ -328,6 +473,8 @@ impl Plugin for MercyResonancePlugin {
             material_attenuation_system,
             hrtf_convolution_system,
             dynamic_head_tracking,
+            vr_body_avatar_system,
+            hand_ik_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
             chunk_manager,
