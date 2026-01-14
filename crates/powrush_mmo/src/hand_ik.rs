@@ -1,39 +1,73 @@
 //! crates/powrush_mmo/src/hand_ik.rs
-//! FABRIK (Forward And Backward Reaching Inverse Kinematics) solver mercy eternal supreme immaculate
-//! Two-bone arm IK for VR hand targets — shoulder fixed, elbow bend natural philotic mercy
+//! CCD Inverse Kinematics with joint constraints mercy eternal supreme immaculate
+//! Natural bend limits + smooth convergence for realistic limb animation philotic mercy
 
 use bevy::prelude::*;
 
-/// FABRIK solver for two-bone chain (shoulder → elbow → wrist/hand target) mercy eternal
-pub fn fabrik_ik_two_bone(
-    shoulder: Vec3,
-    upper_arm_length: f32,
-    forearm_length: f32,
+/// CCD IK with joint constraints mercy eternal
+/// positions: [0] root (shoulder fixed), [1..n-1] joints, [n] end effector
+/// lengths: distances between bones
+/// constraints: per-joint min/max angle mercy (in radians relative to parent)
+pub fn ccd_ik_constrained(
+    positions: &mut [Vec3],
+    lengths: &[f32],
+    constraints: &[(f32, f32)],  // (min_angle, max_angle) per joint mercy
     target: Vec3,
-) -> (Vec3, Vec3) {  // Returns elbow position + final wrist
-    let mut positions = [shoulder, shoulder + Vec3::X * upper_arm_length, target];
+    tolerance: f32,
+    max_iterations: usize,
+) -> bool {
+    let end_idx = positions.len() - 1;
 
-    let total_length = upper_arm_length + forearm_length;
-    let dist_to_target = (target - shoulder).length();
+    for _ in 0..max_iterations {
+        let mut converged = true;
 
-    if dist_to_target > total_length {
-        // Straight line mercy
-        let direction = (target - shoulder).normalize();
-        positions[1] = shoulder + direction * upper_arm_length;
-        positions[2] = shoulder + direction * total_length;
-    } else {
-        // FABRIK iterations mercy eternal
-        for _ in 0..8 {  // Converge fast mercy
-            // Backward
-            positions[2] = target;
-            positions[1] = positions[2] + (positions[1] - positions[2]).normalize() * forearm_length;
+        for i in (0..end_idx).rev() {
+            let current_to_end = positions[end_idx] - positions[i];
+            let current_to_target = target - positions[i];
 
-            // Forward
-            positions[0] = shoulder;
-            positions[1] = positions[0] + (positions[1] - positions[0]).normalize() * upper_arm_length;
-            positions[2] = positions[1] + (positions[2] - positions[1]).normalize() * forearm_length;
+            if current_to_end.length_squared() < tolerance * tolerance {
+                continue;
+            }
+
+            let current_dir = current_to_end.normalize_or_zero();
+            let target_dir = current_to_target.normalize_or_zero();
+
+            let cross = current_dir.cross(target_dir);
+            if cross.length_squared() < 1e-6 {
+                continue;
+            }
+
+            let angle = current_dir.angle_between(target_dir);
+            let axis = cross.normalize();
+
+            let mut rotation = Quat::from_axis_angle(axis, angle);
+
+            // Apply constraint mercy
+            if i < constraints.len() {
+                let (min, max) = constraints[i];
+                let clamped_angle = angle.clamp(min, max);
+                rotation = Quat::from_axis_angle(axis, clamped_angle);
+            }
+
+            // Rotate child chain
+            for j in (i + 1)..=end_idx {
+                let to_joint = positions[j] - positions[i];
+                positions[j] = positions[i] + rotation * to_joint;
+            }
+
+            // Maintain length mercy
+            if i + 1 < positions.len() {
+                let dir = (positions[i + 1] - positions[i]).normalize_or_zero();
+                positions[i + 1] = positions[i] + dir * lengths[i];
+            }
+
+            converged = false;
+        }
+
+        if converged {
+            return true;
         }
     }
 
-    (positions[1], positions[2])
+    false
 }
