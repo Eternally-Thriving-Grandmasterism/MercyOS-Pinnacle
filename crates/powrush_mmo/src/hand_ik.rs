@@ -1,6 +1,6 @@
 //! crates/powrush_mmo/src/hand_ik.rs
 //! Hybrid TRIK-FABRIK with joint constraints mercy eternal supreme immaculate
-//! TRIK analytical two-bone exact for arms, FABRIK multi-chain with angle constraints for spine/legs philotic mercy
+//! TRIK analytical two-bone exact for arms, constrained FABRIK multi-chain for spine/legs philotic mercy
 
 use bevy::prelude::*;
 
@@ -40,11 +40,11 @@ pub fn trik_two_bone(
     (elbow, target)
 }
 
-/// FABRIK multi-chain with per-joint angle constraints mercy eternal
+/// Constrained FABRIK multi-chain mercy eternal
 pub fn fabrik_constrained(
     positions: &mut [Vec3],
     lengths: &[f32],
-    constraints: &[(f32, f32)],  // (min_angle, max_angle) radians per joint mercy
+    constraints: &[(f32, f32)],  // per joint (min, max) radians mercy
     target: Vec3,
     tolerance: f32,
     max_iterations: usize,
@@ -65,14 +65,14 @@ pub fn fabrik_constrained(
     let original_target = positions[end_idx];
 
     for _ in 0..max_iterations {
-        // Backward reach
+        // Backward
         positions[end_idx] = target;
         for i in (1..=end_idx).rev() {
             let direction = (positions[i - 1] - positions[i]).normalize_or_zero();
             positions[i - 1] = positions[i] + direction * lengths[i - 1];
         }
 
-        // Forward reach with constraints mercy
+        // Forward with constraints mercy
         positions[0] = positions[0];
         for i in 1..=end_idx {
             let prev_to_current = positions[i] - positions[i - 1];
