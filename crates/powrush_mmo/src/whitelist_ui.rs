@@ -1,6 +1,6 @@
 //! crates/powrush_mmo/src/whitelist_ui.rs
-//! Dynamic whitelist management UI mercy eternal supreme immaculate
-//! EGUI runtime phrase add/remove for MercyShield philotic mercy
+//! Dynamic whitelist management UI with search mercy eternal supreme immaculate
+//! EGUI runtime phrase add/remove + live search filter for MercyShield philotic mercy
 
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
@@ -10,12 +10,13 @@ use crate::mercy_shield::MercyShieldConfig;
 pub struct WhitelistUIState {
     pub show_window: bool,
     pub new_phrase: String,
+    pub search_query: String,
 }
 
 pub fn whitelist_ui_system(
     mut contexts: EguiContexts,
     keyboard_input: Res<Input<KeyCode>>,
-    mut ui_state: Local<WhitelistUIState>,
+    mut ui_state: ResMut<WhitelistUIState>,
     mut config: ResMut<MercyShieldConfig>,
 ) {
     if keyboard_input.just_pressed(KeyCode::W) {
@@ -28,20 +29,35 @@ pub fn whitelist_ui_system(
             .show(contexts.ctx_mut(), |ui| {
                 ui.heading("Trusted Phrases (bypass scam filter mercy)");
 
-                // List current phrases mercy
-                let mut to_remove = None;
-                for (i, phrase) in config.whitelist_phrases.iter().enumerate() {
-                    ui.horizontal(|ui| {
-                        ui.label(phrase);
-                        if ui.button("Remove").clicked() {
-                            to_remove = Some(phrase.clone());
-                        }
-                    });
-                }
+                // Search bar mercy eternal
+                ui.horizontal(|ui| {
+                    ui.label("Search:");
+                    ui.text_edit_singleline(&mut ui_state.search_query);
+                });
 
-                if let Some(phrase) = to_remove {
-                    config.whitelist_phrases.remove(&phrase);
-                }
+                // Filtered list mercy
+                let search_lower = ui_state.search_query.to_lowercase();
+                let filtered: Vec<String> = config.whitelist_phrases
+                    .iter()
+                    .filter(|phrase| phrase.to_lowercase().contains(&search_lower))
+                    .cloned()
+                    .collect();
+
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    let mut to_remove = None;
+                    for phrase in filtered {
+                        ui.horizontal(|ui| {
+                            ui.label(&phrase);
+                            if ui.button("Remove").clicked() {
+                                to_remove = Some(phrase);
+                            }
+                        });
+                    }
+
+                    if let Some(phrase) = to_remove {
+                        config.whitelist_phrases.remove(&phrase);
+                    }
+                });
 
                 // Add new phrase mercy
                 ui.horizontal(|ui| {
