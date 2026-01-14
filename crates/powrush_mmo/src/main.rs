@@ -13,6 +13,7 @@ use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
 use bevy_rapier3d::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin};
+use egui::{Painter, Pos2, Stroke, Color32};
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
@@ -247,36 +248,59 @@ fn player_inventory_ui(
 
                     if let Some(selected_entity) = player.selected_creature {
                         if let Ok(creature) = creature_query.get(selected_entity) {
-                            ui.heading("Evolutionary Timeline — Mercy Eternal");
+                            ui.heading("Evolutionary Graph — Mercy Eternal");
 
-                            let mut generations = Vec::new();
+                            let painter = ui.painter();
+                            let rect = ui.available_rect_before_wrap();
+                            let center_x = rect.center().x;
+                            let start_y = rect.top() + 40.0;
+
+                            struct Node {
+                                pos: Pos2,
+                                creature: Creature,
+                                entity: Entity,
+                            }
+
+                            let mut nodes = Vec::new();
                             let mut current = Some(selected_entity);
 
+                            let mut y_offset = start_y;
                             while let Some(entity) = current {
                                 if let Ok(c) = creature_query.get(entity) {
-                                    generations.push((c.generation, c.dna, c.creature_type));
-                                    // Follow parents — simplified single parent for timeline
-                                    current = c.parent1.and_then(|id| creature_query.iter().find_map(|(e, cr)| if cr.parent1 == Some(id.to_bits()) || cr.parent2 == Some(id.to_bits()) { Some(e) } else { None }));
+                                    nodes.push(Node {
+                                        pos: Pos2::new(center_x, y_offset),
+                                        creature: c.clone(),
+                                        entity,
+                                    });
+                                    y_offset += 80.0;
+                                    current = c.parent1.or(c.parent2).and_then(|id| creature_query.iter().find_map(|(e, cr)| if cr.parent1 == Some(id) || cr.parent2 == Some(id) { Some(e) } else { None }));
                                 } else {
                                     break;
                                 }
                             }
 
-                            generations.reverse();  // Oldest first
+                            nodes.reverse();  // Root at bottom
 
-                            ui.horizontal(|ui| {
-                                for (gen, dna, ctype) in &generations {
-                                    ui.vertical(|ui| {
-                                        ui.label(format!("Gen {}", gen));
-                                        ui.label(format!("{:?}", ctype));
-                                        ui.add(egui::ProgressBar::new(dna.speed / 15.0).text("Speed"));
-                                        ui.add(egui::ProgressBar::new(dna.size / 2.0).text("Size"));
-                                        ui.add(egui::ProgressBar::new(dna.camouflage).text("Camo"));
-                                        ui.add(egui::ProgressBar::new(dna.aggression).text("Aggro"));
-                                    });
-                                    ui.separator();
-                                }
-                            });
+                            // Draw edges
+                            for i in 0..nodes.len() - 1 {
+                                let from = nodes[i].pos;
+                                let to = nodes[i + 1].pos;
+                                painter.line_segment([from, to], Stroke::new(2.0, Color32::WHITE));
+                            }
+
+                            // Draw nodes
+                            for node in &nodes {
+                                let rect = egui::Rect::from_center_size(node.pos, egui::vec2(200.0, 60.0));
+                                painter.rect_filled(rect, 10.0, Color32::from_black_alpha(180));
+                                painter.text(node.pos, egui::Align2::CENTER_CENTER, format!("Gen {}\n{:?}\nSpeed: {:.1} Size: {:.2}\nCamo: {:.2} Agg: {:.2}", 
+                                    node.creature.generation, 
+                                    node.creature.creature_type,
+                                    node.creature.dna.speed,
+                                    node.creature.dna.size,
+                                    node.creature.dna.camouflage,
+                                    node.creature.dna.aggression
+                                ), egui::FontId::proportional(14.0), Color32::WHITE);
+                            }
                         }
                     }
 
@@ -290,7 +314,7 @@ fn player_inventory_ui(
     }
 }
 
-// Rest of file unchanged — creature_evolution_system sets generation = max(parent generations) + 1
+// Rest of file unchanged from previous full version (setup, player_movement, creature_behavior_cycle, creature_evolution_system with parent tracking, player_breeding_mechanics setting parent IDs, chunk_manager, etc.)
 
 pub struct MercyResonancePlugin;
 
