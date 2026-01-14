@@ -24,7 +24,7 @@ use crate::networking::MultiplayerReplicationPlugin;
 use crate::voice::VoicePlugin;
 use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
 use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
-use crate::hand_ik::ccd_ik_general;
+use crate::hand_ik::fabrik_ik_multi_chain;
 
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
@@ -162,15 +162,6 @@ struct PlayerHead;
 struct PlayerBodyPart;
 
 #[derive(Component)]
-struct SpineRoot;
-
-#[derive(Component)]
-struct Spine1;
-
-#[derive(Component)]
-struct Spine2;
-
-#[derive(Component)]
 struct LeftUpperArm;
 
 #[derive(Component)]
@@ -187,6 +178,15 @@ struct LeftHandTarget;
 
 #[derive(Component)]
 struct RightHandTarget;
+
+#[derive(Component)]
+struct SpineRoot;
+
+#[derive(Component)]
+struct Spine1;
+
+#[derive(Component)]
+struct Spine2;
 
 #[derive(Component)]
 struct LeftUpperLeg;
@@ -328,8 +328,11 @@ fn setup(
         PositionHistory { buffer: VecDeque::new() },
     )).id();
 
-    // Full multi-chain body avatar mercy
+    // Full multi-chain body avatar mercy — spine + arms + legs for FABRIK IK
     let bone_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.8, resolution: 16 }));
+    let hand_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.2 }));
+    let foot_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.3 }));
+
     let skin_material = materials.add(Color::rgb(0.9, 0.7, 0.6).into());
 
     // Spine chain mercy
@@ -367,9 +370,167 @@ fn setup(
     commands.entity(spine1).push_children(&[spine2]);
     commands.entity(player_body).push_children(&[spine_root]);
 
-    // Arms and legs chains similar mercy (left/right symmetric)
+    // Left arm chain mercy
+    let left_upper_arm = commands.spawn((
+        PbrBundle {
+            mesh: bone_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(-0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftUpperArm,
+        PlayerBodyPart,
+    )).id();
 
-    // Head mercy
+    let left_forearm = commands.spawn((
+        PbrBundle {
+            mesh: bone_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftForearm,
+        PlayerBodyPart,
+    )).id();
+
+    let left_hand_target = commands.spawn((
+        PbrBundle {
+            mesh: hand_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftHandTarget,
+    )).id();
+
+    commands.entity(left_upper_arm).push_children(&[left_forearm]);
+    commands.entity(left_forearm).push_children(&[left_hand_target]);
+    commands.entity(spine2).push_children(&[left_upper_arm]);
+
+    // Right arm symmetric mercy
+    let right_upper_arm = commands.spawn((
+        PbrBundle {
+            mesh: bone_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightUpperArm,
+        PlayerBodyPart,
+    )).id();
+
+    let right_forearm = commands.spawn((
+        PbrBundle {
+            mesh: bone_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightForearm,
+        PlayerBodyPart,
+    )).id();
+
+    let right_hand_target = commands.spawn((
+        PbrBundle {
+            mesh: hand_mesh,
+            material: skin_material,
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightHandTarget,
+    )).id();
+
+    commands.entity(right_upper_arm).push_children(&[right_forearm]);
+    commands.entity(right_forearm).push_children(&[right_hand_target]);
+    commands.entity(spine2).push_children(&[right_upper_arm]);
+
+    // Legs mercy
+    let left_upper_leg = commands.spawn((
+        PbrBundle {
+            mesh: bone_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(-0.2, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftUpperLeg,
+        PlayerBodyPart,
+    )).id();
+
+    let left_lower_leg = commands.spawn((
+        PbrBundle {
+            mesh: bone_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftLowerLeg,
+        PlayerBodyPart,
+    )).id();
+
+    let left_foot_target = commands.spawn((
+        PbrBundle {
+            mesh: foot_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftFootTarget,
+    )).id();
+
+    commands.entity(left_upper_leg).push_children(&[left_lower_leg]);
+    commands.entity(left_lower_leg).push_children(&[left_foot_target]);
+    commands.entity(player_body).push_children(&[left_upper_leg]);
+
+    // Right leg symmetric mercy
+    let right_upper_leg = commands.spawn((
+        PbrBundle {
+            mesh: bone_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.2, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightUpperLeg,
+        PlayerBodyPart,
+    )).id();
+
+    let right_lower_leg = commands.spawn((
+        PbrBundle {
+            mesh: bone_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightLowerLeg,
+        PlayerBodyPart,
+    )).id();
+
+    let right_foot_target = commands.spawn((
+        PbrBundle {
+            mesh: foot_mesh,
+            material: skin_material,
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightFootTarget,
+    )).id();
+
+    commands.entity(right_upper_leg).push_children(&[right_lower_leg]);
+    commands.entity(right_lower_leg).push_children(&[right_foot_target]);
+    commands.entity(player_body).push_children(&[right_upper_leg]);
+
+    // Head separate for VR tracking mercy
     commands.spawn((
         Transform::from_xyz(0.0, 0.8, 0.0),
         GlobalTransform::default(),
@@ -390,13 +551,27 @@ fn multi_chain_ik_system(
 ) {
     let player_transform = player_query.single();
 
-    // Example spine chain to head target mercy
-    // Collect chain positions, lengths, constraints
-    // Call ccd_ik_general
+    // Example left arm chain mercy
+    let mut left_chain = vec![player_transform.translation + Vec3::new(-0.3, 0.0, 0.0)];  // Shoulder
+    if let Ok(left_upper) = chain_query.get_component::<Transform>(/* left_upper_arm entity */) {
+        left_chain.push(left_upper.translation);
+    }
+    if let Ok(left_forearm) = chain_query.get_component::<Transform>(/* left_forearm entity */) {
+        left_chain.push(left_forearm.translation);
+    }
+    if let Ok(left_hand) = target_query.get_component::<Transform>(/* left_hand_target entity */) {
+        left_chain.push(left_hand.translation);
+    }
 
-    // Similar for arms to hand targets, legs to foot targets mercy
+    let lengths = [0.4, 0.4];  // Upper + forearm mercy
 
-    // XR override mercy
+    if fabrik_ik_multi_chain(&mut left_chain, &lengths, left_chain.last().copied().unwrap(), 0.01, 10) {
+        // Apply back to transforms mercy
+    }
+
+    // Similar for right arm, spine to head, legs to feet mercy
+
+    // XR hand/foot override mercy
     for hand in &xr_hands {
         // hand.pose → hand_target transform mercy
     }
