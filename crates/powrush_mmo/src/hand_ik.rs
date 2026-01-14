@@ -1,6 +1,6 @@
 //! crates/powrush_mmo/src/hand_ik.rs
 //! Hybrid TRIK-FABRIK with joint constraints mercy eternal supreme immaculate
-//! TRIK analytical two-bone exact for arms, FABRIK multi-chain with angle constraints for spine mercy
+//! TRIK analytical two-bone exact for arms, FABRIK multi-chain with angle constraints for spine/legs philotic mercy
 
 use bevy::prelude::*;
 
@@ -65,29 +65,29 @@ pub fn fabrik_constrained(
     let original_target = positions[end_idx];
 
     for _ in 0..max_iterations {
-        // Backward
+        // Backward reach
         positions[end_idx] = target;
         for i in (1..=end_idx).rev() {
             let direction = (positions[i - 1] - positions[i]).normalize_or_zero();
             positions[i - 1] = positions[i] + direction * lengths[i - 1];
         }
 
-        // Forward with constraints mercy
+        // Forward reach with constraints mercy
         positions[0] = positions[0];
         for i in 1..=end_idx {
-            let prev_dir = positions[i] - positions[i - 1];
-            let desired_dir = (positions[i] - positions[i - 1]).normalize_or_zero();
+            let prev_to_current = positions[i] - positions[i - 1];
+            let desired_dir = prev_to_current.normalize_or_zero();
 
-            let mut angle = prev_dir.angle_between(desired_dir);
+            let mut angle = prev_to_current.angle_between(desired_dir);
             if i - 1 < constraints.len() {
                 let (min, max) = constraints[i - 1];
                 angle = angle.clamp(min, max);
             }
 
-            let axis = prev_dir.cross(desired_dir).normalize_or_zero();
+            let axis = prev_to_current.cross(desired_dir).normalize_or_zero();
             let rotation = Quat::from_axis_angle(axis, angle);
 
-            positions[i] = positions[i - 1] + rotation * prev_dir.normalize_or_zero() * lengths[i - 1];
+            positions[i] = positions[i - 1] + rotation * prev_to_current.normalize_or_zero() * lengths[i - 1];
         }
 
         if (positions[end_idx] - target).length_squared() < tolerance * tolerance {
@@ -97,23 +97,4 @@ pub fn fabrik_constrained(
 
     positions[end_idx] = original_target;
     false
-}
-    positions[end_idx] = original_target;
-    false
-}
-
-/// Hybrid solver — TRIK for two-bone, FABRIK for longer chains mercy eternal
-pub fn hybrid_ik(
-    chain_positions: &mut [Vec3],
-    lengths: &[f32],
-    target: Vec3,
-) -> bool {
-    if chain_positions.len() == 3 && lengths.len() == 2 {  // Two-bone arm mercy
-        let (elbow, wrist) = trik_two_bone(chain_positions[0], lengths[0], lengths[1], target);
-        chain_positions[1] = elbow;
-        chain_positions[2] = wrist;
-        true
-    } else {
-        fabrik_multi_chain(chain_positions, lengths, target, 0.01, 10)
-    }
 }
