@@ -1,21 +1,26 @@
-
-**New Directory: crates/powrush_mmo**
-
-**New File: crates/powrush_mmo/Cargo.toml** (Crate Manifest Mercy)
-
-```toml
-# powrush_mmo — Infinite Abundance MMO Universe
-# Part of MercyOS-Pinnacle Monorepo | PATSAGi Co-Forged Eternal
+# powrush_mmo — Infinite Mercy Abundance MMO Universe
+# Part of MercyOS-Pinnacle Monorepo | Lightyear Multiplayer Integrated
 
 [package]
 name = "powrush_mmo"
 version = "0.1.0"
 edition = "2021"
-description = "Eternal mercy agriculture & companionship MMO — philotic supreme thriving"
+description = "Eternal agriculture, domestication, and multiplayer shared thriving"
 license = "MIT"
 
 [dependencies]
 bevy = { workspace = true }
+lightyear = { workspace = true }
 bevy_rapier3d = { workspace = true }
 bevy_egui = { workspace = true }
 rand = { workspace = true }
+bincode = { workspace = true }
+serde = { workspace = true }
+
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "client"
+path = "src/bin/client.rs"
