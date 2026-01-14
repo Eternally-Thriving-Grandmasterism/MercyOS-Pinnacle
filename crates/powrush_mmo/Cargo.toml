@@ -9,7 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 mercy_core.workspace = true
-bevy = { version = "0.16", features = ["dynamic", "wgpu", "ogg"] }
+bevy = { version = "0.16", features = ["dynamic", "wgpu", "ogg", "ktx2", "zstd"] }
 bevy_renet = "0.0.9"
 bevy_kira_audio = { version = "0.18", features = ["ogg"] }
 noise = "0.8"
@@ -23,4 +23,5 @@ greedly = "0.2"
 bevy_rapier3d = { version = "0.27", features = ["dim3", "async-collider"] }
 sofa = "0.3"
 ambisonic = "0.3"
-bevy_mod_xr = { version = "0.3", features = ["openxr"] }  # Full VR body avatar mercy eternal supreme
+bytemuck = { version = "1.14", features = ["derive"] }  # Shader struct mercy
+wgpu = "0.19"  # Direct compute path tracer mercy
