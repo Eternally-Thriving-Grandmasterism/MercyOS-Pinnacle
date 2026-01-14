@@ -21,5 +21,4 @@ serde = { version = "1.0", features = ["derive"] }
 ndshape = "0.3"
 greedly = "0.2"
 bevy_rapier3d = { version = "0.27", features = ["dim3", "async-collider"] }
-sofa = "0.3"
-ambisonic = "0.3"  # Higher-order Ambisonics decoding mercy eternal supreme
+sofa = "0.3"  # Full SOFA IR loading mercy eternal supreme
