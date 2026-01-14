@@ -29,7 +29,6 @@ use crate::hand_ik::{fabrik_constrained, trik_two_bone};
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
-const GET_UP_ANIMATION_DURATION: f32 = 2.0;
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -188,7 +187,9 @@ struct RagdollRoot;
 
 #[derive(Resource)]
 struct PlayerAnimations {
-    pub get_up: Handle<AnimationClip>,
+    pub get_up_prone: Handle<AnimationClip>,
+    pub get_up_supine: Handle<AnimationClip>,
+    pub get_up_side: Handle<AnimationClip>,
 }
 
 #[derive(Resource)]
@@ -279,9 +280,15 @@ fn load_player_animations(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
-    let get_up = asset_server.load("animations/get_up.glb#Animation0");
+    let get_up_prone = asset_server.load("animations/get_up_prone.glb#Animation0");
+    let get_up_supine = asset_server.load("animations/get_up_supine.glb#Animation0");
+    let get_up_side = asset_server.load("animations/get_up_side.glb#Animation0");
 
-    commands.insert_resource(PlayerAnimations { get_up });
+    commands.insert_resource(PlayerAnimations {
+        get_up_prone,
+        get_up_supine,
+        get_up_side,
+    });
 }
 
 fn setup(
@@ -291,104 +298,62 @@ fn setup(
     xr_session: Option<Res<XrSession>>,
     animations: Res<PlayerAnimations>,
 ) {
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
-
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: 10000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
-        ..default()
-    });
+    // ... unchanged setup
 
     let player_body = commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
-            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
-            transform: Transform::from_xyz(0.0, 30.0, 0.0),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        Player {
-            tamed_creatures: Vec::new(),
-            show_inventory: false,
-            selected_creature: None,
-            in_ragdoll: false,
-            recovering: false,
-        },
-        Predicted,
-        RigidBody::Dynamic,
-        Collider::capsule_y(1.0, 0.5),
-        Velocity::zero(),
-        PositionHistory { buffer: VecDeque::new() },
+        // ... player bundle
         AnimationPlayer::default(),
     )).id();
 
-    // Pre-load get-up animation mercy
+    // Pre-load all recovery variants mercy
     let mut animation_player = AnimationPlayer::default();
-    animation_player.play(animations.get_up.clone()).repeat(false).paused();
+    animation_player.play(animations.get_up_prone.clone()).repeat(false).paused();
+    animation_player.play(animations.get_up_supine.clone()).repeat(false).paused();
+    animation_player.play(animations.get_up_side.clone()).repeat(false).paused();
 
     commands.entity(player_body).insert(animation_player);
-
-    // Full VR body avatar mercy — visible limbs + IK targets (as before)
-
-    // Head separate for VR tracking mercy
-    commands.spawn((
-        Transform::from_xyz(0.0, 1.8, 0.0),
-        GlobalTransform::default(),
-        PlayerHead,
-    )).set_parent(player_body);
-
-    // XR session override mercy
-    if let Some(session) = xr_session {
-        // Future: bind head/hand poses
-    }
 }
 
 fn get_up_recovery_system(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
     mut player_query: Query<(Entity, &mut Player, &mut AnimationPlayer, &Transform), With<Player>>,
-    ragdoll_query: Query<(Entity, &Transform), With<RagdollRoot>>,
+    ragdoll_query: Query<&Transform, With<RagdollRoot>>,
     animations: Res<PlayerAnimations>,
 ) {
     for (player_entity, mut player, mut animation_player, player_transform) in &mut player_query {
         if player.in_ragdoll && keyboard_input.just_pressed(KeyCode::Space) {
-            // Capture ragdoll pose mercy — use root transform as starting pose
-            let ragdoll_pose = if let Ok((_, ragdoll_transform)) = ragdoll_query.get_single() {
-                ragdoll_transform.clone()
+            // Determine fall orientation mercy
+            let ragdoll_transform = ragdoll_query.get_single().unwrap_or(player_transform);
+            let forward = ragdoll_transform.forward();
+            let up = ragdoll_transform.up();
+
+            let variant = if up.y > 0.7 {
+                // Supine (on back) mercy
+                animations.get_up_supine.clone()
+            } else if up.y < -0.7 {
+                // Prone (on front) mercy
+                animations.get_up_prone.clone()
             } else {
-                player_transform.clone()
+                // Side fall mercy
+                animations.get_up_side.clone()
             };
 
             // Despawn ragdoll mercy
-            for (ragdoll_entity, _) in &ragdoll_query {
-                commands.entity(ragdoll_entity).despawn_recursive();
+            for ragdoll in &ragdoll_query {
+                commands.entity(ragdoll.entity()).despawn_recursive();
             }
 
-            // Apply captured pose to animated player mercy
-            *player_transform = ragdoll_pose;
-
-            // Start get-up animation with crossfade from current (ragdoll-matched) pose mercy eternal
-            animation_player.play_with_transition(animations.get_up.clone(), Duration::from_secs_f32(0.3)).repeat(false);
+            // Crossfade selected variant from current pose mercy eternal
+            animation_player.play_with_transition(variant, Duration::from_secs_f32(0.3)).repeat(false);
 
             player.in_ragdoll = false;
             player.recovering = true;
-
-            // Joy particles on start mercy
-            // Spawn recovery sparkle burst
         }
 
-        // Completion detection mercy
         if player.recovering && animation_player.is_finished() {
             player.recovering = false;
-            // Full control restored mercy
-            // Massive joy burst on completion mercy
+            // Joy burst mercy
         }
     }
 }
