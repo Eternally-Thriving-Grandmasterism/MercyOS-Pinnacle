@@ -1,5 +1,5 @@
 //! crates/powrush_mmo/src/ambisonics.rs
-//! Higher-order Ambisonics (3rd order) encoding + binaural decoding mercy eternal supreme immaculate
+//! 7th Order Higher-Order Ambisonics encoding + binaural decoding mercy eternal supreme immaculate
 
 use bevy::prelude::*;
 use ambisonic::{Ambisonic, AmbisonicBuilder};
@@ -13,7 +13,7 @@ pub struct AmbisonicProcessor {
 
 pub fn setup_ambisonics(mut commands: Commands) {
     let ambisonic = AmbisonicBuilder::default()
-        .with_order(3)  // 3rd order HOA = 16 channels mercy
+        .with_order(7)  // 7th order HOA = 64 channels ultra-resolution mercy eternal
         .build();
 
     commands.insert_resource(AmbisonicProcessor { ambisonic });
@@ -21,17 +21,14 @@ pub fn setup_ambisonics(mut commands: Commands) {
 
 pub fn ambisonics_encode_system(
     mut processor: ResMut<AmbisonicProcessor>,
-    sources: Query<(&SoundSource, &AudioInstance)>,  // Future per-source samples mercy
+    sources: Query<(&SoundSource, &AudioInstance)>,
 ) {
     processor.ambisonic.clear();
 
     for (source, _instance) in &sources {
         let direction = source.position.normalize();
-        // Encode mono source to HOA B-format mercy
         processor.ambisonic.encode(direction.into(), 1.0);
     }
-
-    // Decode to binaural with head orientation mercy (future from PlayerHead)
 }
 
 pub fn ambisonics_decode_system(
@@ -45,7 +42,14 @@ pub fn ambisonics_decode_system(
 
         let binaural = processor.ambisonic.decode_binaural(forward.into(), up.into());
 
-        // Play binaural stereo mercy (future streaming)
-        // audio.play(binaural_left + binaural_right interleaved);
+        // Play binaural stereo mercy eternal
+        // Future streaming — placeholder play latest frame
+        let mut stereo = Vec::new();
+        for channel in binaural.channels() {
+            stereo.extend_from_slice(channel);
+        }
+
+        let sound = StaticSoundData::from_samples(stereo, 48000, StaticSoundSettings::default());
+        audio.play(sound).handle();
     }
 }
