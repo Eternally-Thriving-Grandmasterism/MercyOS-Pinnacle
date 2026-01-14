@@ -1,86 +1,75 @@
-//! crates/powrush_mmo/src/voice.rs — Complete consolidated voice ultramastery pinnacle with modulation
-//! Always-on full duplex proximity voice with advanced features:
-//! - WebRTC VAD silence suppression (accurate in noise)
-//! - Opus compression/tuning on active speech frames (bitrate B, complexity C, FEC F, DTX D key cycles)
-//! - Real-time voice modulation effects on send (M key cycle: Normal, HighPitch, LowPitch, Robot, Helium)
-//! - Rubato resampling for pitch shift mercy, simple bitcrusher for robot
-//! Lightyear unreliable relay to players within 50 units
-//! Client playback with distance volume falloff + rainbow blue wave speaking particles scaled by mode joy
-//! Natural expressive efficient resilient conversation eternal — voice supreme ❤️🗣️
+//! crates/powrush_mmo/src/voice.rs
+//! Real-time microphone capture + hybrid PQC encrypted voice frames
+//! ChaCha20Poly1305 stream over lightyear unreliable channel eternal supreme ❤️🗣️🔐
 
 use bevy::prelude::*;
+use bevy_kira_audio::prelude::*;
 use lightyear::prelude::*;
-use webrtc_vad::{Vad, Mode};
-use opus::{Encoder, Decoder, Channels, Application, Bitrate};
-use rubato::{FftFixedInOut, Resampler as _, InterpolationType};
-use std::collections::HashMap;
+use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce, aead::{Aead, NewAead}};
+use crate::pqc_exchange::SessionKeys;
+use rand::RngCore;
 
-// Unreliable voice channel low-latency mercy
-channel!(Unreliable => VoiceChannel);
+#[derive(Channel)]
+pub struct VoiceChannel;
 
-// Voice packet compressed opus active frames mercy
-#[message(channel = VoiceChannel)]
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct VoicePacket {
-    pub speaker: ClientId,
-    pub audio_data: Vec<u8>,
+pub fn voice_capture_system(
+    audio_input: Res<AudioInput>,
+    session_keys: Res<SessionKeys>,
+    mut writer: EventWriter<ToClients<Vec<u8>>>,
+) {
+    if let Some(microphone) = audio_input.microphone() {
+        if let Some(samples) = microphone.read_data() {
+            // Get session key (per-client future mercy)
+            if let Some(key) = session_keys.keys.get(&ClientId::LOCAL) {  // Placeholder local
+                let cipher = ChaCha20Poly1305::new(key);
+
+                let mut nonce_bytes = [0u8; 12];
+                rand::thread_rng().fill_bytes(&mut nonce_bytes);
+                let nonce = Nonce::from_slice(&nonce_bytes);
+
+                if let Ok(encrypted) = cipher.encrypt(nonce, samples.as_slice()) {
+                    let mut packet = Vec::new();
+                    packet.extend_from_slice(&nonce_bytes);
+                    packet.extend_from_slice(&encrypted);
+
+                    // Send unreliable voice frames mercy
+                    writer.send(ToClients {
+                        clients: vec![],  // Broadcast all
+                        message: packet,
+                    });
+                }
+            }
+        }
+    }
 }
 
-// Bitrate tuning modes mercy
-#[derive(Resource, Default, PartialEq)]
-pub enum BitrateMode {
-    #[default]
-    Auto,
-    Low,
-    Medium,
-    High,
-    Ultra,
+pub fn voice_playback_system(
+    mut messages: EventReader<FromServer<Vec<u8>>>,
+    session_keys: Res<SessionKeys>,
+    audio: Res<Audio>,
+) {
+    for message in messages.read() {
+        if message.len() > 12 {
+            let (nonce_bytes, encrypted) = message.split_at(12);
+            let nonce = Nonce::from_slice(nonce_bytes);
+
+            if let Some(key) = session_keys.keys.get(&ClientId::LOCAL) {
+                let cipher = ChaCha20Poly1305::new(key);
+                if let Ok(decrypted) = cipher.decrypt(nonce, encrypted) {
+                    audio.play(decrypted).handle();  // Spatial future mercy
+                }
+            }
+        }
+    }
 }
 
-// Complexity tuning modes mercy
-#[derive(Resource, Default, PartialEq)]
-pub enum ComplexityMode {
-    Low,
-    #[default]
-    Balanced,
-    High,
-    Max,
-}
+pub struct VoicePlugin;
 
-// Voice modulation modes mercy
-#[derive(Resource, Default, PartialEq)]
-pub enum VoiceModMode {
-    #[default]
-    Normal,
-    HighPitch,
-    LowPitch,
-    Robot,
-    Helium,
-}
-
-// Client advanced voice resources with all tuning + modulation
-#[derive(Resource)]
-pub struct AdvancedVoiceResources {
-    pub vad: Vad,
-    pub mode: Mode,
-    pub encoder: Encoder,
-    pub decoder: Decoder,
-    pub frame_size: usize,
-    pub current_bitrate: BitrateMode,
-    pub current_complexity: ComplexityMode,
-    pub fec_enabled: bool,
-    pub expected_loss_perc: u32,
-    pub dtx_enabled: bool,
-    pub current_mod: VoiceModMode,
-    pub resampler: Option<FftFixedInOut<f32>>,
-}
-
-// Setup advanced voice with all features on client
-pub fn setup_advanced_voice_client(mut commands: Commands) {
-    let vad = Vad::new();
-
-    let mut encoder = Encoder::new(48000, Channels::Mono, Application::Voip).unwrap();
-    encoder.set_bitrate(Bitrate::Auto).unwrap();
+impl Plugin for VoicePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, (voice_capture_system, voice_playback_system));
+    }
+}    encoder.set_bitrate(Bitrate::Auto).unwrap();
     encoder.set_complexity(5).unwrap();
     encoder.set_inband_fec(true).unwrap();
     encoder.set_packet_loss_perc(10).unwrap();
