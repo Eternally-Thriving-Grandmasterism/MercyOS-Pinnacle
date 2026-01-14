@@ -1,6 +1,6 @@
 //! crates/powrush_mmo/src/didi_quest.rs
-//! "Didi Pickup" Rugrats-inspired quest mercy eternal supreme immaculate
-//! Giant Didi NPC spawns in Child Wonder Mode, approach to hug/reunite for family joy philotic mercy
+//! "Didi Pickup" Rugrats-inspired quest with full visual model mercy eternal supreme immaculate
+//! Giant loving mom multi-part avatar, approach for hug reunion joy philotic mercy
 
 use bevy::prelude::*;
 use bevy_kira_audio::prelude::*;
@@ -24,19 +24,76 @@ pub fn spawn_didi_quest(
     if wonder_mode.get_single().is_ok() && commands.query::<&DidiQuestActive>().iter().next().is_none() {
         let player_pos = player_query.single().translation;
 
-        let didi_pos = player_pos + Vec3::new(80.0, 0.0, 80.0);  // Distant adventure mercy
+        let didi_pos = player_pos + Vec3::new(80.0, 0.0, 80.0);
 
+        let giant_scale = if wonder_mode.get_single().is_ok() { 8.0 } else { 1.8 };
+
+        let didi_root = commands.spawn((
+            Transform::from_translation(didi_pos),
+            GlobalTransform::default(),
+            Visibility::Visible,
+            DidiNpc,
+            DidiQuestActive,
+        )).id();
+
+        // Purple dress body mercy
         commands.spawn((
             PbrBundle {
                 mesh: meshes.add(Mesh::from(shape::Capsule::default())),
-                material: materials.add(Color::rgb(1.0, 0.7, 0.8).into()),
-                transform: Transform::from_translation(didi_pos).with_scale(Vec3::splat(8.0)),  // Giant mom mercy
-                visibility: Visibility::Visible,
+                material: materials.add(Color::rgb(0.6, 0.2, 0.8).into()),  // Purple dress mercy
+                transform: Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::splat(1.5 * giant_scale)),
                 ..default()
             },
-            DidiNpc,
-            DidiQuestActive,
-        ));
+            PlayerBodyPart,
+        )).set_parent(didi_root);
+
+        // Skin head mercy
+        commands.spawn((
+            PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::UVSphere::default())),
+                material: materials.add(Color::rgb(0.9, 0.7, 0.6).into()),
+                transform: Transform::from_xyz(0.0, 1.8 * giant_scale, 0.0).with_scale(Vec3::splat(0.8 * giant_scale)),
+                ..default()
+            },
+            PlayerBodyPart,
+        )).set_parent(didi_root);
+
+        // Orange curly hair mercy — simple cone stack
+        let hair_material = materials.add(Color::rgb(1.0, 0.5, 0.0).into());
+        for i in 0..5 {
+            let offset = i as f32 * 0.2 * giant_scale;
+            commands.spawn((
+                PbrBundle {
+                    mesh: meshes.add(Mesh::from(shape::Cone { radius: 0.6 * giant_scale, height: 0.4 * giant_scale, resolution: 16 })),
+                    material: hair_material.clone(),
+                    transform: Transform::from_xyz(0.0, 1.8 * giant_scale + offset, 0.0).with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+                    ..default()
+                },
+                PlayerBodyPart,
+            )).set_parent(didi_root);
+        }
+
+        // Arms mercy
+        let arm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.2 * giant_scale, height: 1.2 * giant_scale, resolution: 16 }));
+        commands.spawn((
+            PbrBundle {
+                mesh: arm_mesh.clone(),
+                material: skin_material.clone(),
+                transform: Transform::from_xyz(-0.8 * giant_scale, 0.5 * giant_scale, 0.0).with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+                ..default()
+            },
+            PlayerBodyPart,
+        )).set_parent(didi_root);
+
+        commands.spawn((
+            PbrBundle {
+                mesh: arm_mesh,
+                material: skin_material.clone(),
+                transform: Transform::from_xyz(0.8 * giant_scale, 0.5 * giant_scale, 0.0).with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
+                ..default()
+            },
+            PlayerBodyPart,
+        )).set_parent(didi_root);
 
         // Didi calling voice mercy eternal
         let didi_call: Handle<AudioSource> = asset_server.load("sounds/didi_calling.ogg");
@@ -65,10 +122,10 @@ pub fn didi_pickup_system(
             let hug: Handle<AudioSource> = asset_server.load("sounds/didi_hug.ogg");
             audio.play(hug).with_volume(1.0);
 
-            // Joy particles + family harmony bonus mercy
-            // Spawn massive joy sparkles, temporary speed boost
+            // Massive joy particles mercy
+            // Spawn sparkle storm + harmony bonus
 
-            commands.entity(didi_entity).despawn();
+            commands.entity(didi_entity).despawn_recursive();
         }
     }
 }
