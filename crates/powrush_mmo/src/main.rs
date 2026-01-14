@@ -85,7 +85,7 @@ struct Creature {
     parent1: Option<u64>,
     parent2: Option<u64>,
     generation: u32,
-    last_drift_day: f32,  // For drift timing mercy
+    last_drift_day: f32,
 }
 
 #[derive(Clone, Copy)]
@@ -214,22 +214,39 @@ fn setup(
     ));
 }
 
+fn player_movement(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut query: Query<&mut Velocity, With<Player>>,
+) {
+    if let Ok(mut velocity) = query.get_single_mut() {
+        let mut direction = Vec3::ZERO;
+        if keyboard_input.pressed(KeyCode::W) { direction.z -= 1.0; }
+        if keyboard_input.pressed(KeyCode::S) { direction.z += 1.0; }
+        if keyboard_input.pressed(KeyCode::A) { direction.x -= 1.0; }
+        if keyboard_input.pressed(KeyCode::D) { direction.x += 1.0; }
+
+        if direction.length_squared() > 0.0 {
+            direction = direction.normalize();
+        }
+
+        let speed = 10.0;
+        velocity.linvel = Vec3::new(direction.x * speed, velocity.linvel.y, direction.z * speed);
+    }
+}
+
 fn genetic_drift_system(
     mut query: Query<&mut Creature>,
     world_time: Res<WorldTime>,
-    time: Res<Time>,
 ) {
-    // Count population per type for drift strength mercy
     let mut counts = std::collections::HashMap::new();
     for creature in query.iter() {
         *counts.entry(creature.creature_type).or_insert(0) += 1;
     }
 
     for mut creature in query.iter_mut() {
-        // Drift every 10 in-game days, stronger in small populations
         if (world_time.day - creature.last_drift_day).abs() > 10.0 {
             let pop = counts.get(&creature.creature_type).copied().unwrap_or(1);
-            let drift_strength = (1.0 / pop as f32).min(0.3);  // Max 30% in pop=3
+            let drift_strength = (1.0 / pop as f32).min(0.3);
 
             creature.dna.speed += rand::thread_rng().gen_range(-drift_strength..drift_strength);
             creature.dna.speed = creature.dna.speed.clamp(5.0, 15.0);
@@ -248,7 +265,7 @@ fn genetic_drift_system(
     }
 }
 
-// Rest of file unchanged from previous full version (player_movement, creature_behavior_cycle, creature_evolution_system, player_breeding_mechanics, player_inventory_ui with lineage graph, chunk_manager, etc.)
+// Rest of systems (player_inventory_ui with graph, creature_behavior_cycle, creature_evolution_system, player_breeding_mechanics, chunk_manager, etc.) unchanged from previous full version
 
 pub struct MercyResonancePlugin;
 
