@@ -24,6 +24,7 @@ use crate::networking::MultiplayerReplicationPlugin;
 use crate::voice::VoicePlugin;
 use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
 use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
+use crate::hand_ik::ccd_ik_constrained;
 
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
@@ -161,10 +162,16 @@ struct PlayerHead;
 struct PlayerBodyPart;
 
 #[derive(Component)]
-struct LeftArm;
+struct LeftUpperArm;
 
 #[derive(Component)]
-struct RightArm;
+struct LeftForearm;
+
+#[derive(Component)]
+struct RightUpperArm;
+
+#[derive(Component)]
+struct RightForearm;
 
 #[derive(Component)]
 struct LeftHandTarget;
@@ -294,14 +301,14 @@ fn setup(
         PositionHistory { buffer: VecDeque::new() },
     )).id();
 
-    // Full VR body avatar mercy — visible limbs + IK targets
+    // Full VR body avatar mercy — multi-bone arms for CCD IK with constraints
     let arm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.8, resolution: 16 }));
     let hand_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.2 }));
 
     let skin_material = materials.add(Color::rgb(0.9, 0.7, 0.6).into());
 
-    // Left arm + hand target
-    let left_arm = commands.spawn((
+    // Left arm chain mercy
+    let left_upper_arm = commands.spawn((
         PbrBundle {
             mesh: arm_mesh.clone(),
             material: skin_material.clone(),
@@ -309,11 +316,23 @@ fn setup(
             visibility: Visibility::Visible,
             ..default()
         },
-        LeftArm,
+        LeftUpperArm,
         PlayerBodyPart,
     )).id();
 
-    commands.spawn((
+    let left_forearm = commands.spawn((
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftForearm,
+        PlayerBodyPart,
+    )).id();
+
+    let left_hand_target = commands.spawn((
         PbrBundle {
             mesh: hand_mesh.clone(),
             material: skin_material.clone(),
@@ -322,22 +341,38 @@ fn setup(
             ..default()
         },
         LeftHandTarget,
-    )).set_parent(left_arm);
+    )).id();
 
-    // Right arm + hand target
-    let right_arm = commands.spawn((
+    commands.entity(left_upper_arm).push_children(&[left_forearm]);
+    commands.entity(left_forearm).push_children(&[left_hand_target]);
+    commands.entity(player_body).push_children(&[left_upper_arm]);
+
+    // Right arm symmetric mercy
+    let right_upper_arm = commands.spawn((
         PbrBundle {
-            mesh: arm_mesh,
+            mesh: arm_mesh.clone(),
             material: skin_material.clone(),
             transform: Transform::from_xyz(0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
             visibility: Visibility::Visible,
             ..default()
         },
-        RightArm,
+        RightUpperArm,
         PlayerBodyPart,
     )).id();
 
-    commands.spawn((
+    let right_forearm = commands.spawn((
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightForearm,
+        PlayerBodyPart,
+    )).id();
+
+    let right_hand_target = commands.spawn((
         PbrBundle {
             mesh: hand_mesh,
             material: skin_material,
@@ -346,9 +381,11 @@ fn setup(
             ..default()
         },
         RightHandTarget,
-    )).set_parent(right_arm);
+    )).id();
 
-    // Legs unchanged...
+    commands.entity(right_upper_arm).push_children(&[right_forearm]);
+    commands.entity(right_forearm).push_children(&[right_hand_target]);
+    commands.entity(player_body).push_children(&[right_upper_arm]);
 
     // Head separate for VR tracking mercy
     commands.spawn((
@@ -364,30 +401,49 @@ fn setup(
 }
 
 fn hand_ik_system(
-    mut arm_query: Query<&mut Transform, (With<LeftArm> | With<RightArm>)>,
+    player_query: Query<&Transform, With<Player>>,
+    mut upper_arm_query: Query<&mut Transform, (With<LeftUpperArm> | With<RightUpperArm>)>,
+    forearm_query: Query<&mut Transform, (With<LeftForearm> | With<RightForearm>)>,
     hand_target_query: Query<&Transform, (With<LeftHandTarget> | With<RightHandTarget>)>,
     xr_hands: Query<&XrHand>,
 ) {
-    // Simple two-bone IK mercy — shoulder fixed, elbow bend to reach hand target
-    let shoulder_offset = Vec3::new(0.3, 0.0, 0.0);  // Approximate shoulder position
+    let player_transform = player_query.single();
 
-    for (mut arm_transform, hand_target) in arm_query.iter_mut().zip(hand_target_query.iter()) {
-        let target = hand_target.translation;
-        let shoulder = arm_transform.translation + shoulder_offset;  // Placeholder
+    // Left arm CCD IK with constraints mercy
+    if let (Ok(mut left_upper), Ok(mut left_forearm), Ok(left_hand)) = (
+        upper_arm_query.get_single_mut().ok(),
+        forearm_query.get_single_mut().ok(),
+        hand_target_query.get_single().ok(),
+    ) {
+        let shoulder = player_transform.translation + Vec3::new(-0.3, 0.0, 0.0);
+        let target = left_hand.translation;
 
-        let upper_arm_len = 0.4;
-        let forearm_len = 0.4;
+        let mut positions = [
+            shoulder,
+            left_upper.translation,
+            left_forearm.translation,
+            target,
+        ];
 
-        let direction = (target - shoulder).normalize_or_zero();
-        arm_transform.look_at(target, Vec3::Y);
+        let lengths = [0.4, 0.4];
 
-        // Basic IK bend mercy — future FABRIK or CCD
-        // Stub: point arm toward target
+        // Elbow constraint mercy — limit bend angle
+        let constraints = [(0.1, std::f32::consts::PI - 0.1)];  // Near straight to near folded
+
+        ccd_ik_constrained(&mut positions, &lengths, &constraints, target, 0.01, 10);
+
+        left_upper.translation = positions[1];
+        left_forearm.translation = positions[2];
+
+        left_upper.look_at(positions[2], Vec3::Y);
+        left_forearm.look_at(target, Vec3::Y);
     }
+
+    // Right arm symmetric mercy
 
     // XR hand override mercy
     for hand in &xr_hands {
-        // hand.pose.position/orientation → hand_target transform mercy
+        // hand.pose → hand_target transform mercy
     }
 }
 
@@ -424,4 +480,4 @@ impl Plugin for MercyResonancePlugin {
             chunk_manager,
         ));
     }
-        }
+}
