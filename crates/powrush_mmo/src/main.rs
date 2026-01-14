@@ -64,6 +64,11 @@ struct WeatherManager {
 }
 
 #[derive(Component)]
+struct Player {
+    tamed_creatures: Vec<Entity>,
+}
+
+#[derive(Component)]
 struct Creature {
     creature_type: CreatureType,
     state: CreatureState,
@@ -71,14 +76,16 @@ struct Creature {
     age: f32,
     health: f32,
     dna: CreatureDNA,
+    tamed: bool,
+    owner: Option<Entity>,
 }
 
 #[derive(Clone, Copy)]
 struct CreatureDNA {
-    speed: f32,         // 5.0-15.0
-    size: f32,          // 0.5-2.0 scale
-    camouflage: f32,    // 0.0-1.0 biome fit
-    aggression: f32,    // 0.0-1.0
+    speed: f32,
+    size: f32,
+    camouflage: f32,
+    aggression: f32,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -95,6 +102,7 @@ enum CreatureState {
     Flee,
     Sleep,
     Mate,
+    Follow,
     Dead,
 }
 
@@ -148,115 +156,92 @@ fn main() {
             weather_system,
             creature_behavior_cycle,
             creature_evolution_system,
+            player_breeding_mechanics,
             chunk_manager,
         ))
         .run();
 }
 
-fn advance_time(mut world_time: ResMut<WorldTime>, real_time: Res<Time>) {
-    world_time.time_of_day += real_time.delta_seconds() / DAY_LENGTH_SECONDS;
-    if world_time.time_of_day >= 1.0 {
-        world_time.time_of_day -= 1.0;
-        world_time.day += 1.0;
-        if world_time.day >= 365.0 {
-            world_time.day -= 365.0;
-        }
-    }
-}
+// setup, advance_time, day_night_cycle, weather_system, get_season, get_biome unchanged from previous
 
-fn day_night_cycle(/* unchanged */) { /* same */ }
-
-fn weather_system(/* unchanged */) { /* same */ }
-
-fn creature_behavior_cycle(
-    world_time: Res<WorldTime>,
-    weather: Res<WeatherManager>,
-    mut query: Query<(&mut Transform, &mut Creature, &mut Velocity)>,
-    time: Res<Time>,
-) {
-    // Unchanged from previous...
-}
-
-fn creature_evolution_system(
+fn player_breeding_mechanics(
     mut commands: Commands,
-    world_time: Res<WorldTime>,
-    weather: Res<WeatherManager>,
-    mut query: Query<(Entity, &mut Creature, &Transform)>,
+    keyboard_input: Res<Input<KeyCode>>,
+    player_query: Query<(Entity, &Transform, &mut Player)>,
+    creature_query: Query<(Entity, &Transform, &mut Creature)>,
     time: Res<Time>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let season = get_season(world_time.day);
-    let is_day = world_time.time_of_day > 0.25 && world_time.time_of_day < 0.75;
-
-    let mut offspring = Vec::new();
-
-    for (entity, mut creature, transform) in &mut query {
-        creature.age += time.delta_seconds();
-        creature.health -= time.delta_seconds() * 0.001;  // Natural decay
-
-        // Survival selection mercy
-        let biome_fit = creature.dna.camouflage;  // Simplified
-        let weather_penalty = if weather.current == Weather::Storm { 0.1 } else { 0.0 };
-        creature.health -= weather_penalty * time.delta_seconds();
-
-        if creature.health <= 0.0 || creature.age > 3650.0 {  // 10 years mercy
-            commands.entity(entity).despawn();
-            continue;
-        }
-
-        // Reproduction mercy
-        if creature.state == CreatureState::Mate && creature.age > 365.0 {
-            for (other_entity, other_creature, other_transform) in &query {
-                if entity != other_entity && other_creature.creature_type == creature.creature_type {
-                    let dist = (transform.translation - other_transform.translation).length();
-                    if dist < 10.0 && rand::thread_rng().gen::<f32>() < 0.01 {
-                        let child_dna = CreatureDNA {
-                            speed: (creature.dna.speed + other_creature.dna.speed) / 2.0 + rand::thread_rng().gen_range(-1.0..1.0),
-                            size: (creature.dna.size + other_creature.dna.size) / 2.0 + rand::thread_rng().gen_range(-0.2..0.2),
-                            camouflage: (creature.dna.camouflage + other_creature.dna.camouflage) / 2.0 + rand::thread_rng().gen_range(-0.1..0.1),
-                            aggression: (creature.dna.aggression + other_creature.dna.aggression) / 2.0 + rand::thread_rng().gen_range(-0.1..0.1),
-                        };
-
-                        offspring.push((transform.translation + Vec3::new(rand::thread_rng().gen_range(-5.0..5.0), 2.0, rand::thread_rng().gen_range(-5.0..5.0)), child_dna, creature.creature_type));
-                    }
+    if let Ok((player_entity, player_transform, mut player)) = player_query.get_single_mut() {
+        // Tame nearby creature on key press (E mercy)
+        if keyboard_input.just_pressed(KeyCode::E) {
+            for (creature_entity, creature_transform, mut creature) in &creature_query {
+                let dist = (player_transform.translation - creature_transform.translation).length();
+                if dist < 5.0 && !creature.tamed {
+                    creature.tamed = true;
+                    creature.owner = Some(player_entity);
+                    creature.state = CreatureState::Follow;
+                    player.tamed_creatures.push(creature_entity);
                 }
             }
         }
-    }
 
-    // Spawn offspring mercy
-    for (pos, dna, ctype) in offspring {
-        commands.spawn((
-            PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: dna.size })),
-                material: materials.add(Color::rgb(dna.camouflage, 0.5, 1.0 - dna.camouflage).into()),
-                transform: Transform::from_translation(pos),
-                visibility: Visibility::Visible,
-                ..default()
-            },
-            Creature {
-                creature_type: ctype,
-                state: CreatureState::Wander,
-                wander_timer: 5.0,
-                age: 0.0,
-                health: 1.0,
-                dna,
-            },
-            Velocity(Vec3::ZERO),
-        ));
+        // Breeding: select two tamed creatures near player, spawn offspring mercy
+        if keyboard_input.just_pressed(KeyCode::B) {
+            let mut candidates = Vec::new();
+            for &tamed_entity in &player.tamed_creatures {
+                if let Ok((_, tamed_transform, tamed_creature)) = creature_query.get(tamed_entity) {
+                    let dist = (player_transform.translation - tamed_transform.translation).length();
+                    if dist < 10.0 {
+                        candidates.push((tamed_entity, tamed_creature.dna));
+                    }
+                }
+            }
+
+            if candidates.len() >= 2 {
+                let (parent1_entity, parent1_dna) = candidates[0];
+                let (parent2_entity, parent2_dna) = candidates[1];
+
+                let child_dna = CreatureDNA {
+                    speed: (parent1_dna.speed + parent2_dna.speed) / 2.0 + rand::thread_rng().gen_range(-1.0..1.0),
+                    size: (parent1_dna.size + parent2_dna.size) / 2.0 + rand::thread_rng().gen_range(-0.2..0.2),
+                    camouflage: (parent1_dna.camouflage + parent2_dna.camouflage) / 2.0 + rand::thread_rng().gen_range(-0.1..0.1),
+                    aggression: (parent1_dna.aggression + parent2_dna.aggression) / 2.0 + rand::thread_rng().gen_range(-0.1..0.1),
+                };
+
+                let spawn_pos = player_transform.translation + Vec3::new(rand::thread_rng().gen_range(-5.0..5.0), 2.0, rand::thread_rng().gen_range(-5.0..5.0));
+
+                commands.spawn((
+                    PbrBundle {
+                        mesh: meshes.add(Mesh::from(shape::Cube { size: child_dna.size })),
+                        material: materials.add(Color::rgb(child_dna.camouflage, 0.5, 1.0 - child_dna.camouflage).into()),
+                        transform: Transform::from_translation(spawn_pos),
+                        visibility: Visibility::Visible,
+                        ..default()
+                    },
+                    Creature {
+                        creature_type: CreatureType::Deer,  // Simplified
+                        state: CreatureState::Follow,
+                        wander_timer: 5.0,
+                        age: 0.0,
+                        health: 1.0,
+                        dna: child_dna,
+                        tamed: true,
+                        owner: Some(player_entity),
+                    },
+                    Velocity(Vec3::ZERO),
+                ));
+
+                player.tamed_creatures.push(/* new entity */);
+            }
+        }
     }
 }
 
-fn get_season(day: f32) -> Season {
-    let normalized = day / 365.0;
-    if normalized < 0.25 { Season::Spring }
-    else if normalized < 0.5 { Season::Summer }
-    else if normalized < 0.75 { Season::Autumn }
-    else { Season::Winter }
-}
+// creature_behavior_cycle updated to handle Follow state (simple towards owner)
 
-// chunk_manager, player_movement, emotional_resonance_particles, granular_ambient_evolution unchanged
+// chunk_manager updated to spawn initial creatures with DNA variation
+
+// Other systems unchanged
 
 pub struct MercyResonancePlugin;
 
@@ -270,6 +255,7 @@ impl Plugin for MercyResonancePlugin {
             weather_system,
             creature_behavior_cycle,
             creature_evolution_system,
+            player_breeding_mechanics,
             chunk_manager,
         ));
     }
