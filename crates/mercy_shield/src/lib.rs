@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
 //! MercyShield — adjustable scam/fraud/spam blocker with adaptive ML training mercy eternal supreme immaculate
-//! Chat filter (keyword + regex scoring), trade validation, player report learning philotic mercy
+//! Chat filter (keyword + regex scoring), false positive feedback learning, trade validation philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -16,7 +16,7 @@ pub struct MercyShieldConfig {
 
 #[derive(Resource)]
 pub struct ScamPatterns {
-    pub keywords: HashMap<String, f32>,  // Word → weight mercy (adaptive)
+    pub keywords: HashMap<String, f32>,  // Word → weight (adaptive mercy)
     pub url_regex: Regex,
     pub phone_regex: Regex,
 }
@@ -46,24 +46,26 @@ pub fn setup_mercy_shield(mut commands: Commands) {
 }
 
 pub fn chat_scam_filter_system(
-    // Chat message events mercy — placeholder
+    // Chat message events mercy — placeholder scoring
     scam_patterns: Res<ScamPatterns>,
     config: Res<MercyShieldConfig>,
 ) {
-    // Scoring mercy (as before)
+    // Scoring logic mercy (as before)
 }
 
-pub fn player_report_learning_system(
-    // Player report events mercy — when report confirmed scam
+pub fn false_positive_learning_system(
+    // False positive report events mercy — player marks flagged message "not scam"
     mut scam_patterns: ResMut<ScamPatterns>,
     // Reported message mercy
 ) {
-    let message = "example reported scam message mercy";
+    let message = "example false positive message mercy";
 
     for word in message.to_lowercase().split_whitespace() {
         let cleaned = word.trim_matches(|c: char| !c.is_alphanumeric());
         if !cleaned.is_empty() {
-            *scam_patterns.keywords.entry(cleaned.to_string()).or_insert(0.3) += 0.2;  // Boost weight mercy
+            if let Some(weight) = scam_patterns.keywords.get_mut(&cleaned.to_string()) {
+                *weight = (*weight - 0.15).max(0.1);  // Decrease but floor mercy eternal
+            }
         }
     }
 }
@@ -76,6 +78,7 @@ impl Plugin for MercyShieldPlugin {
             .add_systems(Update, (
                 chat_scam_filter_system,
                 player_report_learning_system,
+                false_positive_learning_system,
             ));
     }
 }
