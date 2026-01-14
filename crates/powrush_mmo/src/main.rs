@@ -1,13 +1,9 @@
-// Add import
-use crate::vector_synthesis::vector_wavetable_synthesis;
+use crate::procedural_music::{enhanced_fm_synthesis, AdsrEnvelope};
 
-// In emotional_resonance_particles
-let vector_x = (time.elapsed_seconds_f64() * 0.5).sin() as f32 * joy_level;
-let vector_y = (time.elapsed_seconds_f64() * 0.3).cos() as f32 * joy_level;
+// In emotional_resonance_particles (replace vector/wavetable chime with enhanced FM)
+let fm_chime = enhanced_fm_synthesis(base_freq, joy_level * 1.2, duration);
 
-let wavetable_chime = vector_wavetable_synthesis(duration, base_freq, vector_x, vector_y, AdsrEnvelope::joy_resonance(), joy_level);
-
-audio.play(wavetable_chime)
-    .with_volume(0.45 + joy_level * 0.35)
+audio.play(fm_chime)
+    .with_volume(0.5 + joy_level * 0.4)
     .spatial(true)
     .with_position(player_pos + offset);
