@@ -10,7 +10,7 @@ use rand::Rng;
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
-use crate::networking::MultiplayerSyncPlugin;
+use crate::networking::MultiplayerReplicationPlugin;
 
 fn main() {
     let mut app = App::new();
@@ -26,10 +26,10 @@ fn main() {
         ..default()
     }))
     .add_plugins(KiraAudioPlugin)
-    .add_plugins(MultiplayerSyncPlugin);
+    .add_plugins(MultiplayerReplicationPlugin)
+    .insert_resource(NextNetworkId::default());
 
-    // Server/Client toggle
-    let is_server = true;
+    let is_server = true; // Toggle for testing
 
     if is_server {
         app.add_plugins(RenetServerPlugin);
@@ -44,4 +44,5 @@ fn main() {
         .run();
 }
 
-// Rest of file unchanged (setup, player_movement, emotional_resonance_particles, granular_ambient_evolution, MercyResonancePlugin)
+// Full setup, player_movement, emotional_resonance_particles, granular_ambient_evolution, MercyResonancePlugin unchanged from previous full version
+// Local player spawn includes NetworkId(0) temporary
