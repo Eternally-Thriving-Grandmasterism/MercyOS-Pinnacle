@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::render::view::Visibility;
-use bevy_kira_audio::{Audio, AudioControl, AudioInstance, AudioPlugin as KiraAudioPlugin, AudioSource};
+use bevy_kira_audio::{Audio, AudioControl, AudioInstance, AudioPlugin as KiraAudioPlugin};
 use bevy_kira_audio::prelude::*;
 use bevy_renet::RenetClientPlugin;
 use bevy_renet::RenetServerPlugin;
@@ -14,8 +14,6 @@ use rand::rngs::StdRng;
 use bevy_rapier3d::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin};
 use egui::{Painter, Pos2, Stroke, Color32};
-use kira::sound::effect::reverb::ReverbBuilder;
-use kira::manager::AudioManager;
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
@@ -141,15 +139,13 @@ enum CropType {
 }
 
 #[derive(Component)]
-struct ReverbZone {
-    reverb_time: f32,     // seconds
-    damping: f32,
-    intensity: f32,
+struct Chunk {
+    coord: IVec2,
 }
 
 #[derive(Component)]
-struct Chunk {
-    coord: IVec2,
+struct SoundSource {
+    position: Vec3,
 }
 
 fn main() {
@@ -208,7 +204,7 @@ fn main() {
             creature_evolution_system,
             genetic_drift_system,
             player_breeding_mechanics,
-            reverb_zone_system,
+            occlusion_attenuation_system,
             chunk_manager,
         ))
         .run();
@@ -255,44 +251,37 @@ fn setup(
     ));
 }
 
-fn reverb_zone_system(
+fn occlusion_attenuation_system(
+    rapier_context: Res<RapierContext>,
     player_query: Query<&Transform, With<Player>>,
-    zone_query: Query<(&Transform, &ReverbZone)>,
-    mut audio_manager: ResMut<AudioManager>,
+    mut sound_query: Query<(&SoundSource, &mut AudioInstance)>,
 ) {
-    if let Ok(player_transform) = player_query.get_single() {
-        let player_pos = player_transform.translation;
+    if let Ok(listener_transform) = player_query.get_single() {
+        let listener_pos = listener_transform.translation;
 
-        let mut closest_zone = None;
-        let mut closest_dist = f32::INFINITY;
-
-        for (zone_transform, reverb) in &zone_query {
-            let dist = (player_pos - zone_transform.translation).length();
-            if dist < closest_dist {
-                closest_dist = dist;
-                closest_zone = Some(reverb);
+        for (source, mut instance) in &mut sound_query {
+            let direction = source.position - listener_pos;
+            let distance = direction.length();
+            if distance > 0.1 {
+                let ray = Ray::new(listener_pos.into(), direction.normalize().into());
+                if let Some((_, toi)) = rapier_context.cast_ray(ray.origin, ray.dir, distance, true, QueryFilter::default()) {
+                    let occlusion_factor = (toi / distance).clamp(0.0, 1.0);
+                    let attenuation = 1.0 - occlusion_factor * 0.8;  // 80% max attenuation mercy
+                    instance.set_volume(attenuation);
+                } else {
+                    instance.set_volume(1.0);
+                }
             }
         }
-
-        let reverb = if let Some(zone) = closest_zone {
-            ReverbBuilder::new()
-                .time(zone.reverb_time)
-                .damping(zone.damping)
-                .build()
-                .unwrap()
-        } else {
-            ReverbBuilder::new()
-                .time(0.5)
-                .damping(0.5)
-                .build()
-                .unwrap()
-        };
-
-        // Apply global reverb mercy (kira supports global effects)
-        // Placeholder — kira global reverb stub, future per-source send
-        // audio_manager.set_reverb(reverb);
     }
 }
+
+// In emotional_resonance_particles, voice_playback_system, etc. — add SoundSource component with position when spawning audio mercy
+
+// Example in emotional_resonance_particles:
+commands.spawn((
+    // ... audio play
+)).insert(SoundSource { position: player_pos + offset });
 
 // Rest of file unchanged from previous full version
 
@@ -317,7 +306,7 @@ impl Plugin for MercyResonancePlugin {
             player_breeding_mechanics,
             player_farming_mechanics,
             player_inventory_ui,
-            reverb_zone_system,
+            occlusion_attenuation_system,
             chunk_manager,
         ));
     }
