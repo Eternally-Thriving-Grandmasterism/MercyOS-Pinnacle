@@ -12,6 +12,7 @@ use greedly::{GreedyMesher};
 use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
 use bevy_rapier3d::prelude::*;
+use bevy_egui::{EguiContexts, EguiPlugin};
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
@@ -66,6 +67,7 @@ struct WeatherManager {
 #[derive(Component)]
 struct Player {
     tamed_creatures: Vec<Entity>,
+    show_inventory: bool,
 }
 
 #[derive(Component)]
@@ -127,6 +129,7 @@ fn main() {
     .add_plugins(KiraAudioPlugin)
     .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
     .add_plugins(RapierDebugRenderPlugin::default())
+    .add_plugins(EguiPlugin)
     .add_plugins(MultiplayerReplicationPlugin)
     .insert_resource(WorldTime { time_of_day: 0.0, day: 0.0 })
     .insert_resource(WeatherManager {
@@ -149,6 +152,7 @@ fn main() {
     app.add_systems(Startup, setup)
         .add_systems(Update, (
             player_movement,
+            player_inventory_ui,
             emotional_resonance_particles,
             granular_ambient_evolution,
             advance_time,
@@ -162,86 +166,87 @@ fn main() {
         .run();
 }
 
-// setup, advance_time, day_night_cycle, weather_system, get_season, get_biome unchanged from previous
-
-fn player_breeding_mechanics(
+fn setup(
     mut commands: Commands,
-    keyboard_input: Res<Input<KeyCode>>,
-    player_query: Query<(Entity, &Transform, &mut Player)>,
-    creature_query: Query<(Entity, &Transform, &mut Creature)>,
-    time: Res<Time>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    if let Ok((player_entity, player_transform, mut player)) = player_query.get_single_mut() {
-        // Tame nearby creature on key press (E mercy)
-        if keyboard_input.just_pressed(KeyCode::E) {
-            for (creature_entity, creature_transform, mut creature) in &creature_query {
-                let dist = (player_transform.translation - creature_transform.translation).length();
-                if dist < 5.0 && !creature.tamed {
-                    creature.tamed = true;
-                    creature.owner = Some(player_entity);
-                    creature.state = CreatureState::Follow;
-                    player.tamed_creatures.push(creature_entity);
-                }
-            }
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
+
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            illuminance: 10000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
+        ..default()
+    });
+
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
+            transform: Transform::from_xyz(0.0, 30.0, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        Player {
+            tamed_creatures: Vec::new(),
+            show_inventory: false,
+        },
+        Predicted,
+        RigidBody::Dynamic,
+        Collider::capsule_y(1.0, 0.5),
+        Velocity::zero(),
+        PositionHistory { buffer: VecDeque::new() },
+    ));
+}
+
+fn player_inventory_ui(
+    mut contexts: EguiContexts,
+    keyboard_input: Res<Input<KeyCode>>,
+    mut player_query: Query<&mut Player>,
+    creature_query: Query<(&Creature, &Transform)>,
+) {
+    if keyboard_input.just_pressed(KeyCode::I) {
+        if let Ok(mut player) = player_query.get_single_mut() {
+            player.show_inventory = !player.show_inventory;
         }
+    }
 
-        // Breeding: select two tamed creatures near player, spawn offspring mercy
-        if keyboard_input.just_pressed(KeyCode::B) {
-            let mut candidates = Vec::new();
-            for &tamed_entity in &player.tamed_creatures {
-                if let Ok((_, tamed_transform, tamed_creature)) = creature_query.get(tamed_entity) {
-                    let dist = (player_transform.translation - tamed_transform.translation).length();
-                    if dist < 10.0 {
-                        candidates.push((tamed_entity, tamed_creature.dna));
+    if let Ok(player) = player_query.get_single() {
+        if player.show_inventory {
+            egui::Window::new("Creature Inventory — Mercy Eternal")
+                .show(contexts.ctx_mut(), |ui| {
+                    ui.label(format!("Tamed Creatures: {}", player.tamed_creatures.len()));
+                    for &creature_entity in &player.tamed_creatures {
+                        if let Ok((creature, transform)) = creature_query.get(creature_entity) {
+                            ui.label(format!(
+                                "{:?} | Age: {:.0} days | Health: {:.1} | Pos: {:.0},{:.0},{:.0}",
+                                creature.creature_type,
+                                creature.age / 10.0,
+                                creature.health,
+                                transform.translation.x,
+                                transform.translation.y,
+                                transform.translation.z
+                            ));
+                        }
                     }
-                }
-            }
-
-            if candidates.len() >= 2 {
-                let (parent1_entity, parent1_dna) = candidates[0];
-                let (parent2_entity, parent2_dna) = candidates[1];
-
-                let child_dna = CreatureDNA {
-                    speed: (parent1_dna.speed + parent2_dna.speed) / 2.0 + rand::thread_rng().gen_range(-1.0..1.0),
-                    size: (parent1_dna.size + parent2_dna.size) / 2.0 + rand::thread_rng().gen_range(-0.2..0.2),
-                    camouflage: (parent1_dna.camouflage + parent2_dna.camouflage) / 2.0 + rand::thread_rng().gen_range(-0.1..0.1),
-                    aggression: (parent1_dna.aggression + parent2_dna.aggression) / 2.0 + rand::thread_rng().gen_range(-0.1..0.1),
-                };
-
-                let spawn_pos = player_transform.translation + Vec3::new(rand::thread_rng().gen_range(-5.0..5.0), 2.0, rand::thread_rng().gen_range(-5.0..5.0));
-
-                commands.spawn((
-                    PbrBundle {
-                        mesh: meshes.add(Mesh::from(shape::Cube { size: child_dna.size })),
-                        material: materials.add(Color::rgb(child_dna.camouflage, 0.5, 1.0 - child_dna.camouflage).into()),
-                        transform: Transform::from_translation(spawn_pos),
-                        visibility: Visibility::Visible,
-                        ..default()
-                    },
-                    Creature {
-                        creature_type: CreatureType::Deer,  // Simplified
-                        state: CreatureState::Follow,
-                        wander_timer: 5.0,
-                        age: 0.0,
-                        health: 1.0,
-                        dna: child_dna,
-                        tamed: true,
-                        owner: Some(player_entity),
-                    },
-                    Velocity(Vec3::ZERO),
-                ));
-
-                player.tamed_creatures.push(/* new entity */);
-            }
+                    if ui.button("Close Inventory").clicked() {
+                        if let Ok(mut player) = player_query.get_single_mut() {
+                            player.show_inventory = false;
+                        }
+                    }
+                });
         }
     }
 }
 
-// creature_behavior_cycle updated to handle Follow state (simple towards owner)
-
-// chunk_manager updated to spawn initial creatures with DNA variation
-
-// Other systems unchanged
+// Rest of file (player_movement, creature_behavior_cycle, creature_evolution_system, player_breeding_mechanics, chunk_manager, etc.) unchanged from previous full version
 
 pub struct MercyResonancePlugin;
 
@@ -256,6 +261,7 @@ impl Plugin for MercyResonancePlugin {
             creature_behavior_cycle,
             creature_evolution_system,
             player_breeding_mechanics,
+            player_inventory_ui,
             chunk_manager,
         ));
     }
