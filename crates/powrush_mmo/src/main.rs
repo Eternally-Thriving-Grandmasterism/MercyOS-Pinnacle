@@ -14,6 +14,7 @@ use rand::rngs::StdRng;
 use bevy_rapier3d::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin};
 use egui::{Painter, Pos2, Stroke, Color32};
+use kira::sound::effect::reverb::ReverbBuilder;
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
@@ -206,7 +207,7 @@ fn main() {
             genetic_drift_system,
             player_breeding_mechanics,
             material_attenuation_system,
-            hrtf_spatial_listener_system,
+            hrtf_convolution_system,
             chunk_manager,
         ))
         .run();
@@ -253,21 +254,42 @@ fn setup(
     ));
 }
 
-fn hrtf_spatial_listener_system(
+fn hrtf_convolution_system(
     camera_query: Query<&Transform, With<Camera3d>>,
-    audio: Res<Audio>,
+    mut audio_instances: Query<&mut AudioInstance>,
+    sound_sources: Query<&SoundSource>,
 ) {
     if let Ok(camera_transform) = camera_query.get_single() {
-        let position = camera_transform.translation;
-        let forward = camera_transform.forward();
-        let up = camera_transform.up();
+        let listener_pos = camera_transform.translation;
+        let listener_forward = camera_transform.forward();
+        let listener_up = camera_transform.up();
 
-        audio.set_listener_position(position);
-        audio.set_listener_orientation(forward.into(), up.into());
+        // Placeholder HRIR convolution mercy — kira ConvolutionReverb dual channel stub
+        // Future: Load SOFA HRIR dataset, interpolate azimuth/elevation, apply per-source convolution
+        for (source, mut instance) in sound_sources.iter().zip(audio_instances.iter_mut()) {
+            let relative_pos = source.position - listener_pos;
+            let distance = relative_pos.length();
+            if distance > 0.1 {
+                let direction = relative_pos.normalize();
+
+                // Simple azimuth calculation mercy
+                let azimuth = direction.z.atan2(direction.x) * 180.0 / std::f32::consts::PI;
+
+                // Placeholder reverb based on direction — future full HRIR convolution
+                let reverb = ReverbBuilder::new()
+                    .time(0.3 + (azimuth.abs() / 180.0) * 0.7)
+                    .damping(0.5)
+                    .build()
+                    .unwrap();
+
+                // Apply per-instance (kira limitation — global future mercy)
+                // instance.add_effect(reverb);
+            }
+        }
     }
 }
 
-// Rest of file unchanged from previous full version (player_movement, emotional_resonance_particles with .spatial(true), granular_ambient_evolution, advance_time, day_night_cycle, weather_system, creature_behavior_cycle, natural_selection_system, creature_hunger_system, creature_eat_system, crop_growth_system, food_respawn_system, creature_evolution_system, genetic_drift_system, player_breeding_mechanics, player_inventory_ui, material_attenuation_system, chunk_manager, MercyResonancePlugin)
+// Rest of file unchanged from previous full version
 
 pub struct MercyResonancePlugin;
 
@@ -291,7 +313,7 @@ impl Plugin for MercyResonancePlugin {
             player_farming_mechanics,
             player_inventory_ui,
             material_attenuation_system,
-            hrtf_spatial_listener_system,
+            hrtf_convolution_system,
             chunk_manager,
         ));
     }
