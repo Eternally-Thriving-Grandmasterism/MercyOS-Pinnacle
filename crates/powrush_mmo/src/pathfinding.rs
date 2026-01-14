@@ -1,11 +1,12 @@
 //! crates/powrush_mmo/src/pathfinding.rs
-//! A* grid pathfinding + string pulling smoothing + full DDA line of sight mercy eternal supreme immaculate
-//! 3D voxel-aware A* with Manhattan heuristic + funnel smoothing + Amanatides & Woo visibility philotic mercy
+//! A* grid pathfinding + string pulling + jump navigation + dynamic avoidance mercy eternal supreme immaculate
+//! 3D voxel-aware A* with Manhattan heuristic + funnel smoothing + DDA visibility + leap + steering philotic mercy
 
 use bevy::prelude::*;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 
-const WALKABLE_VOXEL: u8 = 0;  // Air mercy
+const WALKABLE_VOXEL: u8 = 0;
+const MAX_JUMP_HEIGHT: i32 = 2;  // Voxels mercy eternal
 
 #[derive(Component)]
 pub struct Path {
@@ -23,7 +24,7 @@ struct Node {
 
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.f_cost.cmp(&self.f_cost)  // Min-heap mercy
+        other.f_cost.cmp(&self.f_cost)
     }
 }
 
@@ -103,6 +104,14 @@ fn get_neighbors(pos: IVec3, chunk_query: &Query<(&Chunk, &Transform)>) -> Vec<I
         }
     }
 
+    // Jump neighbors mercy — up to MAX_JUMP_HEIGHT
+    for height in 1..=MAX_JUMP_HEIGHT {
+        let up = pos + IVec3::new(0, height, 0);
+        if is_walkable(up, chunk_query) && is_walkable(up + IVec3::new(0, 1, 0), chunk_query) {
+            neighbors.push(up);
+        }
+    }
+
     neighbors
 }
 
@@ -130,8 +139,8 @@ fn reconstruct_path(came_from: HashMap<IVec3, IVec3>, current: IVec3) -> Vec<IVe
     path
 }
 
-// Full DDA line of sight mercy eternal — Amanatides & Woo 3D voxel traversal
 fn line_of_sight(a: IVec3, b: IVec3, chunk_query: &Query<(&Chunk, &Transform)>) -> bool {
+    // Full DDA mercy eternal — Amanatides & Woo
     let mut pos = a;
     let delta = b - a;
     let step = IVec3::new(
@@ -169,7 +178,7 @@ fn line_of_sight(a: IVec3, b: IVec3, chunk_query: &Query<(&Chunk, &Transform)>) 
         }
     }
 
-    true  // All voxels walkable mercy eternal
+    true
 }
 
 fn string_pull_smoothing(path: &[IVec3], chunk_query: &Query<(&Chunk, &Transform)>) -> Vec<IVec3> {
@@ -223,10 +232,39 @@ pub fn pathfinding_system(
     }
 }
 
+pub fn dynamic_obstacle_avoidance_system(
+    mut creature_query: Query<(&Transform, &mut Velocity, &Creature)>,
+    other_query: Query<&Transform, (With<Creature>, Without<Player>)>,
+    time: Res<Time>,
+) {
+    for (transform, mut velocity, creature) in &mut creature_query {
+        let pos = transform.translation;
+
+        let mut separation = Vec3::ZERO;
+        let mut count = 0;
+
+        for other_transform in &other_query {
+            let other_pos = other_transform.translation;
+            let dist = (pos - other_pos).length();
+            if dist > 0.0 && dist < creature.perception_radius {
+                let diff = (pos - other_pos).normalize_or_zero();
+                separation += diff / dist;
+                count += 1;
+            }
+        }
+
+        if count > 0 {
+            separation /= count as f32;
+            separation = separation.normalize_or_zero() * creature.dna.speed;
+            velocity.linvel += separation * time.delta_seconds() * 5.0;  // Steering force mercy
+        }
+    }
+}
+
 pub struct PathfindingPlugin;
 
 impl Plugin for PathfindingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, pathfinding_system);
+        app.add_systems(Update, (pathfinding_system, dynamic_obstacle_avoidance_system));
     }
 }
