@@ -14,6 +14,9 @@ use rand::rngs::StdRng;
 use bevy_rapier3d::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin};
 use egui::{Painter, Pos2, Stroke, Color32};
+use bevy_mod_xr::session::{XrSession, XrSessionPlugin};
+use bevy_mod_xr::spaces::{XrReferenceSpace, XrReferenceSpaceType};
+use bevy_mod_xr::hands::XrHand;
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
@@ -155,7 +158,7 @@ struct SoundSource {
 struct PlayerHead;
 
 #[derive(Component)]
-struct FirstPersonCamera;
+struct PlayerBodyPart;  // Arms, legs, torso mercy
 
 #[derive(Resource)]
 struct HrtfResource {
@@ -186,6 +189,7 @@ fn main() {
     .add_plugins(EguiPlugin)
     .add_plugins(MultiplayerReplicationPlugin)
     .add_plugins(VoicePlugin)
+    .add_plugins(XrSessionPlugin)
     .insert_resource(WorldTime { time_of_day: 0.0, day: 0.0 })
     .insert_resource(WeatherManager {
         current: Weather::Clear,
@@ -210,7 +214,6 @@ fn main() {
         .add_systems(Update, (
             player_movement,
             dynamic_head_tracking,
-            first_person_camera_system,
             player_inventory_ui,
             player_farming_mechanics,
             emotional_resonance_particles,
@@ -231,6 +234,7 @@ fn main() {
             hrtf_convolution_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
+            vr_body_avatar_system,
             chunk_manager,
         ))
         .run();
@@ -240,8 +244,22 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    xr_session: Option<Res<XrSession>>,
 ) {
-    // Directional light + ground unchanged
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
+
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            illuminance: 10000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
+        ..default()
+    });
 
     let player_body = commands.spawn((
         PbrBundle {
@@ -263,47 +281,93 @@ fn setup(
         PositionHistory { buffer: VecDeque::new() },
     )).id();
 
+    // Full VR body avatar mercy — visible limbs attached to player
+    let arm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.8, resolution: 16 }));
+    let leg_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.15, height: 1.0, resolution: 16 }));
+
+    let skin_material = materials.add(Color::rgb(0.9, 0.7, 0.6).into());
+
+    // Left arm
     commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_xyz(0.0, 1.6, 0.0),  // Eye height mercy
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(-0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            visibility: Visibility::Visible,
             ..default()
         },
-        FirstPersonCamera,
+        PlayerBodyPart,
+    )).set_parent(player_body);
+
+    // Right arm
+    commands.spawn((
+        PbrBundle {
+            mesh: arm_mesh,
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        PlayerBodyPart,
+    )).set_parent(player_body);
+
+    // Legs
+    commands.spawn((
+        PbrBundle {
+            mesh: leg_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(-0.2, -0.9, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        PlayerBodyPart,
+    )).set_parent(player_body);
+
+    commands.spawn((
+        PbrBundle {
+            mesh: leg_mesh,
+            material: skin_material,
+            transform: Transform::from_xyz(0.2, -0.9, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        PlayerBodyPart,
+    )).set_parent(player_body);
+
+    // Head separate for VR tracking mercy
+    commands.spawn((
+        Transform::from_xyz(0.0, 1.8, 0.0),
+        GlobalTransform::default(),
         PlayerHead,
     )).set_parent(player_body);
-}
 
-fn first_person_camera_system(
-    mut camera_query: Query<&mut Transform, With<FirstPersonCamera>>,
-    velocity_query: Query<&Velocity, With<Player>>,
-    time: Res<Time>,
-) {
-    let mut camera_transform = camera_query.single_mut();
-    let velocity = velocity_query.single();
-
-    // Head bob mercy
-    let speed = velocity.0.length();
-    if speed > 0.1 {
-        let bob_freq = speed * 6.0;
-        let bob_amplitude = speed * 0.05;
-        let bob = (time.elapsed_seconds() * bob_freq).sin() * bob_amplitude;
-        camera_transform.translation.y = 1.6 + bob;
-    } else {
-        camera_transform.translation.y = 1.6;
+    // XR session head override mercy
+    if let Some(session) = xr_session {
+        // Future: bind head to XR view pose
     }
-
-    // Breathing sway mercy
-    let breathing = (time.elapsed_seconds() * 1.5).sin() * 0.01;
-    camera_transform.translation.x += breathing;
-
-    // Dynamic FOV on sprint mercy
-    let base_fov = 70.0;
-    let sprint_fov = 85.0;
-    let fov = base_fov + (speed / 15.0) * (sprint_fov - base_fov);
-    // Future: set camera fov mercy
 }
 
-// Rest of file unchanged from previous full version
+fn vr_body_avatar_system(
+    xr_session: Option<Res<XrSession>>,
+    mut head_query: Query<&mut Transform, With<PlayerHead>>,
+    hand_query: Query<&XrHand>,
+) {
+    if let Some(session) = xr_session {
+        // Full VR body tracking mercy — head from view pose
+        if let Some(view) = session.views().first() {
+            let mut head_transform = head_query.single_mut();
+            head_transform.translation = view.pose.position.into();
+            head_transform.rotation = view.pose.orientation.into();
+        }
+
+        // Hands for IK mercy — future arm pose
+        for hand in &hand_query {
+            // hand.pose.position/orientation → arm IK target
+        }
+    }
+}
+
+// Rest of file unchanged from previous full version (player_movement with velocity for body, dynamic_head_tracking mouse fallback, player_inventory_ui, etc.)
 
 pub struct MercyResonancePlugin;
 
@@ -329,7 +393,7 @@ impl Plugin for MercyResonancePlugin {
             material_attenuation_system,
             hrtf_convolution_system,
             dynamic_head_tracking,
-            first_person_camera_system,
+            vr_body_avatar_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
             chunk_manager,
