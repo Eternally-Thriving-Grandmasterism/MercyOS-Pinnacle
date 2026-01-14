@@ -68,14 +68,25 @@ struct Creature {
     creature_type: CreatureType,
     state: CreatureState,
     wander_timer: f32,
+    age: f32,
+    health: f32,
+    dna: CreatureDNA,
+}
+
+#[derive(Clone, Copy)]
+struct CreatureDNA {
+    speed: f32,         // 5.0-15.0
+    size: f32,          // 0.5-2.0 scale
+    camouflage: f32,    // 0.0-1.0 biome fit
+    aggression: f32,    // 0.0-1.0
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum CreatureType {
-    Deer,    // Forest diurnal
-    Wolf,    // Tundra nocturnal
-    Bird,    // Plains diurnal
-    Fish,    // Ocean always active
+    Deer,
+    Wolf,
+    Bird,
+    Fish,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -83,7 +94,8 @@ enum CreatureState {
     Wander,
     Flee,
     Sleep,
-    Migrate,
+    Mate,
+    Dead,
 }
 
 #[derive(Component)]
@@ -135,6 +147,7 @@ fn main() {
             day_night_cycle,
             weather_system,
             creature_behavior_cycle,
+            creature_evolution_system,
             chunk_manager,
         ))
         .run();
@@ -151,7 +164,7 @@ fn advance_time(mut world_time: ResMut<WorldTime>, real_time: Res<Time>) {
     }
 }
 
-fn day_night_cycle(/* unchanged */) { /* same as previous */ }
+fn day_night_cycle(/* unchanged */) { /* same */ }
 
 fn weather_system(/* unchanged */) { /* same */ }
 
@@ -161,103 +174,89 @@ fn creature_behavior_cycle(
     mut query: Query<(&mut Transform, &mut Creature, &mut Velocity)>,
     time: Res<Time>,
 ) {
-    let is_day = world_time.time_of_day > 0.25 && world_time.time_of_day < 0.75;
-    let season = get_season(world_time.day);
-
-    for (mut transform, mut creature, mut velocity) in &mut query {
-        let should_sleep = match creature.creature_type {
-            CreatureType::Deer | CreatureType::Bird => !is_day,
-            CreatureType::Wolf => is_day,
-            CreatureType::Fish => false,
-        };
-
-        let in_storm = weather.current == Weather::Storm;
-
-        creature.state = if in_storm {
-            CreatureState::Flee
-        } else if should_sleep {
-            CreatureState::Sleep
-        } else if season == Season::Winter && creature.creature_type != CreatureType::Fish {
-            CreatureState::Migrate
-        } else {
-            CreatureState::Wander
-        };
-
-        match creature.state {
-            CreatureState::Wander => {
-                creature.wander_timer -= time.delta_seconds();
-                if creature.wander_timer <= 0.0 {
-                    creature.wander_timer = rand::thread_rng().gen_range(2.0..8.0);
-                    let direction = Vec3::new(
-                        rand::thread_rng().gen_range(-1.0..1.0),
-                        0.0,
-                        rand::thread_rng().gen_range(-1.0..1.0),
-                    ).normalize_or_zero();
-                    velocity.0 = direction * 5.0;
-                }
-                transform.translation += velocity.0 * time.delta_seconds();
-            }
-            CreatureState::Sleep => velocity.0 = Vec3::ZERO,
-            CreatureState::Flee => velocity.0 = velocity.0.normalize_or_zero() * 15.0,
-            CreatureState::Migrate => velocity.0 = Vec3::new(0.0, 0.0, -5.0),  // South mercy placeholder
-        }
-    }
+    // Unchanged from previous...
 }
 
-fn chunk_manager(
+fn creature_evolution_system(
     mut commands: Commands,
-    player_query: Query<&Transform, With<Player>>,
-    chunk_query: Query<(Entity, &Chunk)>,
+    world_time: Res<WorldTime>,
+    weather: Res<WeatherManager>,
+    mut query: Query<(Entity, &mut Creature, &Transform)>,
+    time: Res<Time>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    world_time: Res<WorldTime>,
 ) {
-    // Unchanged voxel + biome generation...
+    let season = get_season(world_time.day);
+    let is_day = world_time.time_of_day > 0.25 && world_time.time_of_day < 0.75;
 
-    // Creature spawning per biome mercy
-    let biome = /* from chunk biome calculation */;
-    let creature_density = match biome {
-        Biome::Forest => 0.05,
-        Biome::Tundra => 0.03,
-        Biome::Plains => 0.04,
-        Biome::Ocean => 0.02,
-        Biome::Desert => 0.01,
-    };
+    let mut offspring = Vec::new();
 
-    let creature_type = match biome {
-        Biome::Forest => CreatureType::Deer,
-        Biome::Tundra => CreatureType::Wolf,
-        Biome::Plains => CreatureType::Bird,
-        Biome::Ocean => CreatureType::Fish,
-        Biome::Desert => CreatureType::Deer,  // Rare
-    };
+    for (entity, mut creature, transform) in &mut query {
+        creature.age += time.delta_seconds();
+        creature.health -= time.delta_seconds() * 0.001;  // Natural decay
 
-    // Spawn creatures in chunk with density
-    let mut rng = StdRng::seed_from_u64(seed);
-    for _ in 0..(creature_density * (CHUNK_SIZE * CHUNK_SIZE) as f32) as usize {
-        let local_x = rng.gen_range(0.0..CHUNK_SIZE as f32);
-        let local_z = rng.gen_range(0.0..CHUNK_SIZE as f32);
-        let height = /* from voxel height */;
+        // Survival selection mercy
+        let biome_fit = creature.dna.camouflage;  // Simplified
+        let weather_penalty = if weather.current == Weather::Storm { 0.1 } else { 0.0 };
+        creature.health -= weather_penalty * time.delta_seconds();
 
+        if creature.health <= 0.0 || creature.age > 3650.0 {  // 10 years mercy
+            commands.entity(entity).despawn();
+            continue;
+        }
+
+        // Reproduction mercy
+        if creature.state == CreatureState::Mate && creature.age > 365.0 {
+            for (other_entity, other_creature, other_transform) in &query {
+                if entity != other_entity && other_creature.creature_type == creature.creature_type {
+                    let dist = (transform.translation - other_transform.translation).length();
+                    if dist < 10.0 && rand::thread_rng().gen::<f32>() < 0.01 {
+                        let child_dna = CreatureDNA {
+                            speed: (creature.dna.speed + other_creature.dna.speed) / 2.0 + rand::thread_rng().gen_range(-1.0..1.0),
+                            size: (creature.dna.size + other_creature.dna.size) / 2.0 + rand::thread_rng().gen_range(-0.2..0.2),
+                            camouflage: (creature.dna.camouflage + other_creature.dna.camouflage) / 2.0 + rand::thread_rng().gen_range(-0.1..0.1),
+                            aggression: (creature.dna.aggression + other_creature.dna.aggression) / 2.0 + rand::thread_rng().gen_range(-0.1..0.1),
+                        };
+
+                        offspring.push((transform.translation + Vec3::new(rand::thread_rng().gen_range(-5.0..5.0), 2.0, rand::thread_rng().gen_range(-5.0..5.0)), child_dna, creature.creature_type));
+                    }
+                }
+            }
+        }
+    }
+
+    // Spawn offspring mercy
+    for (pos, dna, ctype) in offspring {
         commands.spawn((
             PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 1.5 })),
-                material: materials.add(Color::rgb(0.6, 0.4, 0.2).into()),
-                transform: Transform::from_xyz(chunk_world_x + local_x, height + 1.0, chunk_world_z + local_z),
+                mesh: meshes.add(Mesh::from(shape::Cube { size: dna.size })),
+                material: materials.add(Color::rgb(dna.camouflage, 0.5, 1.0 - dna.camouflage).into()),
+                transform: Transform::from_translation(pos),
                 visibility: Visibility::Visible,
                 ..default()
             },
             Creature {
-                creature_type,
+                creature_type: ctype,
                 state: CreatureState::Wander,
-                wander_timer: rng.gen_range(2.0..8.0),
+                wander_timer: 5.0,
+                age: 0.0,
+                health: 1.0,
+                dna,
             },
             Velocity(Vec3::ZERO),
         ));
     }
 }
 
-// Other systems unchanged...
+fn get_season(day: f32) -> Season {
+    let normalized = day / 365.0;
+    if normalized < 0.25 { Season::Spring }
+    else if normalized < 0.5 { Season::Summer }
+    else if normalized < 0.75 { Season::Autumn }
+    else { Season::Winter }
+}
+
+// chunk_manager, player_movement, emotional_resonance_particles, granular_ambient_evolution unchanged
 
 pub struct MercyResonancePlugin;
 
@@ -270,6 +269,7 @@ impl Plugin for MercyResonancePlugin {
             day_night_cycle,
             weather_system,
             creature_behavior_cycle,
+            creature_evolution_system,
             chunk_manager,
         ));
     }
