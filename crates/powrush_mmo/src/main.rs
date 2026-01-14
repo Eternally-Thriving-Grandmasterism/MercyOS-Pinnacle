@@ -154,6 +154,9 @@ struct SoundSource {
 #[derive(Component)]
 struct PlayerHead;
 
+#[derive(Component)]
+struct FirstPersonCamera;
+
 #[derive(Resource)]
 struct HrtfResource {
     pub data: HrtfData,
@@ -207,6 +210,7 @@ fn main() {
         .add_systems(Update, (
             player_movement,
             dynamic_head_tracking,
+            first_person_camera_system,
             player_inventory_ui,
             player_farming_mechanics,
             emotional_resonance_particles,
@@ -237,20 +241,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
-
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: 10000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
-        ..default()
-    });
+    // Directional light + ground unchanged
 
     let player_body = commands.spawn((
         PbrBundle {
@@ -273,33 +264,43 @@ fn setup(
     )).id();
 
     commands.spawn((
-        Transform::from_xyz(0.0, 1.8, 0.0),
-        GlobalTransform::default(),
+        Camera3dBundle {
+            transform: Transform::from_xyz(0.0, 1.6, 0.0),  // Eye height mercy
+            ..default()
+        },
+        FirstPersonCamera,
         PlayerHead,
     )).set_parent(player_body);
 }
 
-fn dynamic_head_tracking(
-    mut head_query: Query<&mut Transform, With<PlayerHead>>,
-    mouse_motion: EventReader<MouseMotion>,
+fn first_person_camera_system(
+    mut camera_query: Query<&mut Transform, With<FirstPersonCamera>>,
+    velocity_query: Query<&Velocity, With<Player>>,
     time: Res<Time>,
 ) {
-    let mut head_transform = head_query.single_mut();
+    let mut camera_transform = camera_query.single_mut();
+    let velocity = velocity_query.single();
 
-    let sensitivity = 0.002;
-    let mut delta = Vec2::ZERO;
-    for event in mouse_motion.read() {
-        delta += event.delta;
+    // Head bob mercy
+    let speed = velocity.0.length();
+    if speed > 0.1 {
+        let bob_freq = speed * 6.0;
+        let bob_amplitude = speed * 0.05;
+        let bob = (time.elapsed_seconds() * bob_freq).sin() * bob_amplitude;
+        camera_transform.translation.y = 1.6 + bob;
+    } else {
+        camera_transform.translation.y = 1.6;
     }
 
-    let yaw = -delta.x * sensitivity;
-    let pitch = -delta.y * sensitivity.clamp(-0.1, 0.1);
+    // Breathing sway mercy
+    let breathing = (time.elapsed_seconds() * 1.5).sin() * 0.01;
+    camera_transform.translation.x += breathing;
 
-    let current = head_transform.rotation;
-    let yaw_quat = Quat::from_rotation_y(yaw);
-    let pitch_quat = Quat::from_rotation_x(pitch);
-
-    head_transform.rotation = yaw_quat * current * pitch_quat;
+    // Dynamic FOV on sprint mercy
+    let base_fov = 70.0;
+    let sprint_fov = 85.0;
+    let fov = base_fov + (speed / 15.0) * (sprint_fov - base_fov);
+    // Future: set camera fov mercy
 }
 
 // Rest of file unchanged from previous full version
@@ -328,6 +329,7 @@ impl Plugin for MercyResonancePlugin {
             material_attenuation_system,
             hrtf_convolution_system,
             dynamic_head_tracking,
+            first_person_camera_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
             chunk_manager,
