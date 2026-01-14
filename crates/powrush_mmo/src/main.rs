@@ -1,50 +1,50 @@
-// In multi_chain_ik_system mercy — add finger chains with natural constraints
+// In multi_chain_ik_system mercy — add thumb chains with opposition constraints
 fn multi_chain_ik_system(
     player_query: Query<&Transform, With<Player>>,
-    mut finger_query: Query<&mut Transform, Or<(With<LeftIndexProximal>, With<LeftIndexIntermediate>, With<LeftIndexDistal>, With<RightIndexProximal>, With<RightIndexIntermediate>, With<RightIndexDistal>)>>,
-    finger_tip_query: Query<&Transform, Or<(With<LeftIndexTip>, With<RightIndexTip>)>>,
+    mut thumb_query: Query<&mut Transform, Or<(With<LeftThumbMetacarpal>, With<LeftThumbProximal>, With<LeftThumbDistal>, With<RightThumbMetacarpal>, With<RightThumbProximal>, With<RightThumbDistal>)>>,
+    thumb_tip_query: Query<&Transform, Or<(With<LeftThumbTip>, With<RightThumbTip>)>>,
 ) {
     let player_transform = player_query.single();
 
-    // Example left index finger IK mercy
-    if let (Ok(mut proximal), Ok(mut intermediate), Ok(mut distal), Ok(tip)) = (
-        finger_query.get_component_mut::<Transform>(/* left_index_proximal */),
-        finger_query.get_component_mut::<Transform>(/* left_index_intermediate */),
-        finger_query.get_component_mut::<Transform>(/* left_index_distal */),
-        finger_tip_query.get_single().ok(),
+    // Left thumb IK with opposition constraint mercy
+    if let (Ok(mut metacarpal), Ok(mut proximal), Ok(mut distal), Ok(tip)) = (
+        thumb_query.get_component_mut::<Transform>(/* left_thumb_metacarpal */),
+        thumb_query.get_component_mut::<Transform>(/* left_thumb_proximal */),
+        thumb_query.get_component_mut::<Transform>(/* left_thumb_distal */),
+        thumb_tip_query.get_single().ok(),
     ) {
-        let wrist = player_transform.translation + Vec3::new(-0.4, -0.8, 0.0);  // Approximate wrist
+        let wrist = player_transform.translation + Vec3::new(-0.35, -0.7, 0.0);
         let mut positions = [
             wrist,
+            metacarpal.translation,
             proximal.translation,
-            intermediate.translation,
             distal.translation,
             tip.translation,
         ];
 
-        let lengths = [0.15, 0.1, 0.08];  // Phalanx lengths mercy
+        let lengths = [0.15, 0.12, 0.1];
 
-        // Natural finger constraints mercy eternal
+        // Thumb opposition constraint mercy — CMC joint limited abduction/flexion
         let constraints = [
-            (-0.1, std::f32::consts::FRAC_PI_2),     // Proximal curl only mercy
-            (0.0, std::f32::consts::FRAC_PI_2 * 1.1), // Intermediate more flexible
-            (0.0, std::f32::consts::FRAC_PI_2),       // Distal curl mercy
+            (-1.047, 1.047),  // ±60° opposition mercy
+            (0.0, std::f32::consts::FRAC_PI_2),  // Proximal curl mercy
+            (0.0, std::f32::consts::FRAC_PI_2),  // Distal curl mercy
         ];
 
         fabrik_constrained(&mut positions, &lengths, &constraints, tip.translation, 0.01, 10);
 
-        proximal.translation = positions[1];
-        intermediate.translation = positions[2];
+        metacarpal.translation = positions[1];
+        proximal.translation = positions[2];
         distal.translation = positions[3];
 
-        proximal.look_at(positions[2], Vec3::Y);
-        intermediate.look_at(positions[3], Vec3::Y);
+        metacarpal.look_at(positions[2], Vec3::Y);
+        proximal.look_at(positions[3], Vec3::Y);
         distal.look_at(tip.translation, Vec3::Y);
     }
 
-    // Right index + other fingers symmetric mercy
+    // Right thumb symmetric mercy
 
-    // Arms, spine, legs unchanged mercy
+    // Other chains unchanged mercy
 }
 
 // Rest of file unchanged from previous full version
@@ -80,7 +80,7 @@ impl Plugin for MercyResonancePlugin {
             chunk_manager,
         ));
     }
-}struct Creature {
+}}struct Creature {
     creature_type: CreatureType,
     state: CreatureState,
     wander_timer: f32,
