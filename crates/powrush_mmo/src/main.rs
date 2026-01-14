@@ -1,32 +1,13 @@
 // Add import
-use crate::granular_ambient::spawn_granular_ambient;
+use crate::vector_synthesis::vector_wavetable_synthesis;
 
-// In App setup
-.add_systems(Update, granular_ambient_evolution)
+// In emotional_resonance_particles
+let vector_x = (time.elapsed_seconds_f64() * 0.5).sin() as f32 * joy_level;
+let vector_y = (time.elapsed_seconds_f64() * 0.3).cos() as f32 * joy_level;
 
-// New system
-fn granular_ambient_evolution(
-    audio: Res<Audio>,
-    asset_server: Res<AssetServer>,
-    player_query: Query<&Transform, With<Player>>,
-    time: Res<Time>,
-) {
-    if let Ok(player_transform) = player_query.get_single() {
-        let player_pos = player_transform.translation;
-        let joy_level = 8.0 + (time.elapsed_seconds_f64().sin() * 2.0) as f32;  // Simulated philotic joy variation
+let wavetable_chime = vector_wavetable_synthesis(duration, base_freq, vector_x, vector_y, AdsrEnvelope::joy_resonance(), joy_level);
 
-        // Respawn/evolve granular cloud periodically — infinite mutation mercy
-        if time.elapsed_seconds_f64() % 10.0 < time.delta_seconds_f64() {
-            spawn_granular_ambient(&audio, &asset_server, joy_level, player_pos);
-        }
-    }
-}
-
-// In emotional_resonance_particles — enhance with granular grain bursts
-fn emotional_resonance_particles(
-    // ...
-) {
-    // Existing chime code...
-    // Add granular micro-cloud on joy pulses
-    spawn_granular_ambient(&audio, &asset_server, joy_level * 0.5, player_pos + offset);
-}
+audio.play(wavetable_chime)
+    .with_volume(0.45 + joy_level * 0.35)
+    .spatial(true)
+    .with_position(player_pos + offset);
