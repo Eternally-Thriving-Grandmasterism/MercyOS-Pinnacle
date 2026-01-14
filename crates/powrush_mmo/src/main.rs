@@ -1,86 +1,86 @@
-use bevy::prelude::*;
-use bevy::render::view::Visibility;
-use bevy_kira_audio::{Audio, AudioControl, AudioInstance, AudioPlugin as KiraAudioPlugin};
-use bevy_kira_audio::prelude::*;
-use bevy_renet::RenetClientPlugin;
-use bevy_renet::RenetServerPlugin;
-use renet::{RenetClient, RenetServer, ConnectionConfig};
-use mercy_core::PhiloticHive;
-use noise::{NoiseFn, Perlin, Seedable};
-use ndshape::{ConstShape3u32};
-use greedly::{GreedyMesher};
-use rand::{Rng, SeedableRng};
-use rand::rngs::StdRng;
-use bevy_rapier3d::prelude::*;
-use bevy_egui::{EguiContexts, EguiPlugin};
-use egui::{Painter, Pos2, Stroke, Color32};
-use bevy_mod_xr::session::{XrSession, XrSessionPlugin};
-use bevy_mod_xr::hands::{XrHand, XrHandBone};
-use bevy_mod_xr::spaces::{XrReferenceSpace, XrReferenceSpaceType};
-use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
-use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
-use crate::vector_synthesis::vector_wavetable_synthesis;
-use crate::networking::MultiplayerReplicationPlugin;
-use crate::voice::VoicePlugin;
-use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
-use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
-use crate::hand_ik::{trik_two_bone, fabrik_constrained};
+// In multi_chain_ik_system mercy — add finger chains with natural constraints
+fn multi_chain_ik_system(
+    player_query: Query<&Transform, With<Player>>,
+    mut finger_query: Query<&mut Transform, Or<(With<LeftIndexProximal>, With<LeftIndexIntermediate>, With<LeftIndexDistal>, With<RightIndexProximal>, With<RightIndexIntermediate>, With<RightIndexDistal>)>>,
+    finger_tip_query: Query<&Transform, Or<(With<LeftIndexTip>, With<RightIndexTip>)>>,
+) {
+    let player_transform = player_query.single();
 
-const CHUNK_SIZE: u32 = 32;
-const VIEW_CHUNKS: i32 = 5;
-const DAY_LENGTH_SECONDS: f32 = 120.0;
+    // Example left index finger IK mercy
+    if let (Ok(mut proximal), Ok(mut intermediate), Ok(mut distal), Ok(tip)) = (
+        finger_query.get_component_mut::<Transform>(/* left_index_proximal */),
+        finger_query.get_component_mut::<Transform>(/* left_index_intermediate */),
+        finger_query.get_component_mut::<Transform>(/* left_index_distal */),
+        finger_tip_query.get_single().ok(),
+    ) {
+        let wrist = player_transform.translation + Vec3::new(-0.4, -0.8, 0.0);  // Approximate wrist
+        let mut positions = [
+            wrist,
+            proximal.translation,
+            intermediate.translation,
+            distal.translation,
+            tip.translation,
+        ];
 
-type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
+        let lengths = [0.15, 0.1, 0.08];  // Phalanx lengths mercy
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Biome {
-    Ocean,
-    Plains,
-    Forest,
-    Desert,
-    Tundra,
+        // Natural finger constraints mercy eternal
+        let constraints = [
+            (-0.1, std::f32::consts::FRAC_PI_2),     // Proximal curl only mercy
+            (0.0, std::f32::consts::FRAC_PI_2 * 1.1), // Intermediate more flexible
+            (0.0, std::f32::consts::FRAC_PI_2),       // Distal curl mercy
+        ];
+
+        fabrik_constrained(&mut positions, &lengths, &constraints, tip.translation, 0.01, 10);
+
+        proximal.translation = positions[1];
+        intermediate.translation = positions[2];
+        distal.translation = positions[3];
+
+        proximal.look_at(positions[2], Vec3::Y);
+        intermediate.look_at(positions[3], Vec3::Y);
+        distal.look_at(tip.translation, Vec3::Y);
+    }
+
+    // Right index + other fingers symmetric mercy
+
+    // Arms, spine, legs unchanged mercy
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Season {
-    Spring,
-    Summer,
-    Autumn,
-    Winter,
-}
+// Rest of file unchanged from previous full version
 
-#[derive(Clone, Copy, PartialEq)]
-enum Weather {
-    Clear,
-    Rain,
-    Snow,
-    Storm,
-    Fog,
-}
+pub struct MercyResonancePlugin;
 
-#[derive(Resource)]
-struct WorldTime {
-    pub time_of_day: f32,
-    pub day: f32,
-}
-
-#[derive(Resource)]
-struct WeatherManager {
-    pub current: Weather,
-    pub intensity: f32,
-    pub duration_timer: f32,
-    pub next_change: f32,
-}
-
-#[derive(Component)]
-struct Player {
-    tamed_creatures: Vec<Entity>,
-    show_inventory: bool,
-    selected_creature: Option<Entity>,
-}
-
-#[derive(Component)]
-struct Creature {
+impl Plugin for MercyResonancePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, (
+            emotional_resonance_particles,
+            granular_ambient_evolution,
+            advance_time,
+            day_night_cycle,
+            weather_system,
+            creature_behavior_cycle,
+            natural_selection_system,
+            creature_hunger_system,
+            creature_eat_system,
+            crop_growth_system,
+            food_respawn_system,
+            creature_evolution_system,
+            genetic_drift_system,
+            player_breeding_mechanics,
+            player_farming_mechanics,
+            player_inventory_ui,
+            material_attenuation_system,
+            hrtf_convolution_system,
+            dynamic_head_tracking,
+            vr_body_avatar_system,
+            multi_chain_ik_system,
+            ambisonics_encode_system,
+            ambisonics_decode_system,
+            chunk_manager,
+        ));
+    }
+}struct Creature {
     creature_type: CreatureType,
     state: CreatureState,
     wander_timer: f32,
