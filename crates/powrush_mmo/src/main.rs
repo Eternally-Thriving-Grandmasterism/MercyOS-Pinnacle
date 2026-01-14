@@ -1,4 +1,4 @@
-// In multi_chain_ik_system mercy — add leg constraints
+// In multi_chain_ik_system mercy — leg chains with hip constraints
 fn multi_chain_ik_system(
     player_query: Query<&Transform, With<Player>>,
     mut leg_query: Query<&mut Transform, Or<(With<LeftUpperLeg>, With<LeftLowerLeg>, With<RightUpperLeg>, With<RightLowerLeg>)>>,
@@ -6,7 +6,7 @@ fn multi_chain_ik_system(
 ) {
     let player_transform = player_query.single();
 
-    // Left leg IK with knee constraint mercy
+    // Left leg IK with hip + knee constraints mercy
     if let (Ok(mut left_upper_leg), Ok(mut left_lower_leg), Ok(left_foot)) = (
         leg_query.get_component_mut::<Transform>(/* left_upper_leg entity */),
         leg_query.get_component_mut::<Transform>(/* left_lower_leg entity */),
@@ -22,8 +22,12 @@ fn multi_chain_ik_system(
 
         let lengths = [0.5, 0.5];
 
-        // Knee forward bend only mercy — 0.0 to PI
-        let constraints = [(0.0, std::f32::consts::PI)];
+        // Hip constraint mercy — limited side bend + forward/back
+        // Knee forward only mercy
+        let constraints = [
+            (-0.4, 0.4),  // Hip abduction/adduction mercy
+            (0.0, std::f32::consts::PI - 0.1),  // Knee forward bend mercy
+        ];
 
         fabrik_constrained(&mut positions, &lengths, &constraints, left_foot.translation, 0.01, 10);
 
