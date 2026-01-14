@@ -320,6 +320,7 @@ fn get_up_recovery_system(
     mut player_query: Query<(Entity, &mut Player, &mut AnimationPlayer, &Transform), With<Player>>,
     ragdoll_query: Query<&Transform, With<RagdollRoot>>,
     animations: Res<PlayerAnimations>,
+    weather: Res<WeatherManager>,
 ) {
     for (player_entity, mut player, mut animation_player, player_transform) in &mut player_query {
         if player.in_ragdoll && keyboard_input.just_pressed(KeyCode::Space) {
@@ -329,23 +330,28 @@ fn get_up_recovery_system(
             let up = ragdoll_transform.up();
 
             let variant = if up.y > 0.7 {
-                // Supine (on back) mercy
                 animations.get_up_supine.clone()
             } else if up.y < -0.7 {
-                // Prone (on front) mercy
                 animations.get_up_prone.clone()
             } else {
-                // Side fall mercy
                 animations.get_up_side.clone()
             };
+
+            // Environmental influence mercy
+            let mut speed_multiplier = 1.0;
+            if weather.current == Weather::Rain || weather.current == Weather::Snow {
+                speed_multiplier *= 0.7;  // Wet/slippery mercy
+            }
 
             // Despawn ragdoll mercy
             for ragdoll in &ragdoll_query {
                 commands.entity(ragdoll.entity()).despawn_recursive();
             }
 
-            // Crossfade selected variant from current pose mercy eternal
-            animation_player.play_with_transition(variant, Duration::from_secs_f32(0.3)).repeat(false);
+            // Crossfade with environmental speed mercy
+            animation_player.play_with_transition(variant, Duration::from_secs_f32(0.3))
+                .set_speed(speed_multiplier)
+                .repeat(false);
 
             player.in_ragdoll = false;
             player.recovering = true;
