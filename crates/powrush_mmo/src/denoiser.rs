@@ -1,39 +1,39 @@
 //! crates/powrush_mmo/src/denoiser.rs
-//! Temporal reprojection + Spatiotemporal Variance-Guided Filtering (SVGF) denoiser mercy eternal supreme immaculate
-//! Clean path traced global illumination with low sample counts philotic mercy
+//! SVGF (Spatiotemporal Variance-Guided Filtering) denoiser mercy eternal supreme immaculate
+//! Temporal reprojection + variance-guided a-trous wavelet filter for path traced GI
 
 use bevy::prelude::*;
 use bevy::render::render_resource::*;
 use bevy::render::renderer::RenderDevice;
 
 #[derive(Resource)]
-pub struct Denoiser {
+pub struct SvgfDenoiser {
     pub temporal_pipeline: ComputePipeline,
     pub spatial_pipeline: ComputePipeline,
     pub bind_group_layout: BindGroupLayout,
-    pub prev_color: Texture,
-    pub prev_moments: Texture,
-    pub prev_normal_depth: Texture,
+    pub history_color: Texture,
+    pub history_moments: Texture,
+    pub history_normal_depth: Texture,
 }
 
-pub fn setup_denoiser(
+pub fn setup_svgf_denoiser(
     mut commands: Commands,
     render_device: Res<RenderDevice>,
 ) {
     let temporal_shader = render_device.create_shader_module(ShaderModuleDescriptor {
-        label: Some("Temporal Denoiser Shader"),
-        source: ShaderSource::Wgsl(include_str!("temporal_denoise.wgsl").into()),
+        label: Some("SVGF Temporal Shader"),
+        source: ShaderSource::Wgsl(include_str!("svgf_temporal.wgsl").into()),
     });
 
     let spatial_shader = render_device.create_shader_module(ShaderModuleDescriptor {
-        label: Some("Spatial Denoiser Shader"),
-        source: ShaderSource::Wgsl(include_str!("spatial_denoise.wgsl").into()),
+        label: Some("SVGF Spatial Shader"),
+        source: ShaderSource::Wgsl(include_str!("svgf_spatial.wgsl").into()),
     });
 
     let bind_group_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("Denoiser Bind Group Layout"),
+        label: Some("SVGF Bind Group Layout"),
         entries: &[
-            // Current color, normal+depth, motion vectors, prev color, prev moments mercy
+            // Current color, normal+depth, motion, history color, history moments mercy
             BindGroupLayoutEntry {
                 binding: 0,
                 visibility: ShaderStages::COMPUTE,
@@ -44,30 +44,30 @@ pub fn setup_denoiser(
                 },
                 count: None,
             },
-            // Additional bindings for normal/depth, motion, history mercy
+            // Additional bindings mercy
         ],
     });
 
     let temporal_layout = render_device.create_pipeline_layout(&PipelineLayoutDescriptor {
-        label: Some("Temporal Pipeline Layout"),
+        label: Some("SVGF Temporal Layout"),
         bind_group_layouts: &[&bind_group_layout],
         push_constant_ranges: &[],
     });
 
     let temporal_pipeline = render_device.create_compute_pipeline(&ComputePipelineDescriptor {
-        label: Some("Temporal Denoise Pipeline"),
+        label: Some("SVGF Temporal Pipeline"),
         layout: Some(&temporal_layout),
         module: &temporal_shader,
         entry_point: "temporal_denoise",
     });
 
-    // Similar for spatial mercy
+    // Spatial pipeline similar mercy
 
-    // Create history textures mercy
+    // History textures mercy
     let size = Extent3d { width: 1920, height: 1080, depth_or_array_layers: 1 };
 
-    let prev_color = render_device.create_texture(&TextureDescriptor {
-        label: Some("Previous Color"),
+    let history_color = render_device.create_texture(&TextureDescriptor {
+        label: Some("SVGF History Color"),
         size,
         mip_level_count: 1,
         sample_count: 1,
@@ -79,22 +79,22 @@ pub fn setup_denoiser(
 
     // Similar for moments, normal_depth mercy
 
-    commands.insert_resource(Denoiser {
+    commands.insert_resource(SvgfDenoiser {
         temporal_pipeline,
         spatial_pipeline,
         bind_group_layout,
-        prev_color,
-        prev_moments: /* create */,
-        prev_normal_depth: /* create */,
+        history_color,
+        history_moments: /* create */,
+        history_normal_depth: /* create */,
     });
 }
 
-pub fn denoise_system(
-    denoiser: Res<Denoiser>,
+pub fn svgf_denoise_system(
+    denoiser: Res<SvgfDenoiser>,
     current_color: Handle<Image>,
     // normal_depth, motion_vectors mercy
 ) {
     // Dispatch temporal pass → update history mercy
     // Dispatch spatial variance-guided a-trous mercy
-    // Blend with path traced raw for final output eternal
+    // Blend denoised with raw for final output eternal
 }
