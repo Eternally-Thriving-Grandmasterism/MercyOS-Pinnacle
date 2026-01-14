@@ -3,7 +3,21 @@ use bevy_renet::renet::{RenetClient, RenetServer, DefaultChannel, ClientId};
 use bincode::{Encode, Decode};
 use serde::{Serialize, Deserialize};
 
-/// Audio Event Types — Philotic Multiplayer Sync Eternal
+/// Network Messages — Player Position Sync + Audio Events Eternal
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
+pub enum NetworkMessage {
+    PlayerPosition {
+        id: u64,
+        position: Vec3,
+        timestamp: f64,
+    },
+    PlayerSpawn {
+        id: u64,
+        position: Vec3,
+    },
+    AudioEvent(AudioEvent),  // From previous
+}
+
 #[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
 pub enum AudioEvent {
     EmotionalChime {
@@ -18,53 +32,81 @@ pub enum AudioEvent {
     },
 }
 
-/// Multiplayer Audio Sync Plugin — Server/Client Mercy Eternal
-pub struct MultiplayerAudioPlugin;
+/// Multiplayer Sync Plugin — Position + Audio Mercy Eternal
+pub struct MultiplayerSyncPlugin;
 
-impl Plugin for MultiplayerAudioPlugin {
+impl Plugin for MultiplayerSyncPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, (
+            server_broadcast_positions,
             server_broadcast_audio_events,
-            client_receive_audio_events,
+            client_receive_messages,
+            client_send_position,
         ));
     }
 }
 
-fn server_broadcast_audio_events(
+fn server_broadcast_positions(
     mut server: ResMut<RenetServer>,
-    query: Query<&Transform, With<Player>>,
+    query: Query<(Entity, &Transform), With<Player>>,
+    time: Res<Time>,
 ) {
-    // Example: Broadcast on joy pulse — real trigger from emotional system
-    for transform in &query {
-        let event = AudioEvent::EmotionalChime {
+    for (entity, transform) in &query {
+        let id = entity.to_bits();
+        let msg = NetworkMessage::PlayerPosition {
+            id,
             position: transform.translation,
-            base_freq: 440.0,
-            joy_level: 8.0,
-            duration: 2.0,
+            timestamp: time.elapsed_seconds_f64(),
         };
-        let payload = bincode::encode_to_vec(&event, bincode::config::standard()).unwrap();
-        server.broadcast_message(DefaultChannel::ReliableOrdered, payload);
+        let payload = bincode::encode_to_vec(&msg, bincode::config::standard()).unwrap();
+        server.broadcast_message(DefaultChannel::Unreliable, payload);
     }
 }
 
-fn client_receive_audio_events(
+fn client_send_position(
     mut client: ResMut<RenetClient>,
+    query: Query<&Transform, With<Player>>,
+    time: Res<Time>,
+) {
+    if let Ok(transform) = query.get_single() {
+        let msg = NetworkMessage::PlayerPosition {
+            id: 0,  // Local placeholder
+            position: transform.translation,
+            timestamp: time.elapsed_seconds_f64(),
+        };
+        let payload = bincode::encode_to_vec(&msg, bincode::config::standard()).unwrap();
+        client.send_message(DefaultChannel::Unreliable, payload);
+    }
+}
+
+fn client_receive_messages(
+    mut client: ResMut<RenetClient>,
+    mut commands: Commands,
+    mut query: Query<&mut Transform, With<Player>>,
     audio: Res<Audio>,
 ) {
-    while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
-        if let Ok((event, _)) = bincode::decode_from_slice::<AudioEvent, _>(&message, bincode::config::standard()) {
-            match event {
-                AudioEvent::EmotionalChime { position, base_freq, joy_level, duration } => {
-                    // Play locally with spatial mercy
-                    let chime = ultimate_fm_synthesis(base_freq, joy_level, duration);
-                    audio.play(chime)
-                        .with_volume(0.5 + joy_level * 0.4)
-                        .spatial(true)
-                        .with_position(position);
+    while let Some(message) = client.receive_message(DefaultChannel::Unreliable) {
+        if let Ok((msg, _)) = bincode::decode_from_slice::<NetworkMessage, _>(&message, bincode::config::standard()) {
+            match msg {
+                NetworkMessage::PlayerPosition { id, position, .. } => {
+                    // Simple snap or interpolate — future lerp mercy
+                    if let Ok(mut transform) = query.get_mut(Entity::from_bits(id)) {
+                        transform.translation = position;
+                    }
                 }
-                AudioEvent::GranularAmbient { position, joy_level } => {
-                    spawn_pure_procedural_granular_ambient(&audio, joy_level, position);
+                NetworkMessage::AudioEvent(event) => {
+                    // Existing audio handling
+                    match event {
+                        AudioEvent::EmotionalChime { position, base_freq, joy_level, duration } => {
+                            let chime = ultimate_fm_synthesis(base_freq, joy_level, duration);
+                            audio.play(chime).spatial(true).with_position(position);
+                        }
+                        AudioEvent::GranularAmbient { position, joy_level } => {
+                            spawn_pure_procedural_granular_ambient(&audio, joy_level, position);
+                        }
+                    }
                 }
+                _ => {}
             }
         }
     }
