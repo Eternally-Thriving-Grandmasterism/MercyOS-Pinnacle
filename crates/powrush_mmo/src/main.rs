@@ -331,8 +331,9 @@ fn setup(
         PositionHistory { buffer: VecDeque::new() },
     )).id();
 
-    // Full multi-chain body avatar mercy — arms with elbow twist limits
+    // Full multi-chain body avatar mercy — arms with wrist rotation limits
     let arm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.8, resolution: 16 }));
+    let forearm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.09, height: 0.8, resolution: 16 }));
     let hand_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.2 }));
 
     let skin_material = materials.add(Color::rgb(0.9, 0.7, 0.6).into());
@@ -352,7 +353,7 @@ fn setup(
 
     let left_forearm = commands.spawn((
         PbrBundle {
-            mesh: arm_mesh.clone(),
+            mesh: forearm_mesh.clone(),
             material: skin_material.clone(),
             transform: Transform::from_xyz(0.0, -0.4, 0.0),
             visibility: Visibility::Visible,
@@ -362,7 +363,7 @@ fn setup(
         PlayerBodyPart,
     )).id();
 
-    let left_hand_target = commands.spawn((
+    let left_hand = commands.spawn((
         PbrBundle {
             mesh: hand_mesh.clone(),
             material: skin_material.clone(),
@@ -374,7 +375,7 @@ fn setup(
     )).id();
 
     commands.entity(left_upper_arm).push_children(&[left_forearm]);
-    commands.entity(left_forearm).push_children(&[left_hand_target]);
+    commands.entity(left_forearm).push_children(&[left_hand]);
     commands.entity(player_body).push_children(&[left_upper_arm]);
 
     // Right arm symmetric mercy
@@ -392,7 +393,7 @@ fn setup(
 
     let right_forearm = commands.spawn((
         PbrBundle {
-            mesh: arm_mesh.clone(),
+            mesh: forearm_mesh.clone(),
             material: skin_material.clone(),
             transform: Transform::from_xyz(0.0, -0.4, 0.0),
             visibility: Visibility::Visible,
@@ -402,7 +403,7 @@ fn setup(
         PlayerBodyPart,
     )).id();
 
-    let right_hand_target = commands.spawn((
+    let right_hand = commands.spawn((
         PbrBundle {
             mesh: hand_mesh,
             material: skin_material,
@@ -414,7 +415,7 @@ fn setup(
     )).id();
 
     commands.entity(right_upper_arm).push_children(&[right_forearm]);
-    commands.entity(right_forearm).push_children(&[right_hand_target]);
+    commands.entity(right_forearm).push_children(&[right_hand]);
     commands.entity(player_body).push_children(&[right_upper_arm]);
 
     // Spine and legs chains mercy (as before)
@@ -439,7 +440,7 @@ fn multi_chain_ik_system(
 ) {
     let player_transform = player_query.single();
 
-    // Left arm TRIK + elbow twist limit mercy
+    // Left arm TRIK + wrist rotation limit mercy
     if let (Ok(mut left_upper), Ok(mut left_forearm), Ok(left_hand)) = (
         arm_query.get_component_mut::<Transform>(/* left_upper_arm */),
         arm_query.get_component_mut::<Transform>(/* left_forearm */),
@@ -456,14 +457,20 @@ fn multi_chain_ik_system(
         left_forearm.translation = (elbow + target) / 2.0;
         left_forearm.look_at(target, Vec3::Y);
 
-        // Elbow twist limit mercy — forearm rotation around upper arm axis ±90°
-        let upper_arm_dir = (elbow - shoulder).normalize_or_zero();
-        let current_twist = left_forearm.forward().dot(upper_arm_dir);
+        // Wrist rotation limit mercy — pronation/supination ±80° + flexion/extension
+        let forearm_dir = (target - elbow).normalize_or_zero();
+        let current_hand_forward = left_hand.forward();
 
-        let clamped_twist = current_twist.clamp(-0.7, 0.7);  // Approx ±90° mercy
-        let twist_correction = Quat::from_rotation_arc(left_forearm.forward(), upper_arm_dir * clamped_twist);
+        // Project to forearm plane mercy
+        let projected = current_hand_forward - forearm_dir * current_hand_forward.dot(forearm_dir);
+        let clamped = projected.normalize_or_zero();
 
-        left_forearm.rotation = twist_correction * left_forearm.rotation;
+        // Limit twist angle mercy
+        let twist_angle = current_hand_forward.angle_between(clamped);
+        if twist_angle > std::f32::consts::FRAC_PI_2 * 0.9 {  // ±80° mercy
+            let correction = Quat::from_rotation_arc(current_hand_forward, clamped);
+            left_hand.rotation = correction * left_hand.rotation;
+        }
     }
 
     // Right arm symmetric mercy
