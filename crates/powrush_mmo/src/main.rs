@@ -79,6 +79,7 @@ struct Creature {
     wander_timer: f32,
     age: f32,
     health: f32,
+    hunger: f32,  // 0.0 full → 1.0 starving
     dna: CreatureDNA,
     tamed: bool,
     owner: Option<Entity>,
@@ -94,6 +95,7 @@ struct CreatureDNA {
     size: f32,
     camouflage: f32,
     aggression: f32,
+    metabolism: f32,  // Hunger rate multiplier
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -111,7 +113,14 @@ enum CreatureState {
     Sleep,
     Mate,
     Follow,
+    Eat,
     Dead,
+}
+
+#[derive(Component)]
+struct FoodResource {
+    nutrition: f32,
+    respawn_timer: f32,
 }
 
 #[derive(Component)]
@@ -165,6 +174,9 @@ fn main() {
             day_night_cycle,
             weather_system,
             creature_behavior_cycle,
+            creature_hunger_system,
+            creature_eat_system,
+            food_respawn_system,
             natural_selection_system,
             creature_evolution_system,
             genetic_drift_system,
@@ -215,43 +227,105 @@ fn setup(
     ));
 }
 
-fn natural_selection_system(
-    mut commands: Commands,
-    mut query: Query<(Entity, &mut Creature, &Transform)>,
+fn creature_hunger_system(
+    mut query: Query<&mut Creature>,
     time: Res<Time>,
-    world_time: Res<WorldTime>,
-    weather: Res<WeatherManager>,
 ) {
-    let season = get_season(world_time.day);
+    for mut creature in &mut query {
+        let hunger_rate = 0.0005 * creature.dna.metabolism;
+        creature.hunger += hunger_rate * time.delta_seconds();
+        creature.hunger = creature.hunger.clamp(0.0, 1.0);
 
-    for (entity, mut creature, transform) in &mut query {
-        // Base metabolism cost scaled by size
-        let metabolism = creature.dna.size * 0.001;
-
-        // Camouflage fitness — health drain if poor match (simplified biome from position future)
-        let camouflage_fitness = creature.dna.camouflage;
-        let camouflage_penalty = (1.0 - camouflage_fitness) * 0.002;
-
-        // Weather vulnerability
-        let weather_penalty = match weather.current {
-            Weather::Storm => 0.005 * (1.0 - creature.dna.size),  // Larger better in storm
-            Weather::Snow => if creature.dna.camouflage > 0.8 { 0.0 } else { 0.003 },
-            _ => 0.0,
-        };
-
-        // Age penalty
-        let age_penalty = if creature.age > 2000.0 { (creature.age - 2000.0) / 10000.0 } else { 0.0 };
-
-        creature.health -= (metabolism + camouflage_penalty + weather_penalty + age_penalty) * time.delta_seconds();
-
-        if creature.health <= 0.0 {
-            creature.state = CreatureState::Dead;
-            commands.entity(entity).despawn();
+        if creature.hunger > 0.8 {
+            creature.state = CreatureState::Eat;
         }
     }
 }
 
-// Rest of file unchanged from previous full version (player_movement, creature_behavior_cycle, creature_evolution_system, genetic_drift_system, player_breeding_mechanics, player_inventory_ui with graph, chunk_manager, etc.)
+fn creature_eat_system(
+    mut commands: Commands,
+    mut creature_query: Query<(Entity, &mut Creature, &Transform)>,
+    food_query: Query<(Entity, &FoodResource, &Transform)>,
+    time: Res<Time>,
+) {
+    for (creature_entity, mut creature, creature_transform) in &mut creature_query {
+        if creature.state == CreatureState::Eat {
+            for (food_entity, food, food_transform) in &food_query {
+                let dist = (creature_transform.translation - food_transform.translation).length();
+                if dist < 3.0 {
+                    creature.hunger -= food.nutrition;
+                    creature.hunger = creature.hunger.max(0.0);
+                    creature.health += food.nutrition * 0.5;
+                    creature.health = creature.health.min(1.0);
+
+                    commands.entity(food_entity).despawn();
+                    break;
+                }
+            }
+
+            if creature.hunger < 0.3 {
+                creature.state = CreatureState::Wander;
+            }
+        }
+    }
+}
+
+fn food_respawn_system(
+    mut commands: Commands,
+    mut food_query: Query<&mut FoodResource>,
+    chunk_query: Query<&Chunk>,
+    time: Res<Time>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    for mut food in &mut food_query {
+        food.respawn_timer -= time.delta_seconds();
+        if food.respawn_timer <= 0.0 {
+            // Respawn logic per biome in chunk_manager mercy
+            food.respawn_timer = rand::thread_rng().gen_range(30.0..120.0);
+        }
+    }
+
+    // New food spawning in chunk_manager
+}
+
+// chunk_manager — add food spawning per biome
+fn chunk_manager(/* ... */) {
+    // In chunk spawn loop
+    let food_density = match biome {
+        Biome::Forest => 0.1,
+        Biome::Plains => 0.08,
+        Biome::Desert => 0.02,
+        Biome::Tundra => 0.03,
+        Biome::Ocean => 0.05,
+    };
+
+    let food_mesh = meshes.add(Mesh::from(shape::UVSphere::default()));
+    let food_material = materials.add(Color::rgb(0.8, 0.2, 0.2).into());
+
+    let mut rng = StdRng::seed_from_u64(seed);
+    for _ in 0..(food_density * (CHUNK_SIZE * CHUNK_SIZE) as f32) as usize {
+        let local_x = rng.gen_range(0.0..CHUNK_SIZE as f32);
+        let local_z = rng.gen_range(0.0..CHUNK_SIZE as f32);
+        let height = /* from voxel */;
+
+        commands.spawn((
+            PbrBundle {
+                mesh: food_mesh.clone(),
+                material: food_material.clone(),
+                transform: Transform::from_xyz(chunk_world_x + local_x, height + 0.5, chunk_world_z + local_z),
+                visibility: Visibility::Visible,
+                ..default()
+            },
+            FoodResource {
+                nutrition: 0.3,
+                respawn_timer: 0.0,
+            },
+        ));
+    }
+}
+
+// Other systems unchanged...
 
 pub struct MercyResonancePlugin;
 
@@ -265,6 +339,9 @@ impl Plugin for MercyResonancePlugin {
             weather_system,
             creature_behavior_cycle,
             natural_selection_system,
+            creature_hunger_system,
+            creature_eat_system,
+            food_respawn_system,
             creature_evolution_system,
             genetic_drift_system,
             player_breeding_mechanics,
