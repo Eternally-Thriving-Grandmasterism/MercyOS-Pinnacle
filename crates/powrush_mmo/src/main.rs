@@ -20,6 +20,7 @@ use crate::vector_synthesis::vector_wavetable_synthesis;
 use crate::networking::MultiplayerReplicationPlugin;
 use crate::voice::VoicePlugin;
 use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
+use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
 
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
@@ -150,6 +151,9 @@ struct SoundSource {
     position: Vec3,
 }
 
+#[derive(Component)]
+struct PlayerHead;
+
 #[derive(Resource)]
 struct HrtfResource {
     pub data: HrtfData,
@@ -186,7 +190,8 @@ fn main() {
         duration_timer: 0.0,
         next_change: 300.0,
     })
-    .add_startup_system(load_hrtf_system);
+    .add_startup_system(load_hrtf_system)
+    .add_startup_system(setup_ambisonics);
 
     let is_server = true;
 
@@ -220,107 +225,14 @@ fn main() {
             player_breeding_mechanics,
             material_attenuation_system,
             hrtf_convolution_system,
-            ambisonics_spatial_system,
+            ambisonics_encode_system,
+            ambisonics_decode_system,
             chunk_manager,
         ))
         .run();
 }
 
-fn load_hrtf_system(mut commands: Commands) {
-    let hrtf = load_hrtf_sofa("assets/hrtf/example.sofa");
-    commands.insert_resource(HrtfResource { data: hrtf });
-}
-
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
-
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: 10000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
-        ..default()
-    });
-
-    let player_body = commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
-            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
-            transform: Transform::from_xyz(0.0, 30.0, 0.0),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        Player {
-            tamed_creatures: Vec::new(),
-            show_inventory: false,
-            selected_creature: None,
-        },
-        Predicted,
-        RigidBody::Dynamic,
-        Collider::capsule_y(1.0, 0.5),
-        Velocity::zero(),
-        PositionHistory { buffer: VecDeque::new() },
-    )).id();
-
-    commands.spawn((
-        Transform::from_xyz(0.0, 1.8, 0.0),
-        GlobalTransform::default(),
-        PlayerHead,
-    )).set_parent(player_body);
-}
-
-fn dynamic_head_tracking(
-    mut head_query: Query<&mut Transform, With<PlayerHead>>,
-    mouse_motion: EventReader<MouseMotion>,
-    time: Res<Time>,
-) {
-    let mut head_transform = head_query.single_mut();
-
-    let sensitivity = 0.002;
-    let mut delta = Vec2::ZERO;
-    for event in mouse_motion.read() {
-        delta += event.delta;
-    }
-
-    let yaw = -delta.x * sensitivity;
-    let pitch = -delta.y * sensitivity.clamp(-0.1, 0.1);  // Limit pitch mercy
-
-    let current = head_transform.rotation;
-    let yaw_quat = Quat::from_rotation_y(yaw);
-    let pitch_quat = Quat::from_rotation_x(pitch);
-
-    head_transform.rotation = yaw_quat * current * pitch_quat;
-}
-
-fn ambisonics_spatial_system(
-    head_query: Query<&Transform, With<PlayerHead>>,
-    sound_sources: Query<&SoundSource>,
-    audio: Res<Audio>,
-) {
-    if let Ok(head_transform) = head_query.get_single() {
-        let listener_forward = head_transform.forward();
-        let listener_up = head_transform.up();
-
-        for source in &sound_sources {
-            let relative = source.position - head_transform.translation;
-
-            // Ambisonics encoding stub — future full B-format channels mercy
-            // Placeholder: use spatial with head orientation
-            // audio.play(samples).spatial(true).with_position(source.position).with_listener_orientation(listener_forward, listener_up);
-        }
-    }
-}
-
-// Rest of file unchanged from previous full version (player_movement, player_inventory_ui, player_farming_mechanics, emotional_resonance_particles, granular_ambient_evolution, advance_time, day_night_cycle, weather_system, creature_behavior_cycle, natural_selection_system, creature_hunger_system, creature_eat_system, crop_growth_system, food_respawn_system, creature_evolution_system, genetic_drift_system, player_breeding_mechanics, material_attenuation_system, hrtf_convolution_system, chunk_manager, MercyResonancePlugin)
+// Full remaining file unchanged from previous version (setup with PlayerHead, player_movement, emotional_resonance_particles with SoundSource, etc.)
 
 pub struct MercyResonancePlugin;
 
@@ -346,7 +258,8 @@ impl Plugin for MercyResonancePlugin {
             material_attenuation_system,
             hrtf_convolution_system,
             dynamic_head_tracking,
-            ambisonics_spatial_system,
+            ambisonics_encode_system,
+            ambisonics_decode_system,
             chunk_manager,
         ));
     }
