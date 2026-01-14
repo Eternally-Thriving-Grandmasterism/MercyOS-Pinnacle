@@ -9,18 +9,16 @@ path = "src/main.rs"
 
 [dependencies]
 mercy_core.workspace = true
-bevy = { workspace = true }
+bevy = { version = "0.16", features = ["dynamic", "wgpu", "ogg"] }
 bevy_renet = "0.0.9"
 bevy_kira_audio = { version = "0.18", features = ["ogg"] }
 noise = "0.8"
 rand.workspace = true
 tokio.workspace = true
 kira = "0.8"
-pqc-ml-kem = { workspace = true }
-x25519-dalek = { workspace = true }
-chacha20poly1305 = { workspace = true }
-hkdf = { workspace = true }
-sha2 = { workspace = true }
-lightyear = "0.13"  # Reliable channel handshake mercy
 bincode = "1.3"
 serde = { version = "1.0", features = ["derive"] }
+ndshape = "0.3"
+greedly = "0.2"
+bevy_rapier3d = { version = "0.27", features = ["dim3", "async-collider"] }
+sofa = "0.3"  # Future HRIR SOFA file loading mercy eternal
