@@ -182,33 +182,31 @@ fn chunk_manager(
                     let temp_noise = Perlin::new((seed ^ 0x1234) as u32);
                     let humid_noise = Perlin::new((seed ^ 0x5678) as u32);
 
-                    let mut voxels = [0u8; ChunkShape::SIZE as usize];
-
-                    let chunk_world_x = chunk_coord.x as f32 * CHUNK_SIZE as f32;
-                    let chunk_world_z = chunk_coord.y as f32 * CHUNK_SIZE as f32;
-
-                    let chunk_center_x = chunk_world_x + CHUNK_SIZE as f32 * 0.5;
-                    let chunk_center_z = chunk_world_z + CHUNK_SIZE as f32 * 0.5;
+                    let chunk_center_x = chunk_coord.x as f32 * CHUNK_SIZE as f32 + CHUNK_SIZE as f32 * 0.5;
+                    let chunk_center_z = chunk_coord.y as f32 * CHUNK_SIZE as f32 + CHUNK_SIZE as f32 * 0.5;
 
                     let temperature = (temp_noise.get([chunk_center_x as f64 / 200.0, chunk_center_z as f64 / 200.0]) as f32 + 1.0) * 0.5;
                     let humidity = (humid_noise.get([chunk_center_x as f64 / 200.0, chunk_center_z as f64 / 200.0]) as f32 + 1.0) * 0.5;
 
                     let biome = get_biome(temperature, humidity);
 
-                    let (grass_color, tree_density) = match biome {
-                        Biome::Forest => (Color::rgb(0.1, 0.6, 0.1), 0.08),
-                        Biome::Desert => (Color::rgb(0.8, 0.7, 0.4), 0.01),
-                        Biome::Tundra => (Color::rgb(0.8, 0.9, 0.9), 0.02),
-                        Biome::Plains => (Color::rgb(0.4, 0.7, 0.3), 0.04),
-                        Biome::Ocean => (Color::rgb(0.1, 0.3, 0.6), 0.0),
+                    let (grass_color, tree_density, veg_type) = match biome {
+                        Biome::Forest => (Color::rgb(0.1, 0.6, 0.1), 0.08, "tree"),
+                        Biome::Desert => (Color::rgb(0.8, 0.7, 0.4), 0.01, "cactus"),
+                        Biome::Tundra => (Color::rgb(0.8, 0.9, 0.9), 0.02, "pine"),
+                        Biome::Plains => (Color::rgb(0.4, 0.7, 0.3), 0.04, "flower"),
+                        Biome::Ocean => (Color::rgb(0.1, 0.3, 0.6), 0.0, "kelp"),
                     };
 
                     let grass_mat = materials.add(grass_color.into());
 
+                    // Voxel generation + biome surface
+                    let mut voxels = [0u8; ChunkShape::SIZE as usize];
+
                     for i in 0..ChunkShape::SIZE {
                         let [x, y, z] = ChunkShape::delinearize(i as u32);
-                        let world_x = chunk_world_x + x as f32;
-                        let world_z = chunk_world_z + z as f32;
+                        let world_x = chunk_coord.x as f32 * CHUNK_SIZE as f32 + x as f32;
+                        let world_z = chunk_coord.y as f32 * CHUNK_SIZE as f32 + z as f32;
 
                         let density = density_noise.get([world_x as f64 / 50.0, y as f64 / 20.0, world_z as f64 / 50.0]) as f32 * 10.0;
 
@@ -230,7 +228,7 @@ fn chunk_manager(
 
                     // Greedy meshing + biome material
                     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-                    // Full greedy implementation — add vertices/indices from quads with biome material
+                    // Full greedy implementation stubbed — use grass_mat for surface
 
                     let chunk_mesh = meshes.add(mesh);
 
@@ -238,7 +236,7 @@ fn chunk_manager(
                         PbrBundle {
                             mesh: chunk_mesh,
                             material: grass_mat,
-                            transform: Transform::from_xyz(chunk_world_x, 0.0, chunk_world_z),
+                            transform: Transform::from_xyz(chunk_coord.x as f32 * CHUNK_SIZE as f32, 0.0, chunk_coord.y as f32 * CHUNK_SIZE as f32),
                             visibility: Visibility::Visible,
                             ..default()
                         },
@@ -247,18 +245,27 @@ fn chunk_manager(
                         RigidBody::Fixed,
                     ));
 
-                    // Procedural trees per biome
+                    // Procedural vegetation per biome
                     let mut rng = StdRng::seed_from_u64(seed);
-                    for _ in 0..(tree_density * (CHUNK_SIZE * CHUNK_SIZE) as f32) as usize {
+                    let veg_count = (tree_density * (CHUNK_SIZE * CHUNK_SIZE) as f32) as usize;
+                    for _ in 0..veg_count {
                         let local_x = rng.gen_range(0.0..CHUNK_SIZE as f32);
                         let local_z = rng.gen_range(0.0..CHUNK_SIZE as f32);
-                        let tree_height = perlin.get([local_x as f64 / 20.0, local_z as f64 / 20.0]) as f32 * 5.0 + 8.0;
+                        let height = density_noise.get([local_x as f64 / 20.0, local_z as f64 / 20.0]) as f32 * 5.0 + 8.0;
 
-                        // Simple tree trunk + leaves placeholder
+                        let veg_color = match biome {
+                            Biome::Forest => Color::rgb(0.1, 0.5, 0.1),
+                            Biome::Desert => Color::rgb(0.3, 0.6, 0.2),
+                            Biome::Tundra => Color::rgb(0.6, 0.8, 0.7),
+                            Biome::Plains => Color::rgb(0.9, 0.9, 0.2),
+                            Biome::Ocean => Color::rgb(0.0, 0.4, 0.3),
+                        };
+
                         commands.spawn(PbrBundle {
                             mesh: meshes.add(Mesh::from(shape::Cube { size: 2.0 })),
-                            material: materials.add(Color::rgb(0.4, 0.2, 0.1).into()),
-                            transform: Transform::from_xyz(chunk_world_x + local_x, tree_height / 2.0, chunk_world_z + local_z),
+                            material: materials.add(veg_color.into()),
+                            transform: Transform::from_xyz(chunk_coord.x as f32 * CHUNK_SIZE as f32 + local_x, height / 2.0, chunk_coord.y as f32 * CHUNK_SIZE as f32 + local_z),
+                            visibility: Visibility::Visible,
                             ..default()
                         });
                     }
@@ -266,7 +273,13 @@ fn chunk_manager(
             }
         }
 
-        // Despawn far chunks unchanged...
+        // Despawn far chunks mercy
+        for (entity, chunk) in &chunk_query {
+            let chunk_dist = (chunk.coord - player_chunk).as_vec2().length();
+            if chunk_dist > VIEW_CHUNKS as f32 + 1.0 {
+                commands.entity(entity).despawn_recursive();
+            }
+        }
     }
 }
 
