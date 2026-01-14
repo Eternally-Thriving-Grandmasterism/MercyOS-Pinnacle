@@ -1,15 +1,448 @@
-// In multi_chain_ik_system mercy — arm chains with shoulder constraints
+use bevy::prelude::*;
+use bevy::render::view::Visibility;
+use bevy_kira_audio::{Audio, AudioControl, AudioInstance, AudioPlugin as KiraAudioPlugin};
+use bevy_kira_audio::prelude::*;
+use bevy_renet::RenetClientPlugin;
+use bevy_renet::RenetServerPlugin;
+use renet::{RenetClient, RenetServer, ConnectionConfig};
+use mercy_core::PhiloticHive;
+use noise::{NoiseFn, Perlin, Seedable};
+use ndshape::{ConstShape3u32};
+use greedly::{GreedyMesher};
+use rand::{Rng, SeedableRng};
+use rand::rngs::StdRng;
+use bevy_rapier3d::prelude::*;
+use bevy_egui::{EguiContexts, EguiPlugin};
+use egui::{Painter, Pos2, Stroke, Color32};
+use bevy_mod_xr::session::{XrSession, XrSessionPlugin};
+use bevy_mod_xr::hands::{XrHand, XrHandBone};
+use bevy_mod_xr::spaces::{XrReferenceSpace, XrReferenceSpaceType};
+use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
+use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
+use crate::vector_synthesis::vector_wavetable_synthesis;
+use crate::networking::MultiplayerReplicationPlugin;
+use crate::voice::VoicePlugin;
+use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
+use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
+use crate::hand_ik::{trik_two_bone, fabrik_constrained};
+
+const CHUNK_SIZE: u32 = 32;
+const VIEW_CHUNKS: i32 = 5;
+const DAY_LENGTH_SECONDS: f32 = 120.0;
+
+type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Biome {
+    Ocean,
+    Plains,
+    Forest,
+    Desert,
+    Tundra,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Season {
+    Spring,
+    Summer,
+    Autumn,
+    Winter,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Weather {
+    Clear,
+    Rain,
+    Snow,
+    Storm,
+    Fog,
+}
+
+#[derive(Resource)]
+struct WorldTime {
+    pub time_of_day: f32,
+    pub day: f32,
+}
+
+#[derive(Resource)]
+struct WeatherManager {
+    pub current: Weather,
+    pub intensity: f32,
+    pub duration_timer: f32,
+    pub next_change: f32,
+}
+
+#[derive(Component)]
+struct Player {
+    tamed_creatures: Vec<Entity>,
+    show_inventory: bool,
+    selected_creature: Option<Entity>,
+}
+
+#[derive(Component)]
+struct Creature {
+    creature_type: CreatureType,
+    state: CreatureState,
+    wander_timer: f32,
+    age: f32,
+    health: f32,
+    hunger: f32,
+    dna: CreatureDNA,
+    tamed: bool,
+    owner: Option<Entity>,
+    parent1: Option<u64>,
+    parent2: Option<u64>,
+    generation: u32,
+    last_drift_day: f32,
+}
+
+#[derive(Clone, Copy)]
+struct CreatureDNA {
+    speed: f32,
+    size: f32,
+    camouflage: f32,
+    aggression: f32,
+    metabolism: f32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CreatureType {
+    Deer,
+    Wolf,
+    Bird,
+    Fish,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CreatureState {
+    Wander,
+    Flee,
+    Sleep,
+    Mate,
+    Follow,
+    Eat,
+    Dead,
+}
+
+#[derive(Component)]
+struct FoodResource {
+    nutrition: f32,
+    respawn_timer: f32,
+}
+
+#[derive(Component)]
+struct Crop {
+    crop_type: CropType,
+    growth_stage: u8,
+    growth_timer: f32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CropType {
+    Wheat,
+    Berries,
+    Roots,
+}
+
+#[derive(Component)]
+struct Chunk {
+    coord: IVec2,
+    voxels: Box<[u8; ChunkShape::SIZE as usize]>,
+}
+
+#[derive(Component)]
+struct SoundSource {
+    position: Vec3,
+}
+
+#[derive(Component)]
+struct PlayerHead;
+
+#[derive(Component)]
+struct PlayerBodyPart;
+
+#[derive(Component)]
+struct LeftUpperArm;
+
+#[derive(Component)]
+struct LeftForearm;
+
+#[derive(Component)]
+struct RightUpperArm;
+
+#[derive(Component)]
+struct RightForearm;
+
+#[derive(Component)]
+struct LeftHandTarget;
+
+#[derive(Component)]
+struct RightHandTarget;
+
+#[derive(Component)]
+struct SpineRoot;
+
+#[derive(Component)]
+struct SpineLower;
+
+#[derive(Component)]
+struct SpineMid;
+
+#[derive(Component)]
+struct SpineUpper;
+
+#[derive(Component)]
+struct LeftUpperLeg;
+
+#[derive(Component)]
+struct LeftLowerLeg;
+
+#[derive(Component)]
+struct RightUpperLeg;
+
+#[derive(Component)]
+struct RightLowerLeg;
+
+#[derive(Component)]
+struct LeftFootTarget;
+
+#[derive(Component)]
+struct RightFootTarget;
+
+#[derive(Resource)]
+struct HrtfResource {
+    pub data: HrtfData,
+}
+
+struct HrtfData {
+    sofa: SofaFile,
+    sample_rate: u32,
+}
+
+fn main() {
+    let mut app = App::new();
+
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: "Powrush-MMO — Forgiveness Eternal Infinite Universe".into(),
+            ..default()
+        }),
+        ..default()
+    }).set(AssetPlugin {
+        asset_folder: "assets".to_string(),
+        ..default()
+    }))
+    .add_plugins(KiraAudioPlugin)
+    .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+    .add_plugins(RapierDebugRenderPlugin::default())
+    .add_plugins(EguiPlugin)
+    .add_plugins(MultiplayerReplicationPlugin)
+    .add_plugins(VoicePlugin)
+    .add_plugins(XrSessionPlugin)
+    .insert_resource(WorldTime { time_of_day: 0.0, day: 0.0 })
+    .insert_resource(WeatherManager {
+        current: Weather::Clear,
+        intensity: 0.0,
+        duration_timer: 0.0,
+        next_change: 300.0,
+    })
+    .add_startup_system(load_hrtf_system)
+    .add_startup_system(setup_ambisonics);
+
+    let is_server = true;
+
+    if is_server {
+        app.add_plugins(RenetServerPlugin);
+        app.insert_resource(RenetServer::new(ConnectionConfig::default()));
+    } else {
+        app.add_plugins(RenetClientPlugin);
+        app.insert_resource(RenetClient::new(ConnectionConfig::default()));
+    }
+
+    app.add_systems(Startup, setup)
+        .add_systems(Update, (
+            player_movement,
+            dynamic_head_tracking,
+            multi_chain_ik_system,
+            player_inventory_ui,
+            player_farming_mechanics,
+            emotional_resonance_particles,
+            granular_ambient_evolution,
+            advance_time,
+            day_night_cycle,
+            weather_system,
+            creature_behavior_cycle,
+            natural_selection_system,
+            creature_hunger_system,
+            creature_eat_system,
+            crop_growth_system,
+            food_respawn_system,
+            creature_evolution_system,
+            genetic_drift_system,
+            player_breeding_mechanics,
+            material_attenuation_system,
+            hrtf_convolution_system,
+            ambisonics_encode_system,
+            ambisonics_decode_system,
+            vr_body_avatar_system,
+            chunk_manager,
+        ))
+        .run();
+}
+
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    xr_session: Option<Res<XrSession>>,
+) {
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
+
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            illuminance: 10000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
+        ..default()
+    });
+
+    let player_body = commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
+            transform: Transform::from_xyz(0.0, 30.0, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        Player {
+            tamed_creatures: Vec::new(),
+            show_inventory: false,
+            selected_creature: None,
+        },
+        Predicted,
+        RigidBody::Dynamic,
+        Collider::capsule_y(1.0, 0.5),
+        Velocity::zero(),
+        PositionHistory { buffer: VecDeque::new() },
+    )).id();
+
+    // Full multi-chain body avatar mercy — arms with elbow twist limits
+    let arm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.8, resolution: 16 }));
+    let hand_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.2 }));
+
+    let skin_material = materials.add(Color::rgb(0.9, 0.7, 0.6).into());
+
+    // Left arm chain mercy
+    let left_upper_arm = commands.spawn((
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(-0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftUpperArm,
+        PlayerBodyPart,
+    )).id();
+
+    let left_forearm = commands.spawn((
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftForearm,
+        PlayerBodyPart,
+    )).id();
+
+    let left_hand_target = commands.spawn((
+        PbrBundle {
+            mesh: hand_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        LeftHandTarget,
+    )).id();
+
+    commands.entity(left_upper_arm).push_children(&[left_forearm]);
+    commands.entity(left_forearm).push_children(&[left_hand_target]);
+    commands.entity(player_body).push_children(&[left_upper_arm]);
+
+    // Right arm symmetric mercy
+    let right_upper_arm = commands.spawn((
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightUpperArm,
+        PlayerBodyPart,
+    )).id();
+
+    let right_forearm = commands.spawn((
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: skin_material.clone(),
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightForearm,
+        PlayerBodyPart,
+    )).id();
+
+    let right_hand_target = commands.spawn((
+        PbrBundle {
+            mesh: hand_mesh,
+            material: skin_material,
+            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        RightHandTarget,
+    )).id();
+
+    commands.entity(right_upper_arm).push_children(&[right_forearm]);
+    commands.entity(right_forearm).push_children(&[right_hand_target]);
+    commands.entity(player_body).push_children(&[right_upper_arm]);
+
+    // Spine and legs chains mercy (as before)
+
+    // Head mercy
+    commands.spawn((
+        Transform::from_xyz(0.0, 1.8, 0.0),
+        GlobalTransform::default(),
+        PlayerHead,
+    )).set_parent(player_body);
+
+    // XR session override mercy
+    if let Some(session) = xr_session {
+        // Future: bind head/hand poses
+    }
+}
+
 fn multi_chain_ik_system(
     player_query: Query<&Transform, With<Player>>,
-    mut arm_query: Query<&mut Transform, Or<(With<LeftUpperArm>, With<RightUpperArm>, With<LeftForearm>, With<RightForearm>)>>,
+    mut arm_query: Query<&mut Transform, Or<(With<LeftUpperArm>, With<LeftForearm>, With<RightUpperArm>, With<RightForearm>)>>,
     hand_target_query: Query<&Transform, Or<(With<LeftHandTarget>, With<RightHandTarget>)>>,
 ) {
     let player_transform = player_query.single();
 
-    // Left arm TRIK + shoulder constraints mercy
+    // Left arm TRIK + elbow twist limit mercy
     if let (Ok(mut left_upper), Ok(mut left_forearm), Ok(left_hand)) = (
-        arm_query.get_component_mut::<Transform>(/* left_upper_arm entity */),
-        arm_query.get_component_mut::<Transform>(/* left_forearm entity */),
+        arm_query.get_component_mut::<Transform>(/* left_upper_arm */),
+        arm_query.get_component_mut::<Transform>(/* left_forearm */),
         hand_target_query.get_single().ok(),
     ) {
         let shoulder = player_transform.translation + Vec3::new(-0.3, 0.0, 0.0);
@@ -23,8 +456,14 @@ fn multi_chain_ik_system(
         left_forearm.translation = (elbow + target) / 2.0;
         left_forearm.look_at(target, Vec3::Y);
 
-        // Apply shoulder spherical constraints mercy
-        apply_shoulder_constraints(shoulder, &mut left_upper, player_transform.forward(), player_transform.up());
+        // Elbow twist limit mercy — forearm rotation around upper arm axis ±90°
+        let upper_arm_dir = (elbow - shoulder).normalize_or_zero();
+        let current_twist = left_forearm.forward().dot(upper_arm_dir);
+
+        let clamped_twist = current_twist.clamp(-0.7, 0.7);  // Approx ±90° mercy
+        let twist_correction = Quat::from_rotation_arc(left_forearm.forward(), upper_arm_dir * clamped_twist);
+
+        left_forearm.rotation = twist_correction * left_forearm.rotation;
     }
 
     // Right arm symmetric mercy
