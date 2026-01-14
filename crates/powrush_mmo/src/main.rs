@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::render::view::Visibility;
-use bevy_kira_audio::{Audio, AudioControl, AudioInstance, AudioPlugin as KiraAudioPlugin};
+use bevy_kira_audio::{Audio, AudioControl, AudioInstance, AudioPlugin as KiraAudioPlugin, AudioSource};
 use bevy_kira_audio::prelude::*;
 use bevy_renet::RenetClientPlugin;
 use bevy_renet::RenetServerPlugin;
@@ -14,6 +14,8 @@ use rand::rngs::StdRng;
 use bevy_rapier3d::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin};
 use egui::{Painter, Pos2, Stroke, Color32};
+use kira::sound::effect::reverb::ReverbBuilder;
+use kira::manager::AudioManager;
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
@@ -139,6 +141,13 @@ enum CropType {
 }
 
 #[derive(Component)]
+struct ReverbZone {
+    reverb_time: f32,     // seconds
+    damping: f32,
+    intensity: f32,
+}
+
+#[derive(Component)]
 struct Chunk {
     coord: IVec2,
 }
@@ -199,6 +208,7 @@ fn main() {
             creature_evolution_system,
             genetic_drift_system,
             player_breeding_mechanics,
+            reverb_zone_system,
             chunk_manager,
         ))
         .run();
@@ -245,7 +255,46 @@ fn setup(
     ));
 }
 
-// Full remaining file unchanged from previous version (player_movement, player_inventory_ui, player_farming_mechanics, emotional_resonance_particles with .with_playback_rate for Doppler, granular_ambient_evolution, advance_time, day_night_cycle, weather_system, creature_behavior_cycle, natural_selection_system, creature_hunger_system, creature_eat_system, crop_growth_system, food_respawn_system, creature_evolution_system, genetic_drift_system, player_breeding_mechanics, chunk_manager, MercyResonancePlugin)
+fn reverb_zone_system(
+    player_query: Query<&Transform, With<Player>>,
+    zone_query: Query<(&Transform, &ReverbZone)>,
+    mut audio_manager: ResMut<AudioManager>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        let player_pos = player_transform.translation;
+
+        let mut closest_zone = None;
+        let mut closest_dist = f32::INFINITY;
+
+        for (zone_transform, reverb) in &zone_query {
+            let dist = (player_pos - zone_transform.translation).length();
+            if dist < closest_dist {
+                closest_dist = dist;
+                closest_zone = Some(reverb);
+            }
+        }
+
+        let reverb = if let Some(zone) = closest_zone {
+            ReverbBuilder::new()
+                .time(zone.reverb_time)
+                .damping(zone.damping)
+                .build()
+                .unwrap()
+        } else {
+            ReverbBuilder::new()
+                .time(0.5)
+                .damping(0.5)
+                .build()
+                .unwrap()
+        };
+
+        // Apply global reverb mercy (kira supports global effects)
+        // Placeholder — kira global reverb stub, future per-source send
+        // audio_manager.set_reverb(reverb);
+    }
+}
+
+// Rest of file unchanged from previous full version
 
 pub struct MercyResonancePlugin;
 
@@ -268,160 +317,7 @@ impl Plugin for MercyResonancePlugin {
             player_breeding_mechanics,
             player_farming_mechanics,
             player_inventory_ui,
-            chunk_manager,
-        ));
-    }
-}    health: f32,
-    hunger: f32,
-    dna: CreatureDNA,
-    tamed: bool,
-    owner: Option<Entity>,
-    parent1: Option<u64>,
-    parent2: Option<u64>,
-    generation: u32,
-    last_drift_day: f32,
-}
-
-#[derive(Clone, Copy)]
-struct CreatureDNA {
-    speed: f32,
-    size: f32,
-    camouflage: f32,
-    aggression: f32,
-    metabolism: f32,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CreatureType {
-    Deer,
-    Wolf,
-    Bird,
-    Fish,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CreatureState {
-    Wander,
-    Flee,
-    Sleep,
-    Mate,
-    Follow,
-    Eat,
-    Dead,
-}
-
-#[derive(Component)]
-struct FoodResource {
-    nutrition: f32,
-    respawn_timer: f32,
-}
-
-#[derive(Component)]
-struct Crop {
-    crop_type: CropType,
-    growth_stage: u8,
-    growth_timer: f32,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CropType {
-    Wheat,
-    Berries,
-    Roots,
-}
-
-#[derive(Component)]
-struct Chunk {
-    coord: IVec2,
-}
-
-fn main() {
-    let mut app = App::new();
-
-    app.add_plugins(DefaultPlugins.set(WindowPlugin {
-        primary_window: Some(Window {
-            title: "Powrush-MMO — Forgiveness Eternal Infinite Universe".into(),
-            ..default()
-        }),
-        ..default()
-    }).set(AssetPlugin {
-        asset_folder: "assets".to_string(),
-        ..default()
-    }))
-    .add_plugins(KiraAudioPlugin)
-    .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
-    .add_plugins(RapierDebugRenderPlugin::default())
-    .add_plugins(EguiPlugin)
-    .add_plugins(MultiplayerReplicationPlugin)
-    .add_plugins(VoicePlugin)
-    .insert_resource(WorldTime { time_of_day: 0.0, day: 0.0 })
-    .insert_resource(WeatherManager {
-        current: Weather::Clear,
-        intensity: 0.0,
-        duration_timer: 0.0,
-        next_change: 300.0,
-    });
-
-    let is_server = true;
-
-    if is_server {
-        app.add_plugins(RenetServerPlugin);
-        app.insert_resource(RenetServer::new(ConnectionConfig::default()));
-    } else {
-        app.add_plugins(RenetClientPlugin);
-        app.insert_resource(RenetClient::new(ConnectionConfig::default()));
-    }
-
-    app.add_systems(Startup, (setup, setup_server_static_keys))
-        .add_systems(Update, (
-            player_movement,
-            player_inventory_ui,
-            player_farming_mechanics,
-            emotional_resonance_particles,
-            granular_ambient_evolution,
-            advance_time,
-            day_night_cycle,
-            weather_system,
-            creature_behavior_cycle,
-            natural_selection_system,
-            creature_hunger_system,
-            creature_eat_system,
-            crop_growth_system,
-            food_respawn_system,
-            creature_evolution_system,
-            genetic_drift_system,
-            player_breeding_mechanics,
-            server_send_public_keys,
-            client_handshake,
-            server_handshake,
-            chunk_manager,
-        ))
-        .run();
-}
-
-// Full setup, player_movement, player_inventory_ui, player_farming_mechanics, creature_behavior_cycle, natural_selection_system, creature_hunger_system, creature_eat_system, crop_growth_system, food_respawn_system, creature_evolution_system, genetic_drift_system, chunk_manager, advance_time, day_night_cycle, weather_system unchanged from previous full version
-
-pub struct MercyResonancePlugin;
-
-impl Plugin for MercyResonancePlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Update, (
-            emotional_resonance_particles,
-            granular_ambient_evolution,
-            advance_time,
-            day_night_cycle,
-            weather_system,
-            creature_behavior_cycle,
-            natural_selection_system,
-            creature_hunger_system,
-            creature_eat_system,
-            crop_growth_system,
-            food_respawn_system,
-            creature_evolution_system,
-            genetic_drift_system,
-            player_breeding_mechanics,
-            player_farming_mechanics,
-            player_inventory_ui,
+            reverb_zone_system,
             chunk_manager,
         ));
     }
