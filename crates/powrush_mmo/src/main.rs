@@ -94,6 +94,10 @@ struct Creature {
     parent2: Option<u64>,
     generation: u32,
     last_drift_day: f32,
+    perception_radius: f32,
+    memory_target: Option<Vec3>,
+    memory_timer: f32,
+    current_goal: Option<Vec3>,
 }
 
 #[derive(Clone, Copy)]
@@ -148,7 +152,6 @@ enum CropType {
 struct Chunk {
     coord: IVec2,
     voxels: Box<[u8; ChunkShape::SIZE as usize]>,
-    biome: Biome,
 }
 
 #[derive(Component)]
@@ -235,8 +238,8 @@ fn main() {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            creature_weather_reactions_system,
-            creature_behavior_cycle,
+            advanced_creature_ai_system,
+            creature_movement_system,
             player_breeding_mechanics,
             chunk_manager,
         ))
@@ -284,36 +287,124 @@ fn setup(
     ));
 }
 
-fn creature_weather_reactions_system(
-    mut creature_query: Query<&mut Creature>,
-    weather: Res<WeatherManager>,
+fn advanced_creature_ai_system(
+    mut creature_query: Query<(&Transform, &mut Creature, &CreatureDNA)>,
+    player_query: Query<&Transform, With<Player>>,
+    other_creature_query: Query<(&Transform, &Creature), Without<Player>>,
+    time: Res<Time>,
+    rapier_context: Res<RapierContext>,
+) {
+    let player_transform = player_query.single();
+
+    for (transform, mut creature, dna) in &mut creature_query {
+        let pos = transform.translation;
+
+        // Perception mercy — detect threats/prey/pack
+        let mut threats = Vec::new();
+        let mut prey = Vec::new();
+        let mut pack = Vec::new();
+
+        for (other_transform, other_creature) in &other_creature_query {
+            let dist = (pos - other_transform.translation).length();
+            if dist < creature.perception_radius {
+                match (creature.creature_type, other_creature.creature_type) {
+                    (CreatureType::Deer, CreatureType::Wolf) => threats.push(other_transform.translation),
+                    (CreatureType::Wolf, CreatureType::Deer) => prey.push(other_transform.translation),
+                    _ if creature.creature_type == other_creature.creature_type => pack.push(other_transform.translation),
+                    _ => {}
+                }
+            }
+        }
+
+        // Memory mercy
+        if creature.memory_timer > 0.0 {
+            creature.memory_timer -= time.delta_seconds();
+        } else {
+            creature.memory_target = None;
+        }
+
+        // Goal priority mercy eternal
+        let mut goal = None;
+
+        if !threats.is_empty() {
+            creature.state = CreatureState::Flee;
+            goal = Some(threats[0]);  // Flee from nearest
+        } else if !prey.is_empty() && creature.creature_type == CreatureType::Wolf {
+            creature.state = CreatureState::Follow;
+            goal = Some(prey[0]);
+            creature.memory_target = goal;
+            creature.memory_timer = 10.0;
+        } else if !pack.is_empty() && creature.hunger < 0.5 {
+            creature.state = CreatureState::Follow;
+            goal = Some(pack.iter().fold(Vec3::ZERO, |a, b| a + *b) / pack.len() as f32);
+        } else if creature.hunger > 0.8 {
+            creature.state = CreatureState::Eat;
+            // Find food mercy — future
+        } else {
+            creature.state = CreatureState::Wander;
+            creature.wander_timer -= time.delta_seconds();
+            if creature.wander_timer <= 0.0 {
+                creature.wander_timer = 10.0;
+            }
+        }
+
+        creature.current_goal = goal;
+    }
+}
+
+fn creature_movement_system(
+    mut creature_query: Query<(&mut Velocity, &Transform, &Creature)>,
+    rapier_context: Res<RapierContext>,
     time: Res<Time>,
 ) {
-    for mut creature in &mut creature_query {
-        match weather.current {
-            Weather::Rain => {
-                // Seek shelter mercy
-                if rand::thread_rng().gen_bool(0.1) {
-                    creature.state = CreatureState::Flee;
+    for (mut velocity, transform, creature) in &mut creature_query {
+        let pos = transform.translation;
+
+        if let Some(goal) = creature.current_goal {
+            let direction = (goal - pos).normalize_or_zero();
+
+            // Basic pathfinding avoidance mercy
+            let ray = Ray::new(pos.into(), direction.into());
+            if let Some((_, toi)) = rapier_context.cast_ray(ray.origin, ray.dir, 5.0, true, QueryFilter::default()) {
+                if toi < 2.0 {
+                    // Blocked — try left/right offset mercy
+                    let left = Quat::from_rotation_y(0.5) * direction;
+                    let right = Quat::from_rotation_y(-0.5) * direction;
+
+                    let left_ray = Ray::new(pos.into(), left.into());
+                    let right_ray = Ray::new(pos.into(), right.into());
+
+                    let left_clear = rapier_context.cast_ray(left_ray.origin, left_ray.dir, 5.0, true, QueryFilter::default()).map_or(true, |(_, t)| t > 3.0);
+                    let right_clear = rapier_context.cast_ray(right_ray.origin, right_ray.dir, 5.0, true, QueryFilter::default()).map_or(true, |(_, t)| t > 3.0);
+
+                    let avoid_dir = if left_clear && right_clear {
+                        if rand::thread_rng().gen_bool(0.5) { left } else { right }
+                    } else if left_clear {
+                        left
+                    } else if right_clear {
+                        right
+                    } else {
+                        -direction  // Back up mercy
+                    };
+
+                    velocity.linvel = avoid_dir * creature.dna.speed;
+                } else {
+                    velocity.linvel = direction * creature.dna.speed;
                 }
-                creature.hunger += time.delta_seconds() * 0.05;  // Wet slower foraging mercy
+            } else {
+                velocity.linvel = direction * creature.dna.speed;
             }
-            Weather::Snow => {
-                // Huddle warm mercy
-                creature.state = CreatureState::Sleep;
-                creature.health -= time.delta_seconds() * 0.02;  // Cold mercy
-            }
-            Weather::Storm => {
-                // Flee storm mercy
-                creature.state = CreatureState::Flee;
-            }
-            Weather::Fog => {
-                // Camouflage bonus mercy
-                creature.dna.camouflage += 0.2;
-            }
-            Weather::Clear => {
-                // Normal behavior mercy
-            }
+        } else if creature.state == CreatureState::Wander {
+            // Random wander mercy
+            let wander_dir = Vec3::new(
+                rand::thread_rng().gen_range(-1.0..1.0),
+                0.0,
+                rand::thread_rng().gen_range(-1.0..1.0),
+            ).normalize_or_zero();
+
+            velocity.linvel = wander_dir * creature.dna.speed * 0.5;
+        } else {
+            velocity.linvel = Vec3::ZERO;
         }
     }
 }
@@ -329,8 +420,8 @@ impl Plugin for MercyResonancePlugin {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            creature_weather_reactions_system,
-            creature_behavior_cycle,
+            advanced_creature_ai_system,
+            creature_movement_system,
             player_breeding_mechanics,
             player_inventory_ui,
             chunk_manager,
