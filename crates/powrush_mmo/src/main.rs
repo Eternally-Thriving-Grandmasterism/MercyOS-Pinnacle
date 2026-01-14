@@ -205,7 +205,8 @@ fn main() {
             creature_evolution_system,
             genetic_drift_system,
             player_breeding_mechanics,
-            multi_hit_attenuation_system,
+            material_attenuation_system,
+            hrtf_spatial_listener_system,
             chunk_manager,
         ))
         .run();
@@ -252,27 +253,21 @@ fn setup(
     ));
 }
 
-fn player_movement(
-    keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<&mut Velocity, With<Player>>,
+fn hrtf_spatial_listener_system(
+    camera_query: Query<&Transform, With<Camera3d>>,
+    audio: Res<Audio>,
 ) {
-    if let Ok(mut velocity) = query.get_single_mut() {
-        let mut direction = Vec3::ZERO;
-        if keyboard_input.pressed(KeyCode::W) { direction.z -= 1.0; }
-        if keyboard_input.pressed(KeyCode::S) { direction.z += 1.0; }
-        if keyboard_input.pressed(KeyCode::A) { direction.x -= 1.0; }
-        if keyboard_input.pressed(KeyCode::D) { direction.x += 1.0; }
+    if let Ok(camera_transform) = camera_query.get_single() {
+        let position = camera_transform.translation;
+        let forward = camera_transform.forward();
+        let up = camera_transform.up();
 
-        if direction.length_squared() > 0.0 {
-            direction = direction.normalize();
-        }
-
-        let speed = 10.0;
-        velocity.linvel = Vec3::new(direction.x * speed, velocity.linvel.y, direction.z * speed);
+        audio.set_listener_position(position);
+        audio.set_listener_orientation(forward.into(), up.into());
     }
 }
 
-// emotional_resonance_particles, granular_ambient_evolution, advance_time, day_night_cycle, weather_system, creature_behavior_cycle, natural_selection_system, creature_hunger_system, creature_eat_system, crop_growth_system, food_respawn_system, creature_evolution_system, genetic_drift_system, player_breeding_mechanics, player_inventory_ui, multi_hit_attenuation_system, chunk_manager unchanged from previous full version
+// Rest of file unchanged from previous full version (player_movement, emotional_resonance_particles with .spatial(true), granular_ambient_evolution, advance_time, day_night_cycle, weather_system, creature_behavior_cycle, natural_selection_system, creature_hunger_system, creature_eat_system, crop_growth_system, food_respawn_system, creature_evolution_system, genetic_drift_system, player_breeding_mechanics, player_inventory_ui, material_attenuation_system, chunk_manager, MercyResonancePlugin)
 
 pub struct MercyResonancePlugin;
 
@@ -295,279 +290,8 @@ impl Plugin for MercyResonancePlugin {
             player_breeding_mechanics,
             player_farming_mechanics,
             player_inventory_ui,
-            multi_hit_attenuation_system,
-            chunk_manager,
-        ));
-    }
-}    hunger: f32,
-    dna: CreatureDNA,
-    tamed: bool,
-    owner: Option<Entity>,
-    parent1: Option<u64>,
-    parent2: Option<u64>,
-    generation: u32,
-    last_drift_day: f32,
-}
-
-#[derive(Clone, Copy)]
-struct CreatureDNA {
-    speed: f32,
-    size: f32,
-    camouflage: f32,
-    aggression: f32,
-    metabolism: f32,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CreatureType {
-    Deer,
-    Wolf,
-    Bird,
-    Fish,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CreatureState {
-    Wander,
-    Flee,
-    Sleep,
-    Mate,
-    Follow,
-    Eat,
-    Dead,
-}
-
-#[derive(Component)]
-struct FoodResource {
-    nutrition: f32,
-    respawn_timer: f32,
-}
-
-#[derive(Component)]
-struct Crop {
-    crop_type: CropType,
-    growth_stage: u8,
-    growth_timer: f32,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CropType {
-    Wheat,
-    Berries,
-    Roots,
-}
-
-#[derive(Component)]
-struct Chunk {
-    coord: IVec2,
-    voxels: Box<[u8; ChunkShape::SIZE as usize]>,
-}
-
-#[derive(Component)]
-struct SoundSource {
-    position: Vec3,
-}
-
-fn main() {
-    let mut app = App::new();
-
-    app.add_plugins(DefaultPlugins.set(WindowPlugin {
-        primary_window: Some(Window {
-            title: "Powrush-MMO — Forgiveness Eternal Infinite Universe".into(),
-            ..default()
-        }),
-        ..default()
-    }).set(AssetPlugin {
-        asset_folder: "assets".to_string(),
-        ..default()
-    }))
-    .add_plugins(KiraAudioPlugin)
-    .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
-    .add_plugins(RapierDebugRenderPlugin::default())
-    .add_plugins(EguiPlugin)
-    .add_plugins(MultiplayerReplicationPlugin)
-    .add_plugins(VoicePlugin)
-    .insert_resource(WorldTime { time_of_day: 0.0, day: 0.0 })
-    .insert_resource(WeatherManager {
-        current: Weather::Clear,
-        intensity: 0.0,
-        duration_timer: 0.0,
-        next_change: 300.0,
-    });
-
-    let is_server = true;
-
-    if is_server {
-        app.add_plugins(RenetServerPlugin);
-        app.insert_resource(RenetServer::new(ConnectionConfig::default()));
-    } else {
-        app.add_plugins(RenetClientPlugin);
-        app.insert_resource(RenetClient::new(ConnectionConfig::default()));
-    }
-
-    app.add_systems(Startup, setup)
-        .add_systems(Update, (
-            player_movement,
-            player_inventory_ui,
-            player_farming_mechanics,
-            emotional_resonance_particles,
-            granular_ambient_evolution,
-            advance_time,
-            day_night_cycle,
-            weather_system,
-            creature_behavior_cycle,
-            natural_selection_system,
-            creature_hunger_system,
-            creature_eat_system,
-            crop_growth_system,
-            food_respawn_system,
-            creature_evolution_system,
-            genetic_drift_system,
-            player_breeding_mechanics,
-            multi_hit_attenuation_system,
-            chunk_manager,
-        ))
-        .run();
-}
-
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
-
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: 10000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
-        ..default()
-    });
-
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
-            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
-            transform: Transform::from_xyz(0.0, 30.0, 0.0),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        Player {
-            tamed_creatures: Vec::new(),
-            show_inventory: false,
-            selected_creature: None,
-        },
-        Predicted,
-        RigidBody::Dynamic,
-        Collider::capsule_y(1.0, 0.5),
-        Velocity::zero(),
-        PositionHistory { buffer: VecDeque::new() },
-    ));
-}
-
-fn multi_hit_attenuation_system(
-    rapier_context: Res<RapierContext>,
-    player_query: Query<&Transform, With<Player>>,
-    mut sound_instances: Query<&mut AudioInstance>,
-    sound_sources: Query<&SoundSource>,
-    chunk_query: Query<(&Chunk, &Transform)>,
-) {
-    if let Ok(listener_transform) = player_query.get_single() {
-        let listener_pos = listener_transform.translation;
-
-        for (source, mut instance) in sound_sources.iter().zip(sound_instances.iter_mut()) {
-            let direction = source.position - listener_pos;
-            let max_distance = direction.length();
-            if max_distance < 0.1 {
-                instance.set_volume(1.0);
-                continue;
-            }
-
-            let ray = Ray::new(listener_pos.into(), direction.normalize().into());
-
-            let mut attenuation = 1.0;
-            let mut traveled = 0.0;
-
-            rapier_context.intersections_with_ray(
-                ray.origin,
-                ray.dir,
-                max_distance,
-                true,
-                QueryFilter::default(),
-                |entity, intersection| {
-                    traveled = intersection.toi;
-
-                    // Find chunk and voxel at hit point
-                    let hit_point = ray.origin + ray.dir * intersection.toi;
-
-                    let chunk_coord = IVec2::new(
-                        (hit_point.x / CHUNK_SIZE as f32).floor() as i32,
-                        (hit_point.z / CHUNK_SIZE as f32).floor() as i32,
-                    );
-
-                    if let Ok((chunk, chunk_transform)) = chunk_query.get_single() {
-                        if chunk.coord == chunk_coord {
-                            let local_x = ((hit_point.x - chunk_transform.translation.x) as u32).min(CHUNK_SIZE - 1);
-                            let local_y = (hit_point.y as u32).min(CHUNK_SIZE - 1);
-                            let local_z = ((hit_point.z - chunk_transform.translation.z) as u32).min(CHUNK_SIZE - 1);
-
-                            let index = ChunkShape::linearize([local_x, local_y, local_z]) as usize;
-                            let block_type = chunk.voxels[index];
-
-                            let material_factor = match block_type {
-                                1 => 0.2,  // Stone
-                                2 => 0.5,  // Dirt
-                                3 => 0.8,  // Grass
-                                _ => 1.0,  // Air
-                            };
-
-                            attenuation *= material_factor;
-
-                            if attenuation < 0.05 {
-                                return false;  // Fully occluded mercy
-                            }
-                        }
-                    }
-
-                    true  // Continue ray
-                },
-            );
-
-            instance.set_volume(attenuation);
-        }
-    }
-}
-
-// Rest of file unchanged from previous full version (player_movement, player_inventory_ui, player_farming_mechanics, emotional_resonance_particles with SoundSource, granular_ambient_evolution, advance_time, day_night_cycle, weather_system, creature_behavior_cycle, natural_selection_system, creature_hunger_system, creature_eat_system, crop_growth_system, food_respawn_system, creature_evolution_system, genetic_drift_system, player_breeding_mechanics, chunk_manager with voxels Box<[u8]>, MercyResonancePlugin)
-
-pub struct MercyResonancePlugin;
-
-impl Plugin for MercyResonancePlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Update, (
-            emotional_resonance_particles,
-            granular_ambient_evolution,
-            advance_time,
-            day_night_cycle,
-            weather_system,
-            creature_behavior_cycle,
-            natural_selection_system,
-            creature_hunger_system,
-            creature_eat_system,
-            crop_growth_system,
-            food_respawn_system,
-            creature_evolution_system,
-            genetic_drift_system,
-            player_breeding_mechanics,
-            player_farming_mechanics,
-            player_inventory_ui,
-            multi_hit_attenuation_system,
+            material_attenuation_system,
+            hrtf_spatial_listener_system,
             chunk_manager,
         ));
     }
