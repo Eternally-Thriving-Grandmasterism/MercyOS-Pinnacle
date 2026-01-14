@@ -25,8 +25,6 @@ use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_d
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
-const MAX_RAY_BOUNCES: usize = 5;
-const SPEED_OF_SOUND: f32 = 343.0;
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -151,7 +149,6 @@ struct Chunk {
 #[derive(Component)]
 struct SoundSource {
     position: Vec3,
-    samples: Vec<f32>,  // Current frame mercy
 }
 
 #[derive(Component)]
@@ -230,8 +227,6 @@ fn main() {
             hrtf_convolution_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
-            acoustic_raytracing_system,
-            vr_body_avatar_system,
             chunk_manager,
         ))
         .run();
@@ -241,7 +236,6 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    xr_session: Option<Res<XrSession>>,
 ) {
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -278,128 +272,34 @@ fn setup(
         PositionHistory { buffer: VecDeque::new() },
     )).id();
 
-    // Full VR body avatar mercy — visible limbs + IK targets
-    let arm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.8, resolution: 16 }));
-    let hand_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.2 }));
-
-    let skin_material = materials.add(Color::rgb(0.9, 0.7, 0.6).into());
-
-    // Left arm + hand target
-    let left_arm = commands.spawn((
-        PbrBundle {
-            mesh: arm_mesh.clone(),
-            material: skin_material.clone(),
-            transform: Transform::from_xyz(-0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        LeftArm,
-        PlayerBodyPart,
-    )).id();
-
-    commands.spawn((
-        PbrBundle {
-            mesh: hand_mesh.clone(),
-            material: skin_material.clone(),
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        LeftHandTarget,
-    )).set_parent(left_arm);
-
-    // Right arm + hand target
-    let right_arm = commands.spawn((
-        PbrBundle {
-            mesh: arm_mesh,
-            material: skin_material.clone(),
-            transform: Transform::from_xyz(0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        RightArm,
-        PlayerBodyPart,
-    )).id();
-
-    commands.spawn((
-        PbrBundle {
-            mesh: hand_mesh,
-            material: skin_material,
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        RightHandTarget,
-    )).set_parent(right_arm);
-
-    // Legs unchanged...
-
-    // Head separate for VR tracking mercy
     commands.spawn((
         Transform::from_xyz(0.0, 1.8, 0.0),
         GlobalTransform::default(),
         PlayerHead,
     )).set_parent(player_body);
-
-    // XR session override mercy
-    if let Some(session) = xr_session {
-        // Future: bind head/hand poses
-    }
 }
 
-fn acoustic_raytracing_system(
-    rapier_context: Res<RapierContext>,
-    listener_query: Query<&Transform, With<PlayerHead>>,
-    sources: Query<&SoundSource>,
-    audio: Res<Audio>,
+fn dynamic_head_tracking(
+    mut head_query: Query<&mut Transform, With<PlayerHead>>,
+    mouse_motion: EventReader<MouseMotion>,
     time: Res<Time>,
 ) {
-    if let Ok(listener_transform) = listener_query.get_single() {
-        let listener_pos = listener_transform.translation;
+    let mut head_transform = head_query.single_mut();
 
-        for source in &sources {
-            let mut current_pos = source.position;
-            let mut energy = 1.0;
-            let mut delay = 0.0;
-
-            for bounce in 0..MAX_RAY_BOUNCES {
-                let direction = listener_pos - current_pos;
-                let distance = direction.length();
-                if distance < 1.0 {
-                    break;
-                }
-
-                let ray = Ray::new(current_pos.into(), direction.normalize().into());
-
-                if let Some((_, toi)) = rapier_context.cast_ray(ray.origin, ray.dir, distance, true, QueryFilter::default()) {
-                    let hit_point = ray.origin + ray.dir * toi;
-                    current_pos = hit_point.into();
-
-                    delay += toi / SPEED_OF_SOUND;
-                    energy *= 0.6;  // Reflection loss mercy
-
-                    if energy < 0.05 {
-                        break;
-                    }
-                } else {
-                    delay += distance / SPEED_OF_SOUND;
-                    break;
-                }
-            }
-
-            // Spawn delayed echo mercy
-            let echo_samples = vec![0.0; 48000];  // Placeholder — future source samples
-            let echo = StaticSoundData::from_samples(echo_samples, 48000, StaticSoundSettings::default());
-
-            audio.play(echo)
-                .with_volume(energy)
-                .with_playback_rate(1.0)  // Doppler separate mercy
-                .delay(delay)
-                .spatial(true)
-                .with_position(source.position)
-                .handle();
-        }
+    let sensitivity = 0.002;
+    let mut delta = Vec2::ZERO;
+    for event in mouse_motion.read() {
+        delta += event.delta;
     }
+
+    let yaw = -delta.x * sensitivity;
+    let pitch = -delta.y * sensitivity.clamp(-0.1, 0.1);
+
+    let current = head_transform.rotation;
+    let yaw_quat = Quat::from_rotation_y(yaw);
+    let pitch_quat = Quat::from_rotation_x(pitch);
+
+    head_transform.rotation = yaw_quat * current * pitch_quat;
 }
 
 // Rest of file unchanged from previous full version
@@ -428,11 +328,8 @@ impl Plugin for MercyResonancePlugin {
             material_attenuation_system,
             hrtf_convolution_system,
             dynamic_head_tracking,
-            vr_body_avatar_system,
-            hand_ik_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
-            acoustic_raytracing_system,
             chunk_manager,
         ));
     }
