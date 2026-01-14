@@ -9,8 +9,10 @@ path = "src/main.rs"
 
 [dependencies]
 mercy_core.workspace = true
-bevy = { version = "0.13", features = ["dynamic", "wgpu", "ogg"] }  # Explicit ogg audio eternal
+bevy = { version = "0.13", features = ["dynamic", "wgpu", "ogg"] }
 bevy_renet = "0.0.9"
+bevy_kira_audio = { version = "0.18", features = ["ogg"] }  # Real-time procedural audio eternal
 noise = "0.8"
 rand.workspace = true
 tokio.workspace = true
+kira = "0.8"  # Core dynamic audio engine
