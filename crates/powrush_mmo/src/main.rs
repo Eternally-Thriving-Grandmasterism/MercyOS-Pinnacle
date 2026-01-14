@@ -14,8 +14,6 @@ use rand::rngs::StdRng;
 use bevy_rapier3d::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin};
 use egui::{Painter, Pos2, Stroke, Color32};
-use kira::sound::effect::reverb::ReverbBuilder;
-use kira::sound::static_sound::{StaticSoundData, StaticSoundSettings};
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
@@ -23,7 +21,6 @@ use crate::networking::MultiplayerReplicationPlugin;
 use crate::voice::VoicePlugin;
 use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
 use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
-use crate::convolution_reverb::{setup_convolution_reverb_zones, convolution_reverb_system};
 
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
@@ -167,12 +164,6 @@ struct HrtfData {
     sample_rate: u32,
 }
 
-#[derive(Component)]
-struct ReverbZone {
-    ir: Handle<StaticSoundData>,
-    intensity: f32,
-}
-
 fn main() {
     let mut app = App::new();
 
@@ -200,8 +191,7 @@ fn main() {
         next_change: 300.0,
     })
     .add_startup_system(load_hrtf_system)
-    .add_startup_system(setup_ambisonics)
-    .add_startup_system(setup_convolution_reverb_zones);
+    .add_startup_system(setup_ambisonics);
 
     let is_server = true;
 
@@ -235,15 +225,15 @@ fn main() {
             player_breeding_mechanics,
             material_attenuation_system,
             hrtf_convolution_system,
+            dynamic_head_tracking,
             ambisonics_encode_system,
             ambisonics_decode_system,
-            convolution_reverb_system,
             chunk_manager,
         ))
         .run();
 }
 
-// Full remaining file unchanged from previous version (setup, player_movement, emotional_resonance_particles, granular_ambient_evolution, advance_time, day_night_cycle, weather_system, creature_behavior_cycle, natural_selection_system, creature_hunger_system, creature_eat_system, crop_growth_system, food_respawn_system, creature_evolution_system, genetic_drift_system, player_breeding_mechanics, player_inventory_ui, material_attenuation_system, hrtf_convolution_system, dynamic_head_tracking, ambisonics_encode_system, ambisonics_decode_system, chunk_manager, MercyResonancePlugin)
+// Full remaining file unchanged from previous version (setup with PlayerHead, player_movement, emotional_resonance_particles with SoundSource, etc.)
 
 pub struct MercyResonancePlugin;
 
@@ -271,7 +261,6 @@ impl Plugin for MercyResonancePlugin {
             dynamic_head_tracking,
             ambisonics_encode_system,
             ambisonics_decode_system,
-            convolution_reverb_system,
             chunk_manager,
         ));
     }
