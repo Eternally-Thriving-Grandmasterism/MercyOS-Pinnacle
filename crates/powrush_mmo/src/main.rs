@@ -29,6 +29,7 @@ use crate::hand_ik::{fabrik_constrained, trik_two_bone};
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
+const YEAR_LENGTH_DAYS: f32 = 365.0;
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -81,6 +82,286 @@ struct Player {
 
 #[derive(Component)]
 struct Creature {
+    creature_type: CreatureType,
+    state: CreatureState,
+    wander_timer: f32,
+    age: f32,
+    health: f32,
+    hunger: f32,
+    dna: CreatureDNA,
+    tamed: bool,
+    owner: Option<Entity>,
+    parent1: Option<u64>,
+    parent2: Option<u64>,
+    generation: u32,
+    last_drift_day: f32,
+}
+
+#[derive(Clone, Copy)]
+struct CreatureDNA {
+    speed: f32,
+    size: f32,
+    camouflage: f32,
+    aggression: f32,
+    metabolism: f32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CreatureType {
+    Deer,
+    Wolf,
+    Bird,
+    Fish,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CreatureState {
+    Wander,
+    Flee,
+    Sleep,
+    Mate,
+    Follow,
+    Eat,
+    Dead,
+}
+
+#[derive(Component)]
+struct FoodResource {
+    nutrition: f32,
+    respawn_timer: f32,
+}
+
+#[derive(Component)]
+struct Crop {
+    crop_type: CropType,
+    growth_stage: u8,
+    growth_timer: f32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CropType {
+    Wheat,
+    Berries,
+    Roots,
+}
+
+#[derive(Component)]
+struct Chunk {
+    coord: IVec2,
+    voxels: Box<[u8; ChunkShape::SIZE as usize]>,
+}
+
+#[derive(Component)]
+struct SoundSource {
+    position: Vec3,
+}
+
+#[derive(Component)]
+struct PlayerHead;
+
+#[derive(Component)]
+struct PlayerBodyPart;
+
+#[derive(Component)]
+struct LeftUpperArm;
+
+#[derive(Component)]
+struct LeftForearm;
+
+#[derive(Component)]
+struct RightUpperArm;
+
+#[derive(Component)]
+struct RightForearm;
+
+#[derive(Component)]
+struct LeftHandTarget;
+
+#[derive(Component)]
+struct RightHandTarget;
+
+#[derive(Resource)]
+struct HrtfResource {
+    pub data: HrtfData,
+}
+
+struct HrtfData {
+    sofa: SofaFile,
+    sample_rate: u32,
+}
+
+fn main() {
+    let mut app = App::new();
+
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: "Powrush-MMO — Forgiveness Eternal Infinite Universe".into(),
+            ..default()
+        }),
+        ..default()
+    }).set(AssetPlugin {
+        asset_folder: "assets".to_string(),
+        ..default()
+    }))
+    .add_plugins(KiraAudioPlugin)
+    .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+    .add_plugins(RapierDebugRenderPlugin::default())
+    .add_plugins(EguiPlugin)
+    .add_plugins(MultiplayerReplicationPlugin)
+    .add_plugins(VoicePlugin)
+    .insert_resource(WorldTime { time_of_day: 0.0, day: 0.0 })
+    .insert_resource(WeatherManager {
+        current: Weather::Clear,
+        intensity: 0.0,
+        duration_timer: 0.0,
+        next_change: 300.0,
+    });
+
+    let is_server = true;
+
+    if is_server {
+        app.add_plugins(RenetServerPlugin);
+        app.insert_resource(RenetServer::new(ConnectionConfig::default()));
+    } else {
+        app.add_plugins(RenetClientPlugin);
+        app.insert_resource(RenetClient::new(ConnectionConfig::default()));
+    }
+
+    app.add_systems(Startup, setup)
+        .add_systems(Update, (
+            player_movement,
+            player_inventory_ui,
+            emotional_resonance_particles,
+            granular_ambient_evolution,
+            advance_time,
+            day_night_cycle,
+            creature_seasonal_behavior_cycle,
+            creature_behavior_cycle,
+            player_breeding_mechanics,
+            chunk_manager,
+        ))
+        .run();
+}
+
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
+
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            illuminance: 10000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
+        ..default()
+    });
+
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
+            transform: Transform::from_xyz(0.0, 30.0, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        Player {
+            tamed_creatures: Vec::new(),
+            show_inventory: false,
+            selected_creature: None,
+        },
+        Predicted,
+        RigidBody::Dynamic,
+        Collider::capsule_y(1.0, 0.5),
+        Velocity::zero(),
+        PositionHistory { buffer: VecDeque::new() },
+    ));
+}
+
+fn advance_time(
+    mut time: ResMut<WorldTime>,
+    game_time: Res<Time>,
+) {
+    time.time_of_day += game_time.delta_seconds() / DAY_LENGTH_SECONDS * 24.0;
+    if time.time_of_day >= 24.0 {
+        time.time_of_day -= 24.0;
+        time.day += 1.0;
+    }
+}
+
+fn get_current_season(world_time: &WorldTime) -> Season {
+    let year_progress = (world_time.day % YEAR_LENGTH_DAYS) / YEAR_LENGTH_DAYS;
+    match (year_progress * 4.0) as u32 {
+        0 => Season::Spring,
+        1 => Season::Summer,
+        2 => Season::Autumn,
+        _ => Season::Winter,
+    }
+}
+
+fn creature_seasonal_behavior_cycle(
+    mut creature_query: Query<&mut Creature>,
+    world_time: Res<WorldTime>,
+    time: Res<Time>,
+) {
+    let season = get_current_season(&world_time);
+
+    for mut creature in &mut creature_query {
+        match season {
+            Season::Spring => {
+                // Breeding season mercy — higher mate chance
+                creature.hunger -= time.delta_seconds() * 0.1;  // Abundant food
+                if rand::thread_rng().gen_bool(0.05) {
+                    creature.state = CreatureState::Mate;
+                }
+            }
+            Season::Summer => {
+                // Peak activity mercy
+                creature.wander_timer = 5.0;  // More active
+                creature.aggression = creature.dna.aggression * 1.2;
+            }
+            Season::Autumn => {
+                // Foraging/storage mercy
+                creature.hunger -= time.delta_seconds() * 0.15;  // Plenty food
+                creature.state = CreatureState::Eat;
+            }
+            Season::Winter => {
+                // Hibernation/slow mercy
+                creature.health -= time.delta_seconds() * 0.05;  // Cold stress
+                creature.hunger += time.delta_seconds() * 0.05;  // Slower metabolism
+                if creature.health < 0.5 {
+                    creature.state = CreatureState::Sleep;  // Hibernate mercy
+                }
+            }
+        }
+    }
+}
+
+// Rest of file unchanged from previous full version
+
+pub struct MercyResonancePlugin;
+
+impl Plugin for MercyResonancePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, (
+            emotional_resonance_particles,
+            granular_ambient_evolution,
+            advance_time,
+            day_night_cycle,
+            creature_seasonal_behavior_cycle,
+            creature_behavior_cycle,
+            player_breeding_mechanics,
+            player_inventory_ui,
+            chunk_manager,
+        ));
+    }
+}struct Creature {
     creature_type: CreatureType,
     state: CreatureState,
     wander_timer: f32,
