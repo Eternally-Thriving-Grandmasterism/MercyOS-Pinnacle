@@ -68,7 +68,7 @@ struct WeatherManager {
 struct Player {
     tamed_creatures: Vec<Entity>,
     show_inventory: bool,
-    breeding_selection: [Option<Entity>; 2],
+    selected_creature: Option<Entity>,
 }
 
 #[derive(Component)]
@@ -81,6 +81,8 @@ struct Creature {
     dna: CreatureDNA,
     tamed: bool,
     owner: Option<Entity>,
+    parent1: Option<u64>,
+    parent2: Option<u64>,
 }
 
 #[derive(Clone, Copy)]
@@ -198,7 +200,7 @@ fn setup(
         Player {
             tamed_creatures: Vec::new(),
             show_inventory: false,
-            breeding_selection: [None, None],
+            selected_creature: None,
         },
         Predicted,
         RigidBody::Dynamic,
@@ -213,9 +215,6 @@ fn player_inventory_ui(
     keyboard_input: Res<Input<KeyCode>>,
     mut player_query: Query<&mut Player>,
     creature_query: Query<&Creature>,
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::I) {
         if let Ok(mut player) = player_query.get_single_mut() {
@@ -233,21 +232,10 @@ fn player_inventory_ui(
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         for &creature_entity in &player.tamed_creatures {
                             if let Ok(creature) = creature_query.get(creature_entity) {
-                                let selected1 = player.breeding_selection[0] == Some(creature_entity);
-                                let selected2 = player.breeding_selection[1] == Some(creature_entity);
-                                let selected = selected1 || selected2;
-
+                                let selected = player.selected_creature == Some(creature_entity);
                                 if ui.selectable_label(selected, format!("{:?} — Age {:.0} days", creature.creature_type, creature.age / 10.0)).clicked() {
                                     if let Ok(mut player) = player_query.get_single_mut() {
-                                        if selected1 {
-                                            player.breeding_selection[0] = None;
-                                        } else if selected2 {
-                                            player.breeding_selection[1] = None;
-                                        } else if player.breeding_selection[0].is_none() {
-                                            player.breeding_selection[0] = Some(creature_entity);
-                                        } else if player.breeding_selection[1].is_none() {
-                                            player.breeding_selection[1] = Some(creature_entity);
-                                        }
+                                        player.selected_creature = Some(creature_entity);
                                     }
                                 }
                             }
@@ -256,59 +244,35 @@ fn player_inventory_ui(
 
                     ui.separator();
 
-                    // Breeding Preview Panel
-                    if player.breeding_selection[0].is_some() && player.breeding_selection[1].is_some() {
-                        ui.heading("Breeding Preview — Potential Offspring");
+                    if let Some(selected_entity) = player.selected_creature {
+                        if let Ok(creature) = creature_query.get(selected_entity) {
+                            ui.heading("Selected Creature Lineage Tree");
 
-                        let parent1 = creature_query.get(player.breeding_selection[0].unwrap()).unwrap();
-                        let parent2 = creature_query.get(player.breeding_selection[1].unwrap()).unwrap();
+                            fn build_lineage_tree(
+                                creature_entity: Entity,
+                                creature_query: &Query<&Creature>,
+                                depth: usize,
+                                ui: &mut egui::Ui,
+                            ) {
+                                if let Ok(creature) = creature_query.get(creature_entity) {
+                                    let indent = "  ".repeat(depth);
+                                    ui.label(format!("{}└ {:?} (Age {:.0}, Health {:.1})", indent, creature.creature_type, creature.age / 10.0, creature.health));
+                                    ui.label(format!("{}  Speed: {:.1} | Size: {:.2} | Camo: {:.2} | Agg: {:.2}", indent, creature.dna.speed, creature.dna.size, creature.dna.camouflage, creature.dna.aggression));
 
-                        let avg_speed = (parent1.dna.speed + parent2.dna.speed) / 2.0;
-                        let avg_size = (parent1.dna.size + parent2.dna.size) / 2.0;
-                        let avg_camouflage = (parent1.dna.camouflage + parent2.dna.camouflage) / 2.0;
-                        let avg_aggression = (parent1.dna.aggression + parent2.dna.aggression) / 2.0;
-
-                        ui.label("Average DNA (with mutation variance):");
-                        ui.add(egui::ProgressBar::new(avg_speed / 15.0).text(format!("Speed: {:.1} (±1.0)", avg_speed)));
-                        ui.add(egui::ProgressBar::new(avg_size / 2.0).text(format!("Size: {:.2} (±0.2)", avg_size)));
-                        ui.add(egui::ProgressBar::new(avg_camouflage).text(format!("Camouflage: {:.2} (±0.1)", avg_camouflage)));
-                        ui.add(egui::ProgressBar::new(avg_aggression).text(format!("Aggression: {:.2} (±0.1)", avg_aggression)));
-
-                        if ui.button("Breed Selected").clicked() {
-                            // Spawn offspring mercy
-                            let child_dna = CreatureDNA {
-                                speed: avg_speed + rand::thread_rng().gen_range(-1.0..1.0),
-                                size: avg_size + rand::thread_rng().gen_range(-0.2..0.2),
-                                camouflage: avg_camouflage + rand::thread_rng().gen_range(-0.1..0.1),
-                                aggression: avg_aggression + rand::thread_rng().gen_range(-0.1..0.1),
-                            };
-
-                            let spawn_pos = Vec3::new(0.0, 5.0, 0.0);  // Near player placeholder
-
-                            commands.spawn((
-                                PbrBundle {
-                                    mesh: meshes.add(Mesh::from(shape::Cube { size: child_dna.size })),
-                                    material: materials.add(Color::rgb(child_dna.camouflage, 0.5, 1.0 - child_dna.camouflage).into()),
-                                    transform: Transform::from_translation(spawn_pos),
-                                    visibility: Visibility::Visible,
-                                    ..default()
-                                },
-                                Creature {
-                                    creature_type: parent1.creature_type,
-                                    state: CreatureState::Follow,
-                                    wander_timer: 5.0,
-                                    age: 0.0,
-                                    health: 1.0,
-                                    dna: child_dna,
-                                    tamed: true,
-                                    owner: Some(player_query.single().0),
-                                },
-                                Velocity(Vec3::ZERO),
-                            ));
-
-                            if let Ok(mut player) = player_query.get_single_mut() {
-                                player.breeding_selection = [None, None];
+                                    if let Some(p1) = creature.parent1 {
+                                        if let Ok(parent) = creature_query.get(Entity::from_bits(p1)) {
+                                            build_lineage_tree(parent.id(), creature_query, depth + 1, ui);
+                                        }
+                                    }
+                                    if let Some(p2) = creature.parent2 {
+                                        if let Ok(parent) = creature_query.get(Entity::from_bits(p2)) {
+                                            build_lineage_tree(parent.id(), creature_query, depth + 1, ui);
+                                        }
+                                    }
+                                }
                             }
+
+                            build_lineage_tree(selected_entity, &creature_query, 0, ui);
                         }
                     }
 
@@ -322,7 +286,7 @@ fn player_inventory_ui(
     }
 }
 
-// Rest of file unchanged from previous full version (player_movement, creature_behavior_cycle, creature_evolution_system, player_breeding_mechanics simplified, chunk_manager, etc.)
+// Rest of file unchanged from previous full version (player_movement, creature_behavior_cycle, creature_evolution_system with parent tracking, player_breeding_mechanics setting parent IDs, chunk_manager, etc.)
 
 pub struct MercyResonancePlugin;
 
@@ -336,6 +300,7 @@ impl Plugin for MercyResonancePlugin {
             weather_system,
             creature_behavior_cycle,
             creature_evolution_system,
+            player_breeding_mechanics,
             player_inventory_ui,
             chunk_manager,
         ));
