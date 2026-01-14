@@ -145,7 +145,7 @@ fn remote_interpolation(
     mut query: Query<(&mut Transform, &PositionHistory), Without<Predicted>>,
     time: Res<Time>,
 ) {
-    let render_time = time.elapsed_seconds_f64() - 0.1;  // 100ms delay mercy
+    let render_time = time.elapsed_seconds_f64() - 0.1;
 
     for (mut transform, history) in &mut query {
         if history.buffer.len() >= 2 {
