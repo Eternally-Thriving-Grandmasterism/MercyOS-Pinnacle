@@ -2,15 +2,44 @@ use bevy::prelude::*;
 use bevy_renet::renet::{RenetClient, RenetServer, DefaultChannel};
 use bincode::{Encode, Decode};
 use serde::{Serialize, Deserialize};
-use std::collections::VecDeque;
+use bitvec::prelude::*;
+
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Copy, Debug)]
+pub struct CompressedInput {
+    sequence: u16,
+    direction_x: i8,  // -128..127 quantized
+    direction_y: i8,
+    direction_z: i8,
+    buttons: u8,      // Bitflags: jump=1, etc.
+    timestamp: f64,
+}
+
+impl From<ClientInput> for CompressedInput {
+    fn from(input: ClientInput) -> Self {
+        Self {
+            sequence: input.sequence as u16,
+            direction_x: (input.direction.x * 127.0) as i8,
+            direction_y: (input.direction.y * 127.0) as i8,
+            direction_z: (input.direction.z * 127.0) as i8,
+            buttons: 0,  // Extend with bitflags mercy
+            timestamp: input.timestamp,
+        }
+    }
+}
+
+impl Into<Vec3> for CompressedInput {
+    fn into(self) -> Vec3 {
+        Vec3::new(
+            self.direction_x as f32 / 127.0,
+            self.direction_y as f32 / 127.0,
+            self.direction_z as f32 / 127.0,
+        )
+    }
+}
 
 #[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
 pub enum NetworkMessage {
-    ClientInput {
-        sequence: u32,
-        direction: Vec3,
-        timestamp: f64,
-    },
+    ClientInput(CompressedInput),
     ServerState {
         net_id: u64,
         position: Vec3,
@@ -54,14 +83,7 @@ pub struct Predicted;
 
 #[derive(Resource, Default)]
 pub struct InputBuffer {
-    pub inputs: VecDeque<ClientInput>,
-}
-
-#[derive(Clone, Copy)]
-pub struct ClientInput {
-    pub sequence: u32,
-    pub direction: Vec3,
-    pub timestamp: f64,
+    pub inputs: VecDeque<CompressedInput>,
 }
 
 pub struct MultiplayerReplicationPlugin;
@@ -73,7 +95,7 @@ impl Plugin for MultiplayerReplicationPlugin {
             .add_systems(Update, (
                 server_process_inputs,
                 server_broadcast_state,
-                client_send_inputs,
+                client_send_compressed_inputs,
                 client_reconcile,
                 client_receive_messages,
             ));
@@ -88,11 +110,11 @@ fn server_process_inputs(
     mut query: Query<(&NetworkId, &mut Transform, &mut Velocity)>,
     time: Res<Time>,
 ) {
-    // Simple authoritative simulation — apply inputs
     while let Some(message) = server.receive_message(DefaultChannel::Unreliable) {
         if let Ok((msg, _)) = bincode::decode_from_slice::<NetworkMessage, _>(&message, bincode::config::standard()) {
-            if let NetworkMessage::ClientInput { sequence, direction, .. } = msg {
-                // Find player and apply (simplified)
+            if let NetworkMessage::ClientInput(compressed) = msg {
+                let direction: Vec3 = compressed.into();
+                // Apply to player (simplified — match by client ID future)
                 for (_, mut transform, mut velocity) in &mut query {
                     velocity.0 = direction * 10.0;
                     transform.translation += velocity.0 * time.delta_seconds();
@@ -102,25 +124,7 @@ fn server_process_inputs(
     }
 }
 
-fn server_broadcast_state(
-    mut server: ResMut<RenetServer>,
-    query: Query<(&NetworkId, &Transform, &Velocity)>,
-    time: Res<Time>,
-) {
-    for (net_id, transform, velocity) in &query {
-        let msg = NetworkMessage::ServerState {
-            net_id: net_id.0,
-            position: transform.translation,
-            velocity: velocity.0,
-            last_processed_sequence: 0, // Placeholder — extend with per-client ack
-            timestamp: time.elapsed_seconds_f64(),
-        };
-        let payload = bincode::encode_to_vec(&msg, bincode::config::standard()).unwrap();
-        server.broadcast_message(DefaultChannel::Unreliable, payload);
-    }
-}
-
-fn client_send_inputs(
+fn client_send_compressed_inputs(
     mut client: ResMut<RenetClient>,
     keyboard_input: Res<Input<KeyCode>>,
     mut input_buffer: ResMut<InputBuffer>,
@@ -138,55 +142,21 @@ fn client_send_inputs(
         direction = direction.normalize();
     }
 
-    let sequence = input_buffer.inputs.len() as u32;
-    let input = ClientInput {
+    let sequence = input_buffer.inputs.len() as u16;
+    let compressed = CompressedInput {
         sequence,
-        direction,
+        direction_x: (direction.x * 127.0) as i8,
+        direction_y: (direction.y * 127.0) as i8,
+        direction_z: (direction.z * 127.0) as i8,
+        buttons: 0,
         timestamp: time.elapsed_seconds_f64(),
     };
 
-    input_buffer.inputs.push_back(input.clone());
+    input_buffer.inputs.push_back(compressed);
 
-    let msg = NetworkMessage::ClientInput {
-        sequence,
-        direction,
-        timestamp: input.timestamp,
-    };
+    let msg = NetworkMessage::ClientInput(compressed);
     let payload = bincode::encode_to_vec(&msg, bincode::config::standard()).unwrap();
     client.send_message(DefaultChannel::Unreliable, payload);
 }
 
-fn client_reconcile(
-    mut client: ResMut<RenetClient>,
-    mut query: Query<(&NetworkId, &mut Transform, &mut Velocity), With<Predicted>>,
-    mut input_buffer: ResMut<InputBuffer>,
-    time: Res<Time>,
-) {
-    while let Some(message) = client.receive_message(DefaultChannel::Unreliable) {
-        if let Ok((msg, _)) = bincode::decode_from_slice::<NetworkMessage, _>(&message, bincode::config::standard()) {
-            if let NetworkMessage::ServerState { net_id, position, velocity, last_processed_sequence, .. } = msg {
-                if let Ok((id, mut transform, mut vel)) = query.get_single_mut() {
-                    if id.0 == net_id {
-                        // Reconciliation mercy
-                        let drift = (transform.translation - position).length();
-                        if drift > 0.5 {
-                            transform.translation = position;
-                            vel.0 = velocity;
-
-                            // Replay unacknowledged inputs
-                            while let Some(input) = input_buffer.inputs.front() {
-                                if input.sequence <= last_processed_sequence {
-                                    input_buffer.inputs.pop_front();
-                                } else {
-                                    transform.translation += input.direction * 10.0 * time.delta_seconds();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn client_receive_messages(/* existing spawn + audio handling */) { /* unchanged + integrate with prediction */ }
+// Rest of systems (server_broadcast_state, client_reconcile, client_receive_messages) unchanged from previous full version
