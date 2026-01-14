@@ -26,10 +26,9 @@ fn main() {
         ..default()
     }))
     .add_plugins(KiraAudioPlugin)
-    .add_plugins(MultiplayerReplicationPlugin)
-    .insert_resource(NextNetworkId::default());
+    .add_plugins(MultiplayerReplicationPlugin);
 
-    let is_server = true; // Toggle for testing
+    let is_server = true;
 
     if is_server {
         app.add_plugins(RenetServerPlugin);
@@ -40,9 +39,69 @@ fn main() {
     }
 
     app.add_systems(Startup, setup)
-        .add_systems(Update, (player_movement, emotional_resonance_particles, granular_ambient_evolution))
+        .add_systems(Update, (player_movement, emotional_resonance_particles, granular_ambient_evolution, dead_reckoning))
         .run();
 }
 
-// Full setup, player_movement, emotional_resonance_particles, granular_ambient_evolution, MercyResonancePlugin unchanged from previous full version
-// Local player spawn includes NetworkId(0) temporary
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    // Ground, light unchanged...
+
+    // Local player spawn
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
+            transform: Transform::from_xyz(0.0, 5.0, 0.0),
+            ..default()
+        },
+        Player,
+        Velocity(Vec3::ZERO),
+    ));
+
+    // Resources unchanged...
+}
+
+#[derive(Component)]
+struct Player;
+
+#[derive(Component)]
+struct Velocity(Vec3);
+
+fn player_movement(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut query: Query<(&mut Transform, &mut Velocity), With<Player>>,
+    time: Res<Time>,
+) {
+    if let Ok((mut transform, mut velocity)) = query.get_single_mut() {
+        let mut direction = Vec3::ZERO;
+        if keyboard_input.pressed(KeyCode::W) { direction.z -= 1.0; }
+        if keyboard_input.pressed(KeyCode::S) { direction.z += 1.0; }
+        if keyboard_input.pressed(KeyCode::A) { direction.x -= 1.0; }
+        if keyboard_input.pressed(KeyCode::D) { direction.x += 1.0; }
+        if keyboard_input.pressed(KeyCode::Space) { direction.y += 1.0; }
+        if keyboard_input.pressed(KeyCode::ShiftLeft) { direction.y -= 1.0; }
+
+        if direction.length_squared() > 0.0 {
+            direction = direction.normalize();
+        }
+
+        let speed = 10.0;
+        velocity.0 = direction * speed;
+        transform.translation += velocity.0 * time.delta_seconds();
+    }
+}
+
+fn dead_reckoning(
+    mut query: Query<(&mut Transform, &Velocity), Without<Player>>,
+    time: Res<Time>,
+) {
+    for (mut transform, velocity) in &mut query {
+        transform.translation += velocity.0 * time.delta_seconds();
+    }
+}
+
+// emotional_resonance_particles, granular_ambient_evolution, MercyResonancePlugin unchanged
