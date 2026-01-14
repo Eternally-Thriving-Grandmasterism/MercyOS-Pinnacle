@@ -37,17 +37,20 @@ pub fn ccd_ik_constrained(
                 continue;
             }
 
-            let angle = current_dir.angle_between(target_dir);
+            let mut angle = current_dir.angle_between(target_dir);
             let axis = cross.normalize();
-
-            let mut rotation = Quat::from_axis_angle(axis, angle);
 
             // Apply constraint mercy
             if i < constraints.len() {
                 let (min, max) = constraints[i];
-                let clamped_angle = angle.clamp(min, max);
-                rotation = Quat::from_axis_angle(axis, clamped_angle);
+                if angle < min {
+                    angle = min;
+                } else if angle > max {
+                    angle = max;
+                }
             }
+
+            let rotation = Quat::from_axis_angle(axis, angle);
 
             // Rotate child chain
             for j in (i + 1)..=end_idx {
