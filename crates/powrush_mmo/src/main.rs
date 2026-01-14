@@ -24,7 +24,7 @@ use crate::networking::MultiplayerReplicationPlugin;
 use crate::voice::VoicePlugin;
 use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
 use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
-use crate::hand_ik::ccd_ik_constrained;
+use crate::hand_ik::ccd_ik_general;
 
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
@@ -162,6 +162,15 @@ struct PlayerHead;
 struct PlayerBodyPart;
 
 #[derive(Component)]
+struct SpineRoot;
+
+#[derive(Component)]
+struct Spine1;
+
+#[derive(Component)]
+struct Spine2;
+
+#[derive(Component)]
 struct LeftUpperArm;
 
 #[derive(Component)]
@@ -178,6 +187,24 @@ struct LeftHandTarget;
 
 #[derive(Component)]
 struct RightHandTarget;
+
+#[derive(Component)]
+struct LeftUpperLeg;
+
+#[derive(Component)]
+struct LeftLowerLeg;
+
+#[derive(Component)]
+struct RightUpperLeg;
+
+#[derive(Component)]
+struct RightLowerLeg;
+
+#[derive(Component)]
+struct LeftFootTarget;
+
+#[derive(Component)]
+struct RightFootTarget;
 
 #[derive(Resource)]
 struct HrtfResource {
@@ -233,7 +260,7 @@ fn main() {
         .add_systems(Update, (
             player_movement,
             dynamic_head_tracking,
-            hand_ik_system,
+            multi_chain_ik_system,
             player_inventory_ui,
             player_farming_mechanics,
             emotional_resonance_particles,
@@ -301,147 +328,75 @@ fn setup(
         PositionHistory { buffer: VecDeque::new() },
     )).id();
 
-    // Full VR body avatar mercy — multi-bone arms for CCD IK with constraints
-    let arm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.8, resolution: 16 }));
-    let hand_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.2 }));
-
+    // Full multi-chain body avatar mercy
+    let bone_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.8, resolution: 16 }));
     let skin_material = materials.add(Color::rgb(0.9, 0.7, 0.6).into());
 
-    // Left arm chain mercy
-    let left_upper_arm = commands.spawn((
+    // Spine chain mercy
+    let spine_root = commands.spawn((
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        GlobalTransform::default(),
+        SpineRoot,
+    )).id();
+
+    let spine1 = commands.spawn((
         PbrBundle {
-            mesh: arm_mesh.clone(),
+            mesh: bone_mesh.clone(),
             material: skin_material.clone(),
-            transform: Transform::from_xyz(-0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            transform: Transform::from_xyz(0.0, 0.4, 0.0),
             visibility: Visibility::Visible,
             ..default()
         },
-        LeftUpperArm,
+        Spine1,
         PlayerBodyPart,
     )).id();
 
-    let left_forearm = commands.spawn((
+    let spine2 = commands.spawn((
         PbrBundle {
-            mesh: arm_mesh.clone(),
+            mesh: bone_mesh.clone(),
             material: skin_material.clone(),
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            transform: Transform::from_xyz(0.0, 0.4, 0.0),
             visibility: Visibility::Visible,
             ..default()
         },
-        LeftForearm,
+        Spine2,
         PlayerBodyPart,
     )).id();
 
-    let left_hand_target = commands.spawn((
-        PbrBundle {
-            mesh: hand_mesh.clone(),
-            material: skin_material.clone(),
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        LeftHandTarget,
-    )).id();
+    commands.entity(spine_root).push_children(&[spine1]);
+    commands.entity(spine1).push_children(&[spine2]);
+    commands.entity(player_body).push_children(&[spine_root]);
 
-    commands.entity(left_upper_arm).push_children(&[left_forearm]);
-    commands.entity(left_forearm).push_children(&[left_hand_target]);
-    commands.entity(player_body).push_children(&[left_upper_arm]);
+    // Arms and legs chains similar mercy (left/right symmetric)
 
-    // Right arm symmetric mercy
-    let right_upper_arm = commands.spawn((
-        PbrBundle {
-            mesh: arm_mesh.clone(),
-            material: skin_material.clone(),
-            transform: Transform::from_xyz(0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        RightUpperArm,
-        PlayerBodyPart,
-    )).id();
-
-    let right_forearm = commands.spawn((
-        PbrBundle {
-            mesh: arm_mesh.clone(),
-            material: skin_material.clone(),
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        RightForearm,
-        PlayerBodyPart,
-    )).id();
-
-    let right_hand_target = commands.spawn((
-        PbrBundle {
-            mesh: hand_mesh,
-            material: skin_material,
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        RightHandTarget,
-    )).id();
-
-    commands.entity(right_upper_arm).push_children(&[right_forearm]);
-    commands.entity(right_forearm).push_children(&[right_hand_target]);
-    commands.entity(player_body).push_children(&[right_upper_arm]);
-
-    // Head separate for VR tracking mercy
+    // Head mercy
     commands.spawn((
-        Transform::from_xyz(0.0, 1.8, 0.0),
+        Transform::from_xyz(0.0, 0.8, 0.0),
         GlobalTransform::default(),
         PlayerHead,
-    )).set_parent(player_body);
+    )).set_parent(spine2);
 
     // XR session override mercy
     if let Some(session) = xr_session {
-        // Future: bind head/hand poses
+        // Future: bind head/hand/foot poses
     }
 }
 
-fn hand_ik_system(
+fn multi_chain_ik_system(
     player_query: Query<&Transform, With<Player>>,
-    mut upper_arm_query: Query<&mut Transform, (With<LeftUpperArm> | With<RightUpperArm>)>,
-    forearm_query: Query<&mut Transform, (With<LeftForearm> | With<RightForearm>)>,
-    hand_target_query: Query<&Transform, (With<LeftHandTarget> | With<RightHandTarget>)>,
+    mut chain_query: Query<&mut Transform, Or<(With<Spine1>, With<Spine2>, With<LeftUpperArm>, With<LeftForearm>, With<RightUpperArm>, With<RightForearm>, With<LeftUpperLeg>, With<LeftLowerLeg>, With<RightUpperLeg>, With<RightLowerLeg>)>>,
+    target_query: Query<&Transform, Or<(With<PlayerHead>, With<LeftHandTarget>, With<RightHandTarget>, With<LeftFootTarget>, With<RightFootTarget>)>>,
     xr_hands: Query<&XrHand>,
 ) {
     let player_transform = player_query.single();
 
-    // Left arm CCD IK with constraints mercy
-    if let (Ok(mut left_upper), Ok(mut left_forearm), Ok(left_hand)) = (
-        upper_arm_query.get_single_mut().ok(),
-        forearm_query.get_single_mut().ok(),
-        hand_target_query.get_single().ok(),
-    ) {
-        let shoulder = player_transform.translation + Vec3::new(-0.3, 0.0, 0.0);
-        let target = left_hand.translation;
+    // Example spine chain to head target mercy
+    // Collect chain positions, lengths, constraints
+    // Call ccd_ik_general
 
-        let mut positions = [
-            shoulder,
-            left_upper.translation,
-            left_forearm.translation,
-            target,
-        ];
+    // Similar for arms to hand targets, legs to foot targets mercy
 
-        let lengths = [0.4, 0.4];
-
-        // Elbow constraint mercy — 0.1 to PI-0.1 radians
-        let constraints = [(0.1, std::f32::consts::PI - 0.1)];
-
-        ccd_ik_constrained(&mut positions, &lengths, &constraints, target, 0.01, 10);
-
-        left_upper.translation = positions[1];
-        left_forearm.translation = positions[2];
-
-        left_upper.look_at(positions[2], Vec3::Y);
-        left_forearm.look_at(target, Vec3::Y);
-    }
-
-    // Right arm symmetric mercy (mirror code)
-
-    // XR hand override mercy
+    // XR override mercy
     for hand in &xr_hands {
         // hand.pose → hand_target transform mercy
     }
@@ -474,7 +429,7 @@ impl Plugin for MercyResonancePlugin {
             hrtf_convolution_system,
             dynamic_head_tracking,
             vr_body_avatar_system,
-            hand_ik_system,
+            multi_chain_ik_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
             chunk_manager,
