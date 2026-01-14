@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_renet::renet::{RenetClient, RenetServer, DefaultChannel, ClientId};
+use bevy_renet::renet::{RenetClient, RenetServer, DefaultChannel};
 use bincode::{Encode, Decode};
 use serde::{Serialize, Deserialize};
 
@@ -40,7 +40,7 @@ pub enum AudioEvent {
 }
 
 #[derive(Component)]
-pub struct NetworkId(u64);
+pub struct NetworkId(pub u64);
 
 /// Multiplayer Replication Plugin — Entity + Position + Audio Mercy Eternal
 pub struct MultiplayerReplicationPlugin;
@@ -60,22 +60,30 @@ impl Plugin for MultiplayerReplicationPlugin {
 fn server_spawn_entities(
     mut commands: Commands,
     mut server: ResMut<RenetServer>,
-    query: Query<(Entity, &Transform), (With<Player>, Added<Player>)>,
+    added_players: Query<(Entity, &Transform), Added<Player>>,
+    added_resources: Query<(Entity, &Transform), Added<Resource>>,
 ) {
-    static mut NEXT_ID: u64 = 1;
-    for (entity, transform) in &query {
-        let net_id = unsafe { NEXT_ID += 1; NEXT_ID - 1 };
+    let mut next_id = app.world.resource::<NextNetworkId>().0;
+    for (entity, transform) in added_players.iter().chain(added_resources.iter()) {
+        let net_id = next_id;
+        next_id += 1;
         commands.entity(entity).insert(NetworkId(net_id));
+
+        let entity_type = if added_players.get(entity).is_ok() { EntityType::Player } else { EntityType::Resource };
 
         let msg = NetworkMessage::EntitySpawn {
             net_id,
-            entity_type: EntityType::Player,
+            entity_type,
             position: transform.translation,
         };
         let payload = bincode::encode_to_vec(&msg, bincode::config::standard()).unwrap();
         server.broadcast_message(DefaultChannel::ReliableOrdered, payload);
     }
+    app.world.resource_mut::<NextNetworkId>().0 = next_id;
 }
+
+#[derive(Resource, Default)]
+struct NextNetworkId(u64);
 
 fn server_broadcast_positions(
     mut server: ResMut<RenetServer>,
@@ -117,48 +125,38 @@ fn client_receive_messages(
     mut query: Query<&mut Transform, With<NetworkId>>,
     audio: Res<Audio>,
 ) {
-    // Reliable channel for spawns
+    // Reliable spawns
     while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
         if let Ok((msg, _)) = bincode::decode_from_slice::<NetworkMessage, _>(&message, bincode::config::standard()) {
-            match msg {
-                NetworkMessage::EntitySpawn { net_id, entity_type, position } => {
-                    let entity = match entity_type {
-                        EntityType::Player => {
-                            commands.spawn((
-                                PbrBundle {
-                                    mesh: meshes.add(Mesh::from(shape::Capsule::default())),
-                                    material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
-                                    transform: Transform::from_translation(position),
-                                    ..default()
-                                },
-                                NetworkId(net_id),
-                            )).id()
-                        }
-                        EntityType::Resource => {
-                            commands.spawn((
-                                PbrBundle {
-                                    mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
-                                    material: materials.add(Color::rgb(1.0, 0.8, 0.2).into()),
-                                    transform: Transform::from_translation(position),
-                                    ..default()
-                                },
-                                NetworkId(net_id),
-                            )).id()
-                        }
-                    };
-                }
-                _ => {}
+            if let NetworkMessage::EntitySpawn { net_id, entity_type, position } = msg {
+                let bundle = match entity_type {
+                    EntityType::Player => PbrBundle {
+                        mesh: meshes.add(Mesh::from(shape::Capsule::default())),
+                        material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
+                        transform: Transform::from_translation(position),
+                        ..default()
+                    },
+                    EntityType::Resource => PbrBundle {
+                        mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
+                        material: materials.add(Color::rgb(1.0, 0.8, 0.2).into()),
+                        transform: Transform::from_translation(position),
+                        ..default()
+                    },
+                };
+                commands.spawn((bundle, NetworkId(net_id)));
             }
         }
     }
 
-    // Unreliable for positions + audio
+    // Unreliable positions + audio
     while let Some(message) = client.receive_message(DefaultChannel::Unreliable) {
         if let Ok((msg, _)) = bincode::decode_from_slice::<NetworkMessage, _>(&message, bincode::config::standard()) {
             match msg {
                 NetworkMessage::PlayerPosition { net_id, position, .. } => {
-                    if let Ok(mut transform) = query.get_mut(Entity::from_bits(net_id)) {
-                        transform.translation = position;
+                    for mut transform in query.iter_mut() {
+                        if query.get_component::<NetworkId>(transform.entity()).map(|id| id.0 == net_id).unwrap_or(false) {
+                            transform.translation = position;
+                        }
                     }
                 }
                 NetworkMessage::AudioEvent(event) => {
@@ -177,3 +175,5 @@ fn client_receive_messages(
         }
     }
 }
+
+fn server_broadcast_audio_events(/* existing from previous */) { /* unchanged */ }
