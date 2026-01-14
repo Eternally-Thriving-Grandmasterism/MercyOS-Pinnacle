@@ -151,6 +151,7 @@ enum CropType {
 struct Chunk {
     coord: IVec2,
     voxels: Box<[u8; ChunkShape::SIZE as usize]>,
+    biome: Biome,  // Biome tag mercy eternal
 }
 
 #[derive(Component)]
@@ -320,8 +321,8 @@ fn get_up_recovery_system(
     mut player_query: Query<(Entity, &mut Player, &mut AnimationPlayer, &Transform), With<Player>>,
     ragdoll_query: Query<&Transform, With<RagdollRoot>>,
     animations: Res<PlayerAnimations>,
-    rapier_context: Res<RapierContext>,
     chunk_query: Query<(&Chunk, &Transform)>,
+    rapier_context: Res<RapierContext>,
 ) {
     for (player_entity, mut player, mut animation_player, player_transform) in &mut player_query {
         if player.in_ragdoll && keyboard_input.just_pressed(KeyCode::Space) {
@@ -338,50 +339,46 @@ fn get_up_recovery_system(
                 animations.get_up_side.clone()
             };
 
-            // Terrain influence mercy — raycast down for ground voxel
+            // Biome-specific influence mercy
             let mut speed_multiplier = 1.0;
-            let mut particle_color = Color::rgb(0.2, 0.8, 0.2);  // Grass green mercy
+            let mut slip_chance = 0.0;
+            let mut particle_color = Color::rgb(0.2, 0.8, 0.2);  // Default grass mercy
 
-            let ray = Ray::new(player_transform.translation.into(), Vec3::NEG_Y.into());
-            if let Some((_, toi)) = rapier_context.cast_ray(ray.origin, ray.dir, 2.0, true, QueryFilter::default()) {
-                let hit_point = ray.origin + ray.dir * toi;
-
-                // Find chunk + voxel mercy (simplified single chunk)
-                if let Ok((chunk, chunk_transform)) = chunk_query.get_single() {
-                    let local = hit_point - chunk_transform.translation.into();
-                    let lx = (local.x as u32).min(CHUNK_SIZE - 1);
-                    let ly = (local.y as u32).min(CHUNK_SIZE - 1);
-                    let lz = (local.z as u32).min(CHUNK_SIZE - 1);
-
-                    let index = ChunkShape::linearize([lx, ly, lz]) as usize;
-                    let voxel = chunk.voxels[index];
-
-                    match voxel {
-                        1 => {  // Stone/rock mercy
-                            speed_multiplier = 0.6;
-                            particle_color = Color::rgb(0.5, 0.5, 0.5);
-                        }
-                        2 => {  // Dirt/mud mercy
-                            speed_multiplier = 0.7;
-                            particle_color = Color::rgb(0.6, 0.4, 0.2);
-                        }
-                        3 => {  // Grass mercy
+            // Find current chunk biome mercy
+            if let Ok((chunk, chunk_transform)) = chunk_query.get_single() {
+                let player_local = player_transform.translation - chunk_transform.translation;
+                if player_local.x.abs() < CHUNK_SIZE as f32 / 2.0 && player_local.z.abs() < CHUNK_SIZE as f32 / 2.0 {
+                    match chunk.biome {
+                        Biome::Plains => {
                             speed_multiplier = 1.0;
-                            particle_color = Color::rgb(0.2, 0.8, 0.2);
+                            particle_color = Color::rgb(0.8, 0.8, 0.2);  // Dry grass mercy
                         }
-                        4 => {  // Ice/snow mercy
+                        Biome::Forest => {
+                            speed_multiplier = 1.2;  // Soft leaves mercy
+                            particle_color = Color::rgb(0.1, 0.6, 0.1);
+                        }
+                        Biome::Desert => {
+                            speed_multiplier = 0.7;  // Sand slow mercy
+                            particle_color = Color::rgb(0.9, 0.8, 0.5);
+                        }
+                        Biome::Tundra => {
                             speed_multiplier = 0.5;
-                            particle_color = Color::rgb(0.8, 0.9, 1.0);
-                            // Slip chance mercy — 30% fall back to ragdoll
-                            if rand::thread_rng().gen_bool(0.3) {
-                                player.in_ragdoll = true;
-                                // Respawn ragdoll mercy
-                                continue;
-                            }
+                            slip_chance = 0.4;  // Snow slippery mercy
+                            particle_color = Color::rgb(0.9, 0.9, 1.0);
                         }
-                        _ => speed_multiplier = 1.0,
+                        Biome::Ocean => {
+                            speed_multiplier = 0.3;  // Water float mercy
+                            particle_color = Color::rgb(0.2, 0.6, 0.9);
+                        }
                     }
                 }
+            }
+
+            // Slip chance mercy
+            if slip_chance > 0.0 && rand::thread_rng().gen_bool(slip_chance) {
+                player.in_ragdoll = true;
+                // Slip sound + particles mercy
+                continue;
             }
 
             // Despawn ragdoll mercy
@@ -389,7 +386,7 @@ fn get_up_recovery_system(
                 commands.entity(ragdoll.entity()).despawn_recursive();
             }
 
-            // Crossfade with terrain speed + particles mercy
+            // Crossfade with biome speed + particles mercy
             animation_player.play_with_transition(variant, Duration::from_secs_f32(0.3))
                 .set_speed(speed_multiplier)
                 .repeat(false);
@@ -397,8 +394,8 @@ fn get_up_recovery_system(
             player.in_ragdoll = false;
             player.recovering = true;
 
-            // Terrain particles mercy
-            // Spawn colored dirt/mud/ice sparkles
+            // Biome particles mercy
+            // Spawn colored leaf/sand/snow/water sparkles
         }
 
         if player.recovering && animation_player.is_finished() {
