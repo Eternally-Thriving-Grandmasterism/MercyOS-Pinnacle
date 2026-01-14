@@ -1,20 +1,34 @@
 use bevy::prelude::*;
-use bevy::render::experimental::occlusion_culling::OcclusionCullingPlugin;  // Native GPU occlusion eternal
+use bevy::render::view::Visibility;
 use bevy_kira_audio::{Audio, AudioControl, AudioInstance, AudioPlugin as KiraAudioPlugin};
 use bevy_kira_audio::prelude::*;
 use bevy_renet::RenetClientPlugin;
 use bevy_renet::RenetServerPlugin;
 use renet::{RenetClient, RenetServer, ConnectionConfig};
 use mercy_core::PhiloticHive;
-use noise::{NoiseFn, Perlin};
-use rand::Rng;
+use noise::{NoiseFn, Perlin, Seedable};
+use rand::{Rng, SeedableRng};
+use rand::rngs::StdRng;
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
 use crate::networking::MultiplayerReplicationPlugin;
 
+const CHUNK_SIZE: f32 = 100.0;
+const VIEW_CHUNKS: i32 = 5;  // Radius in chunks
 const LOD_HIGH_THRESHOLD: f32 = 50.0;
-const LOD_LOW_THRESHOLD: f32 = 500.0;  // Increased — GPU occlusion handles close hidden mercy
+const LOD_LOW_THRESHOLD: f32 = 500.0;
+
+#[derive(Component)]
+struct Chunk {
+    coord: IVec2,
+}
+
+#[derive(Component)]
+struct LodEntity {
+    high_mesh: Handle<Mesh>,
+    low_mesh: Handle<Mesh>,
+}
 
 fn main() {
     let mut app = App::new();
@@ -30,7 +44,6 @@ fn main() {
         ..default()
     }))
     .add_plugins(KiraAudioPlugin)
-    .add_plugins(OcclusionCullingPlugin)  // Native GPU occlusion culling eternal supreme
     .add_plugins(MultiplayerReplicationPlugin);
 
     let is_server = true;
@@ -49,7 +62,7 @@ fn main() {
             emotional_resonance_particles,
             granular_ambient_evolution,
             remote_interpolation,
-            entity_culling_optimization,  // Complementary far distance mercy
+            chunk_manager,
             lod_mesh_swap,
         ))
         .run();
@@ -60,27 +73,166 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let perlin = Perlin::new(42);
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
 
-    let ground_mesh = meshes.add(shape::Plane::from_size(1000.0).into());
-    let ground_material = materials.add(Color::rgb(0.3, 0.5, 0.3).into());
-
-    commands.spawn(PbrBundle {
-        mesh: ground_mesh,
-        material: ground_material,
-        transform: Transform::from_xyz(0.0, -1.0, 0.0),
-        visibility: Visibility::Visible,
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            illuminance: 10000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
         ..default()
     });
 
     let high_mesh = meshes.add(Mesh::from(shape::Icosphere { radius: 1.0, subdivisions: 5 }));
     let low_mesh = meshes.add(Mesh::from(shape::Cube { size: 2.0 }));
 
+    // Local player
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Capsule::default())),
             material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
             transform: Transform::from_xyz(0.0, 5.0, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        Player,
+        Predicted,
+        Velocity(Vec3::ZERO),
+        PositionHistory { buffer: VecDeque::new() },
+    ));
+}
+
+#[derive(Component)]
+struct Player;
+
+#[derive(Component)]
+struct Predicted;
+
+#[derive(Component)]
+struct Velocity(pub Vec3);
+
+#[derive(Component)]
+struct PositionHistory {
+    pub buffer: VecDeque<(Vec3, f64)>,
+}
+
+fn player_movement(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut query: Query<(&mut Transform, &mut Velocity), (With<Player>, With<Predicted>)>,
+    time: Res<Time>,
+) {
+    if let Ok((mut transform, mut velocity)) = query.get_single_mut() {
+        let mut direction = Vec3::ZERO;
+        if keyboard_input.pressed(KeyCode::W) { direction.z -= 1.0; }
+        if keyboard_input.pressed(KeyCode::S) { direction.z += 1.0; }
+        if keyboard_input.pressed(KeyCode::A) { direction.x -= 1.0; }
+        if keyboard_input.pressed(KeyCode::D) { direction.x += 1.0; }
+        if keyboard_input.pressed(KeyCode::Space) { direction.y += 1.0; }
+        if keyboard_input.pressed(KeyCode::ShiftLeft) { direction.y -= 1.0; }
+
+        if direction.length_squared() > 0.0 {
+            direction = direction.normalize();
+        }
+
+        let speed = 10.0;
+        velocity.0 = direction * speed;
+
+        transform.translation += velocity.0 * time.delta_seconds();
+    }
+}
+
+fn chunk_manager(
+    mut commands: Commands,
+    player_query: Query<&Transform, With<Player>>,
+    chunk_query: Query<(Entity, &Chunk)>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        let player_pos = player_transform.translation;
+        let player_chunk = IVec2::new(
+            (player_pos.x / CHUNK_SIZE).floor() as i32,
+            (player_pos.z / CHUNK_SIZE).floor() as i32,
+        );
+
+        let ground_material = materials.add(Color::rgb(0.3, 0.5, 0.3).into());
+
+        // Spawn new chunks
+        for dx in -VIEW_CHUNKS..=VIEW_CHUNKS {
+            for dz in -VIEW_CHUNKS..=VIEW_CHUNKS {
+                let chunk_coord = player_chunk + IVec2::new(dx, dz);
+                let chunk_exists = chunk_query.iter().any(|(_, chunk)| chunk.coord == chunk_coord);
+
+                if !chunk_exists {
+                    let chunk_x = chunk_coord.x as f32 * CHUNK_SIZE;
+                    let chunk_z = chunk_coord.y as f32 * CHUNK_SIZE;
+
+                    let perlin = Perlin::new(chunk_coord.x as u32 ^ chunk_coord.y as u32);
+
+                    // Chunk ground
+                    commands.spawn((
+                        PbrBundle {
+                            mesh: meshes.add(shape::Plane::from_size(CHUNK_SIZE).into()),
+                            material: ground_material.clone(),
+                            transform: Transform::from_xyz(chunk_x + CHUNK_SIZE / 2.0, 0.0, chunk_z + CHUNK_SIZE / 2.0),
+                            visibility: Visibility::Visible,
+                            ..default()
+                        },
+                        Chunk { coord: chunk_coord },
+                    ));
+
+                    // Procedural resources per chunk — deterministic seed
+                    let mut rng = StdRng::seed_from_u64(((chunk_coord.x as u64) << 32) | chunk_coord.y as u64);
+                    for _ in 0..20 {
+                        let local_x = rng.gen_range(0.0..CHUNK_SIZE);
+                        let local_z = rng.gen_range(0.0..CHUNK_SIZE);
+                        let height = perlin.get([local_x as f64 / 20.0, local_z as f64 / 20.0]) as f32 * 5.0;
+
+                        commands.spawn((
+                            PbrBundle {
+                                mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
+                                material: materials.add(Color::rgb(1.0, 0.8, 0.2).into()),
+                                transform: Transform::from_xyz(chunk_x + local_x, height + 2.0, chunk_z + local_z),
+                                visibility: Visibility::Visible,
+                                ..default()
+                            },
+                            Resource,
+                        ));
+                    }
+                }
+            }
+        }
+
+        // Despawn far chunks mercy
+        for (entity, chunk) in &chunk_query {
+            let chunk_dist = (chunk.coord - player_chunk).as_vec2().length();
+            if chunk_dist > VIEW_CHUNKS as f32 + 1.0 {
+                commands.entity(entity).despawn_recursive();
+            }
+        }
+    }
+}
+
+// remote_interpolation, emotional_resonance_particles, granular_ambient_evolution, lod_mesh_swap unchanged from previous full version
+
+pub struct MercyResonancePlugin;
+
+impl Plugin for MercyResonancePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, (
+            emotional_resonance_particles,
+            granular_ambient_evolution,
+            remote_interpolation,
+            chunk_manager,
+            lod_mesh_swap,
+        ));
+    }
+}            transform: Transform::from_xyz(0.0, 5.0, 0.0),
             visibility: Visibility::Visible,
             ..default()
         },
