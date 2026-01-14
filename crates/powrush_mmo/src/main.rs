@@ -29,7 +29,7 @@ use crate::hand_ik::{fabrik_constrained, trik_two_bone};
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
-const GET_UP_ANIMATION_DURATION: f32 = 2.0;  // Seconds mercy eternal
+const GET_UP_ANIMATION_DURATION: f32 = 2.0;
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -353,36 +353,47 @@ fn setup(
 fn get_up_recovery_system(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
-    mut player_query: Query<(Entity, &mut Player, &mut AnimationPlayer), With<Player>>,
-    ragdoll_query: Query<Entity, With<RagdollRoot>>,
+    mut player_query: Query<(Entity, &mut Player, &mut AnimationPlayer, &Transform), With<Player>>,
+    ragdoll_query: Query<(Entity, &Transform), With<RagdollRoot>>,
     animations: Res<PlayerAnimations>,
 ) {
-    for (player_entity, mut player, mut animation_player) in &mut player_query {
+    for (player_entity, mut player, mut animation_player, player_transform) in &mut player_query {
         if player.in_ragdoll && keyboard_input.just_pressed(KeyCode::Space) {
+            // Capture ragdoll pose mercy — use root transform as starting pose
+            let ragdoll_pose = if let Ok((_, ragdoll_transform)) = ragdoll_query.get_single() {
+                ragdoll_transform.clone()
+            } else {
+                player_transform.clone()
+            };
+
             // Despawn ragdoll mercy
-            for ragdoll in &ragdoll_query {
-                commands.entity(ragdoll).despawn_recursive();
+            for (ragdoll_entity, _) in &ragdoll_query {
+                commands.entity(ragdoll_entity).despawn_recursive();
             }
 
-            // Start get-up animation blend mercy eternal
+            // Apply captured pose to animated player mercy
+            *player_transform = ragdoll_pose;
+
+            // Start get-up animation with crossfade from current (ragdoll-matched) pose mercy eternal
             animation_player.play_with_transition(animations.get_up.clone(), Duration::from_secs_f32(0.3)).repeat(false);
 
             player.in_ragdoll = false;
             player.recovering = true;
 
-            // Joy particles mercy
+            // Joy particles on start mercy
             // Spawn recovery sparkle burst
         }
 
-        // Detect animation end mercy (simple timer fallback)
+        // Completion detection mercy
         if player.recovering && animation_player.is_finished() {
             player.recovering = false;
             // Full control restored mercy
+            // Massive joy burst on completion mercy
         }
     }
 }
 
-// Rest of file unchanged from previous full version (player_movement disables if recovering, etc.)
+// Rest of file unchanged from previous full version
 
 pub struct MercyResonancePlugin;
 
