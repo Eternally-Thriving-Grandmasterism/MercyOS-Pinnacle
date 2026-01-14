@@ -68,6 +68,7 @@ struct WeatherManager {
 struct Player {
     tamed_creatures: Vec<Entity>,
     show_inventory: bool,
+    selected_creature: Option<Entity>,
 }
 
 #[derive(Component)]
@@ -197,6 +198,7 @@ fn setup(
         Player {
             tamed_creatures: Vec::new(),
             show_inventory: false,
+            selected_creature: None,
         },
         Predicted,
         RigidBody::Dynamic,
@@ -210,7 +212,7 @@ fn player_inventory_ui(
     mut contexts: EguiContexts,
     keyboard_input: Res<Input<KeyCode>>,
     mut player_query: Query<&mut Player>,
-    creature_query: Query<(&Creature, &Transform)>,
+    creature_query: Query<&Creature>,
 ) {
     if keyboard_input.just_pressed(KeyCode::I) {
         if let Ok(mut player) = player_query.get_single_mut() {
@@ -221,22 +223,43 @@ fn player_inventory_ui(
     if let Ok(player) = player_query.get_single() {
         if player.show_inventory {
             egui::Window::new("Creature Inventory — Mercy Eternal")
+                .resizable(true)
                 .show(contexts.ctx_mut(), |ui| {
-                    ui.label(format!("Tamed Creatures: {}", player.tamed_creatures.len()));
-                    for &creature_entity in &player.tamed_creatures {
-                        if let Ok((creature, transform)) = creature_query.get(creature_entity) {
-                            ui.label(format!(
-                                "{:?} | Age: {:.0} days | Health: {:.1} | Pos: {:.0},{:.0},{:.0}",
-                                creature.creature_type,
-                                creature.age / 10.0,
-                                creature.health,
-                                transform.translation.x,
-                                transform.translation.y,
-                                transform.translation.z
-                            ));
+                    ui.heading(format!("Tamed: {}", player.tamed_creatures.len()));
+
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        for &creature_entity in &player.tamed_creatures {
+                            if let Ok(creature) = creature_query.get(creature_entity) {
+                                let selected = player.selected_creature == Some(creature_entity);
+                                if ui.selectable_label(selected, format!("{:?} — Age {:.0} days", creature.creature_type, creature.age / 10.0)).clicked() {
+                                    if let Ok(mut player) = player_query.get_single_mut() {
+                                        player.selected_creature = Some(creature_entity);
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    ui.separator();
+
+                    if let Some(selected_entity) = player.selected_creature {
+                        if let Ok(creature) = creature_query.get(selected_entity) {
+                            ui.heading("Selected Creature Stats");
+                            ui.label(format!("Type: {:?}", creature.creature_type));
+                            ui.label(format!("Health: {:.1}", creature.health));
+                            ui.label(format!("Age: {:.0} days", creature.age / 10.0));
+
+                            ui.separator();
+                            ui.heading("DNA Traits");
+
+                            ui.add(egui::ProgressBar::new(creature.dna.speed / 15.0).text("Speed"));
+                            ui.add(egui::ProgressBar::new(creature.dna.size / 2.0).text("Size"));
+                            ui.add(egui::ProgressBar::new(creature.dna.camouflage).text("Camouflage"));
+                            ui.add(egui::ProgressBar::new(creature.dna.aggression).text("Aggression"));
                         }
                     }
-                    if ui.button("Close Inventory").clicked() {
+
+                    if ui.button("Close").clicked() {
                         if let Ok(mut player) = player_query.get_single_mut() {
                             player.show_inventory = false;
                         }
