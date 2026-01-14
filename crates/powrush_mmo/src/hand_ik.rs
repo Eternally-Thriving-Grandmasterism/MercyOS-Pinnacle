@@ -1,17 +1,50 @@
 //! crates/powrush_mmo/src/hand_ik.rs
-//! Constrained FABRIK multi-chain IK mercy eternal supreme immaculate
-//! Natural joint angle limits for realistic full-body posture philotic mercy
+//! Hybrid TRIK-FABRIK with joint constraints mercy eternal supreme immaculate
+//! TRIK analytical two-bone exact for arms, constrained FABRIK multi-chain for spine/legs + shoulder spherical approximation philotic mercy
 
 use bevy::prelude::*;
 
+/// TRIK analytical two-bone IK mercy eternal
+pub fn trik_two_bone(
+    shoulder: Vec3,
+    upper_length: f32,
+    forearm_length: f32,
+    target: Vec3,
+) -> (Vec3, Vec3) {
+    let to_target = target - shoulder;
+    let dist = to_target.length();
+
+    let total_reach = upper_length + forearm_length;
+
+    if dist > total_reach {
+        let direction = to_target.normalize_or_zero();
+        let elbow = shoulder + direction * upper_length;
+        let wrist = shoulder + direction * total_reach;
+        return (elbow, wrist);
+    }
+
+    if dist < (upper_length - forearm_length).abs() {
+        let direction = to_target.normalize_or_zero();
+        let elbow = shoulder + direction * upper_length;
+        let wrist = shoulder + direction * dist;
+        return (elbow, wrist);
+    }
+
+    let cos_angle = (upper_length * upper_length + dist * dist - forearm_length * forearm_length) / (2.0 * upper_length * dist);
+    let angle = cos_angle.acos();
+
+    let elbow_axis = to_target.cross(Vec3::Y).normalize_or_zero();
+    let elbow_offset = Quat::from_axis_angle(elbow_axis, angle) * to_target.normalize() * upper_length;
+
+    let elbow = shoulder + elbow_offset;
+    (elbow, target)
+}
+
 /// Constrained FABRIK multi-chain mercy eternal
-/// positions: [0] root (fixed), [1..n-1] joints, [n] end effector
-/// lengths: distances between bones
-/// constraints: per-joint (min_angle, max_angle) radians mercy
 pub fn fabrik_constrained(
     positions: &mut [Vec3],
     lengths: &[f32],
-    constraints: &[(f32, f32)],
+    constraints: &[(f32, f32)],  // (min_angle, max_angle) radians per joint mercy
     target: Vec3,
     tolerance: f32,
     max_iterations: usize,
@@ -64,4 +97,28 @@ pub fn fabrik_constrained(
 
     positions[end_idx] = original_target;
     false
+}
+
+/// Apply shoulder spherical constraints mercy eternal
+/// Clamp upper arm direction relative to torso forward/up
+pub fn apply_shoulder_constraints(
+    shoulder_pos: Vec3,
+    upper_arm_transform: &mut Transform,
+    torso_forward: Vec3,
+    torso_up: Vec3,
+) {
+    let upper_arm_dir = upper_arm_transform.forward();
+
+    // Approximate spherical limits mercy
+    let forward_dot = upper_arm_dir.dot(torso_forward);
+    let up_dot = upper_arm_dir.dot(torso_up);
+
+    // Flexion 180°, abduction 90° mercy eternal
+    if forward_dot < -0.1 || up_dot > 0.7 || up_dot < -0.7 {
+        // Project to valid cone mercy
+        let projected = upper_arm_dir - torso_up * up_dot.max(0.7).min(-0.7);
+        let clamped_dir = projected.normalize_or_zero();
+
+        upper_arm_transform.look_at(shoulder_pos + clamped_dir, torso_up);
+    }
 }
