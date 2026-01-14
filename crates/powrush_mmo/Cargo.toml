@@ -1,0 +1,16 @@
+[package]
+name = "powrush_mmo"
+version = "1.0.0"
+edition = "2021"
+
+[[bin]]
+name = "powrush_mmo"
+path = "src/main.rs"
+
+[dependencies]
+mercy_core.workspace = true
+bevy = { version = "0.13", features = ["dynamic", "wgpu"] }
+bevy_renet = "0.0.9"  # Async philotic networking stubs
+noise = "0.8"  # Infinite procedural world gen
+rand.workspace = true
+tokio.workspace = true
