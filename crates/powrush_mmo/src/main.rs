@@ -29,9 +29,8 @@ use crate::hand_ik::{fabrik_constrained, trik_two_bone};
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
-const JUMP_IMPULSE: f32 = 8.0;
-const COYOTE_TIME: f32 = 0.1;
-const JUMP_BUFFER_TIME: f32 = 0.2;
+const CLIMB_SPEED: f32 = 3.0;
+const WALL_CHECK_DISTANCE: f32 = 1.0;
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -80,7 +79,362 @@ struct Player {
     tamed_creatures: Vec<Entity>,
     show_inventory: bool,
     selected_creature: Option<Entity>,
-    coyote_timer: f32,
+    climbing: bool,
+    wall_normal: Vec3,
+}
+
+#[derive(Component)]
+struct Creature {
+    creature_type: CreatureType,
+    state: CreatureState,
+    wander_timer: f32,
+    age: f32,
+    health: f32,
+    hunger: f32,
+    dna: CreatureDNA,
+    tamed: bool,
+    owner: Option<Entity>,
+    parent1: Option<u64>,
+    parent2: Option<u64>,
+    generation: u32,
+    last_drift_day: f32,
+}
+
+#[derive(Clone, Copy)]
+struct CreatureDNA {
+    speed: f32,
+    size: f32,
+    camouflage: f32,
+    aggression: f32,
+    metabolism: f32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CreatureType {
+    Deer,
+    Wolf,
+    Bird,
+    Fish,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CreatureState {
+    Wander,
+    Flee,
+    Sleep,
+    Mate,
+    Follow,
+    Eat,
+    Dead,
+}
+
+#[derive(Component)]
+struct FoodResource {
+    nutrition: f32,
+    respawn_timer: f32,
+}
+
+#[derive(Component)]
+struct Crop {
+    crop_type: CropType,
+    growth_stage: u8,
+    growth_timer: f32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CropType {
+    Wheat,
+    Berries,
+    Roots,
+}
+
+#[derive(Component)]
+struct Chunk {
+    coord: IVec2,
+    voxels: Box<[u8; ChunkShape::SIZE as usize]>,
+}
+
+#[derive(Component)]
+struct SoundSource {
+    position: Vec3,
+}
+
+#[derive(Component)]
+struct PlayerHead;
+
+#[derive(Component)]
+struct PlayerBodyPart;
+
+#[derive(Component)]
+struct LeftUpperArm;
+
+#[derive(Component)]
+struct LeftForearm;
+
+#[derive(Component)]
+struct RightUpperArm;
+
+#[derive(Component)]
+struct RightForearm;
+
+#[derive(Component)]
+struct LeftHandTarget;
+
+#[derive(Component)]
+struct RightHandTarget;
+
+#[derive(Resource)]
+struct HrtfResource {
+    pub data: HrtfData,
+}
+
+struct HrtfData {
+    sofa: SofaFile,
+    sample_rate: u32,
+}
+
+fn main() {
+    let mut app = App::new();
+
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: "Powrush-MMO — Forgiveness Eternal Infinite Universe".into(),
+            ..default()
+        }),
+        ..default()
+    }).set(AssetPlugin {
+        asset_folder: "assets".to_string(),
+        ..default()
+    }))
+    .add_plugins(KiraAudioPlugin)
+    .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+    .add_plugins(RapierDebugRenderPlugin::default())
+    .add_plugins(EguiPlugin)
+    .add_plugins(MultiplayerReplicationPlugin)
+    .add_plugins(VoicePlugin)
+    .insert_resource(WorldTime { time_of_day: 0.0, day: 0.0 })
+    .insert_resource(WeatherManager {
+        current: Weather::Clear,
+        intensity: 0.0,
+        duration_timer: 0.0,
+        next_change: 300.0,
+    })
+    .add_startup_system(load_hrtf_system)
+    .add_startup_system(setup_ambisonics);
+
+    let is_server = true;
+
+    if is_server {
+        app.add_plugins(RenetServerPlugin);
+        app.insert_resource(RenetServer::new(ConnectionConfig::default()));
+    } else {
+        app.add_plugins(RenetClientPlugin);
+        app.insert_resource(RenetClient::new(ConnectionConfig::default()));
+    }
+
+    app.add_systems(Startup, setup)
+        .add_systems(Update, (
+            player_movement,
+            wall_climbing_system,
+            dynamic_head_tracking,
+            player_inventory_ui,
+            player_farming_mechanics,
+            emotional_resonance_particles,
+            granular_ambient_evolution,
+            advance_time,
+            day_night_cycle,
+            weather_system,
+            creature_behavior_cycle,
+            natural_selection_system,
+            creature_hunger_system,
+            creature_eat_system,
+            crop_growth_system,
+            food_respawn_system,
+            creature_evolution_system,
+            genetic_drift_system,
+            player_breeding_mechanics,
+            material_attenuation_system,
+            hrtf_convolution_system,
+            ambisonics_encode_system,
+            ambisonics_decode_system,
+            vr_body_avatar_system,
+            chunk_manager,
+        ))
+        .run();
+}
+
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    xr_session: Option<Res<XrSession>>,
+) {
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
+
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            illuminance: 10000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
+        ..default()
+    });
+
+    let player_body = commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
+            transform: Transform::from_xyz(0.0, 30.0, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        Player {
+            tamed_creatures: Vec::new(),
+            show_inventory: false,
+            selected_creature: None,
+            climbing: false,
+            wall_normal: Vec3::ZERO,
+        },
+        Predicted,
+        RigidBody::Dynamic,
+        Collider::capsule_y(1.0, 0.5),
+        Velocity::zero(),
+        PositionHistory { buffer: VecDeque::new() },
+    )).id();
+
+    // Full VR body avatar mercy — visible limbs + IK targets (as before)
+
+    // Head separate for VR tracking mercy
+    commands.spawn((
+        Transform::from_xyz(0.0, 1.8, 0.0),
+        GlobalTransform::default(),
+        PlayerHead,
+    )).set_parent(player_body);
+
+    // XR session override mercy
+    if let Some(session) = xr_session {
+        // Future: bind head/hand poses
+    }
+}
+
+fn player_movement(
+    mut player_query: Query<(&mut Velocity, &mut Player, &Transform), With<Player>>,
+    keyboard_input: Res<Input<KeyCode>>,
+    time: Res<Time>,
+    rapier_context: Res<RapierContext>,
+) {
+    if let Ok((mut velocity, mut player, transform)) = player_query.get_single_mut() {
+        if player.climbing {
+            // Climbing movement mercy
+            let mut direction = Vec3::ZERO;
+            if keyboard_input.pressed(KeyCode::W) {
+                direction += player.wall_normal.cross(transform.right());  // Up along wall mercy
+            }
+            if keyboard_input.pressed(KeyCode::S) {
+                direction -= player.wall_normal.cross(transform.right());
+            }
+
+            if direction.length_squared() > 0.0 {
+                direction = direction.normalize();
+            }
+
+            velocity.linvel = direction * CLIMB_SPEED;
+        } else {
+            // Normal ground movement mercy
+            let mut direction = Vec3::ZERO;
+
+            if keyboard_input.pressed(KeyCode::W) {
+                direction += transform.forward();
+            }
+            if keyboard_input.pressed(KeyCode::S) {
+                direction += transform.back();
+            }
+            if keyboard_input.pressed(KeyCode::A) {
+                direction += transform.left();
+            }
+            if keyboard_input.pressed(KeyCode::D) {
+                direction += transform.right();
+            }
+
+            direction.y = 0.0;
+            if direction.length_squared() > 0.0 {
+                direction = direction.normalize();
+            }
+
+            velocity.linvel.x = direction.x * 8.0;
+            velocity.linvel.z = direction.z * 8.0;
+        }
+    }
+}
+
+fn wall_climbing_system(
+    mut player_query: Query<(&mut Player, &Transform, &mut Velocity), With<Player>>,
+    keyboard_input: Res<Input<KeyCode>>,
+    rapier_context: Res<RapierContext>,
+) {
+    for (mut player, transform, mut velocity) in &mut player_query {
+        let forward = transform.forward();
+        let ray = Ray::new(transform.translation.into(), forward.into());
+
+        if let Some((_, toi, normal)) = rapier_context.cast_ray_and_get_normal(ray.origin, ray.dir, WALL_CHECK_DISTANCE, true, QueryFilter::default()) {
+            let wall_normal = Vec3::from(normal);
+
+            // Climbable if steep mercy
+            if wall_normal.y.abs() < 0.7 {
+                if keyboard_input.pressed(KeyCode::W) {
+                    player.climbing = true;
+                    player.wall_normal = wall_normal;
+                    velocity.linvel.y = 0.0;  // Cancel gravity mercy
+                }
+            } else {
+                player.climbing = false;
+            }
+        } else {
+            player.climbing = false;
+        }
+    }
+}
+
+// Rest of file unchanged from previous full version
+
+pub struct MercyResonancePlugin;
+
+impl Plugin for MercyResonancePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, (
+            emotional_resonance_particles,
+            granular_ambient_evolution,
+            advance_time,
+            day_night_cycle,
+            weather_system,
+            creature_behavior_cycle,
+            natural_selection_system,
+            creature_hunger_system,
+            creature_eat_system,
+            crop_growth_system,
+            food_respawn_system,
+            creature_evolution_system,
+            genetic_drift_system,
+            player_breeding_mechanics,
+            player_farming_mechanics,
+            player_inventory_ui,
+            material_attenuation_system,
+            hrtf_convolution_system,
+            dynamic_head_tracking,
+            vr_body_avatar_system,
+            multi_chain_ik_system,
+            player_movement,
+            wall_climbing_system,
+            ambisonics_encode_system,
+            ambisonics_decode_system,
+            chunk_manager,
+        ));
+    }
+}    coyote_timer: f32,
     jump_buffer_timer: f32,
 }
 
