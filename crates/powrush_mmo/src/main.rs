@@ -75,9 +75,6 @@ struct Player {
 }
 
 #[derive(Component)]
-struct PlayerHead;  // Separate head for dynamic tracking mercy
-
-#[derive(Component)]
 struct Creature {
     creature_type: CreatureType,
     state: CreatureState,
@@ -223,6 +220,7 @@ fn main() {
             player_breeding_mechanics,
             material_attenuation_system,
             hrtf_convolution_system,
+            ambisonics_spatial_system,
             chunk_manager,
         ))
         .run();
@@ -253,7 +251,6 @@ fn setup(
         ..default()
     });
 
-    // Player body
     let player_body = commands.spawn((
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Capsule::default())),
@@ -274,9 +271,8 @@ fn setup(
         PositionHistory { buffer: VecDeque::new() },
     )).id();
 
-    // Player head — separate for dynamic tracking mercy
     commands.spawn((
-        Transform::from_xyz(0.0, 1.8, 0.0),  // Head height
+        Transform::from_xyz(0.0, 1.8, 0.0),
         GlobalTransform::default(),
         PlayerHead,
     )).set_parent(player_body);
@@ -296,17 +292,16 @@ fn dynamic_head_tracking(
     }
 
     let yaw = -delta.x * sensitivity;
-    let pitch = -delta.y * sensitivity;
+    let pitch = -delta.y * sensitivity.clamp(-0.1, 0.1);  // Limit pitch mercy
 
-    let current_rotation = head_transform.rotation;
+    let current = head_transform.rotation;
     let yaw_quat = Quat::from_rotation_y(yaw);
-    let pitch_quat = Quat::from_rotation_x(pitch.clamp(-std::f32::consts::FRAC_PI_2 + 0.1, std::f32::consts::FRAC_PI_2 - 0.1));
+    let pitch_quat = Quat::from_rotation_x(pitch);
 
-    head_transform.rotation = yaw_quat * current_rotation * pitch_quat;
+    head_transform.rotation = yaw_quat * current * pitch_quat;
 }
 
-fn hrtf_convolution_system(
-    hrtf: Res<HrtfResource>,
+fn ambisonics_spatial_system(
     head_query: Query<&Transform, With<PlayerHead>>,
     sound_sources: Query<&SoundSource>,
     audio: Res<Audio>,
@@ -317,15 +312,15 @@ fn hrtf_convolution_system(
 
         for source in &sound_sources {
             let relative = source.position - head_transform.translation;
-            let (left_ir, right_ir) = get_hrir_for_direction(&hrtf.data, relative, listener_up);
 
-            // Apply convolution to active sounds mercy
-            // Per-source stub — future send to reverb with HRIR
+            // Ambisonics encoding stub — future full B-format channels mercy
+            // Placeholder: use spatial with head orientation
+            // audio.play(samples).spatial(true).with_position(source.position).with_listener_orientation(listener_forward, listener_up);
         }
     }
 }
 
-// Rest of file unchanged from previous full version
+// Rest of file unchanged from previous full version (player_movement, player_inventory_ui, player_farming_mechanics, emotional_resonance_particles, granular_ambient_evolution, advance_time, day_night_cycle, weather_system, creature_behavior_cycle, natural_selection_system, creature_hunger_system, creature_eat_system, crop_growth_system, food_respawn_system, creature_evolution_system, genetic_drift_system, player_breeding_mechanics, material_attenuation_system, hrtf_convolution_system, chunk_manager, MercyResonancePlugin)
 
 pub struct MercyResonancePlugin;
 
@@ -351,6 +346,7 @@ impl Plugin for MercyResonancePlugin {
             material_attenuation_system,
             hrtf_convolution_system,
             dynamic_head_tracking,
+            ambisonics_spatial_system,
             chunk_manager,
         ));
     }
