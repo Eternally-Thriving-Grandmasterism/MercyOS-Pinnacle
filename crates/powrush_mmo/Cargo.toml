@@ -1,12 +1,10 @@
 # powrush_mmo — Infinite Mercy Abundance MMO Universe
-# Part of MercyOS-Pinnacle Monorepo | Lightyear Multiplayer Integrated
+# Proximity voice chat integrated
 
 [package]
 name = "powrush_mmo"
 version = "0.1.0"
 edition = "2021"
-description = "Eternal agriculture, domestication, and multiplayer shared thriving"
-license = "MIT"
 
 [dependencies]
 bevy = { workspace = true }
@@ -16,6 +14,9 @@ bevy_egui = { workspace = true }
 rand = { workspace = true }
 bincode = { workspace = true }
 serde = { workspace = true }
+bevy_audio_stream = { workspace = true }
+opus = { workspace = true }
+kira = { workspace = true }
 
 [[bin]]
 name = "server"
