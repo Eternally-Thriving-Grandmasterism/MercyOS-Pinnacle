@@ -148,6 +148,46 @@ enum CropType {
 struct Chunk {
     coord: IVec2,
     voxels: Box<[u8; ChunkShape::SIZE as usize]>,
+    biome: Biome,
+}
+
+#[derive(Component)]
+struct SoundSource {
+    position: Vec3,
+}
+
+#[derive(Component)]
+struct PlayerHead;
+
+#[derive(Component)]
+struct PlayerBodyPart;
+
+#[derive(Component)]
+struct LeftUpperArm;
+
+#[derive(Component)]
+struct LeftForearm;
+
+#[derive(Component)]
+struct RightUpperArm;
+
+#[derive(Component)]
+struct RightForearm;
+
+#[derive(Component)]
+struct LeftHandTarget;
+
+#[derive(Component)]
+struct RightHandTarget;
+
+#[derive(Resource)]
+struct HrtfResource {
+    pub data: HrtfData,
+}
+
+struct HrtfData {
+    sofa: SofaFile,
+    sample_rate: u32,
 }
 
 fn main() {
@@ -168,6 +208,7 @@ fn main() {
     .add_plugins(RapierDebugRenderPlugin::default())
     .add_plugins(EguiPlugin)
     .add_plugins(MultiplayerReplicationPlugin)
+    .add_plugins(VoicePlugin)
     .insert_resource(WorldTime { time_of_day: 0.0, day: 0.0 })
     .insert_resource(WeatherManager {
         current: Weather::Clear,
@@ -194,8 +235,7 @@ fn main() {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            seasonal_biome_weather_system,
-            creature_behavior_cycle,
+            creature_biome_behavior_cycle,
             player_breeding_mechanics,
             chunk_manager,
         ))
@@ -243,78 +283,74 @@ fn setup(
     ));
 }
 
-fn advance_time(
-    mut time: ResMut<WorldTime>,
-    game_time: Res<Time>,
-) {
-    time.time_of_day += game_time.delta_seconds() / DAY_LENGTH_SECONDS * 24.0;
-    if time.time_of_day >= 24.0 {
-        time.time_of_day -= 24.0;
-        time.day += 1.0;
-    }
-}
-
-fn seasonal_biome_weather_system(
-    mut weather: ResMut<WeatherManager>,
-    world_time: Res<WorldTime>,
+fn creature_biome_behavior_cycle(
+    mut creature_query: Query<(&Transform, &mut Creature, &CreatureDNA)>,
     player_query: Query<&Transform, With<Player>>,
     chunk_query: Query<(&Chunk, &Transform)>,
+    time: Res<Time>,
 ) {
-    let season = match (world_time.day % 365.0 / 365.0 * 4.0) as u32 {
-        0 => Season::Spring,
-        1 => Season::Summer,
-        2 => Season::Autumn,
-        _ => Season::Winter,
-    };
-
-    // Find player biome mercy
     let player_pos = player_query.single().translation;
-    let mut current_biome = Biome::Plains;  // Default mercy
 
-    for (chunk, chunk_transform) in &chunk_query {
-        let local = player_pos - chunk_transform.translation;
-        if local.x.abs() < CHUNK_SIZE as f32 / 2.0 && local.z.abs() < CHUNK_SIZE as f32 / 2.0 {
-            current_biome = chunk.biome;
-            break;
-        }
-    }
+    for (creature_transform, mut creature, dna) in &mut creature_query {
+        let creature_pos = creature_transform.translation;
 
-    // Seasonal biome weather probabilities mercy eternal
-    let weather_roll = rand::thread_rng().gen_range(0.0..1.0);
+        // Find current biome mercy
+        let mut current_biome = Biome::Plains;
+        for (chunk, chunk_transform) in &chunk_query {
+            let local = creature_pos - chunk_transform.translation;
+            if local.x.abs() < CHUNK_SIZE as f32 / 2.0 && local.z.abs() < CHUNK_SIZE as f32 / 2.0 {
+                current_biome = chunk.biome;
+                break;
+            }
+        }
 
-    let new_weather = match (season, current_biome) {
-        (Season::Spring, Biome::Forest | Biome::Plains) => {
-            if weather_roll < 0.4 { Weather::Rain } else { Weather::Clear }
+        // Biome-specific behavior modifiers mercy eternal
+        match current_biome {
+            Biome::Plains => {
+                // Open grazing mercy
+                creature.wander_timer -= time.delta_seconds();
+                if creature.wander_timer <= 0.0 {
+                    creature.state = CreatureState::Wander;
+                    creature.wander_timer = 10.0;
+                }
+                // Deer thrive mercy
+                if creature.creature_type == CreatureType::Deer {
+                    creature.hunger -= time.delta_seconds() * 0.1;  // Easy food
+                }
+            }
+            Biome::Forest => {
+                // Camouflage + hide mercy
+                let dist_to_player = (creature_pos - player_pos).length();
+                if dist_to_player < 20.0 {
+                    creature.state = CreatureState::Flee;
+                } else {
+                    creature.state = CreatureState::Sleep;  // Safe hiding mercy
+                }
+                creature.hunger -= time.delta_seconds() * 0.05;  // Berries mercy
+            }
+            Biome::Tundra => {
+                // Huddle for warmth mercy
+                creature.state = CreatureState::Follow;  // Group together
+                creature.health -= time.delta_seconds() * 0.02;  // Cold damage mercy
+            }
+            Biome::Desert => {
+                // Burrow + conserve energy mercy
+                creature.state = CreatureState::Sleep;
+                creature.hunger -= time.delta_seconds() * 0.2;  // Scarce food
+            }
+            Biome::Ocean => {
+                // Swim + fish mercy
+                creature.state = CreatureState::Wander;
+                if creature.creature_type == CreatureType::Fish {
+                    creature.hunger -= time.delta_seconds() * 0.3;  // Abundant food mercy
+                }
+            }
         }
-        (Season::Summer, Biome::Desert) => Weather::Clear,
-        (Season::Summer, _) => {
-            if weather_roll < 0.2 { Weather::Storm } else { Weather::Clear }
-        }
-        (Season::Autumn, _) => {
-            if weather_roll < 0.3 { Weather::Fog } else { Weather::Clear }
-        }
-        (Season::Winter, Biome::Tundra) => {
-            if weather_roll < 0.6 { Weather::Snow } else { Weather::Clear }
-        }
-        (Season::Winter, _) => {
-            if weather_roll < 0.3 { Weather::Snow } else { Weather::Clear }
-        }
-        (_, Biome::Ocean) => {
-            if weather_roll < 0.4 { Weather::Rain } else { Weather::Fog }
-        }
-        _ => Weather::Clear,
-    };
 
-    if new_weather != weather.current {
-        weather.current = new_weather;
-        weather.intensity = rand::thread_rng().gen_range(0.3..1.0);
-        weather.duration_timer = rand::thread_rng().gen_range(120.0..600.0);
-        weather.next_change = weather.duration_timer;
-    } else {
-        weather.next_change -= game_time.delta_seconds();
-        if weather.next_change <= 0.0 {
-            // Change weather mercy
-            weather.current = Weather::Clear;  // Placeholder transition mercy
+        // General hunger/health mercy
+        creature.hunger += time.delta_seconds() * dna.metabolism;
+        if creature.hunger > 1.0 {
+            creature.health -= time.delta_seconds() * 0.1;
         }
     }
 }
@@ -330,8 +366,7 @@ impl Plugin for MercyResonancePlugin {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            seasonal_biome_weather_system,
-            creature_behavior_cycle,
+            creature_biome_behavior_cycle,
             player_breeding_mechanics,
             player_inventory_ui,
             chunk_manager,
