@@ -27,9 +27,140 @@ const DAY_LENGTH_SECONDS: f32 = 120.0;
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Biome {
+    Ocean,
+    Plains,
+    Forest,
+    Desert,
+    Tundra,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Season {
+    Spring,
+    Summer,
+    Autumn,
+    Winter,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Weather {
+    Clear,
+    Rain,
+    Snow,
+    Storm,
+    Fog,
+}
+
 #[derive(Resource)]
-pub struct HrtfResource {
+struct WorldTime {
+    pub time_of_day: f32,
+    pub day: f32,
+}
+
+#[derive(Resource)]
+struct WeatherManager {
+    pub current: Weather,
+    pub intensity: f32,
+    pub duration_timer: f32,
+    pub next_change: f32,
+}
+
+#[derive(Component)]
+struct Player {
+    tamed_creatures: Vec<Entity>,
+    show_inventory: bool,
+    selected_creature: Option<Entity>,
+}
+
+#[derive(Component)]
+struct PlayerHead;  // Separate head for dynamic tracking mercy
+
+#[derive(Component)]
+struct Creature {
+    creature_type: CreatureType,
+    state: CreatureState,
+    wander_timer: f32,
+    age: f32,
+    health: f32,
+    hunger: f32,
+    dna: CreatureDNA,
+    tamed: bool,
+    owner: Option<Entity>,
+    parent1: Option<u64>,
+    parent2: Option<u64>,
+    generation: u32,
+    last_drift_day: f32,
+}
+
+#[derive(Clone, Copy)]
+struct CreatureDNA {
+    speed: f32,
+    size: f32,
+    camouflage: f32,
+    aggression: f32,
+    metabolism: f32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CreatureType {
+    Deer,
+    Wolf,
+    Bird,
+    Fish,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CreatureState {
+    Wander,
+    Flee,
+    Sleep,
+    Mate,
+    Follow,
+    Eat,
+    Dead,
+}
+
+#[derive(Component)]
+struct FoodResource {
+    nutrition: f32,
+    respawn_timer: f32,
+}
+
+#[derive(Component)]
+struct Crop {
+    crop_type: CropType,
+    growth_stage: u8,
+    growth_timer: f32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CropType {
+    Wheat,
+    Berries,
+    Roots,
+}
+
+#[derive(Component)]
+struct Chunk {
+    coord: IVec2,
+    voxels: Box<[u8; ChunkShape::SIZE as usize]>,
+}
+
+#[derive(Component)]
+struct SoundSource {
+    position: Vec3,
+}
+
+#[derive(Resource)]
+struct HrtfResource {
     pub data: HrtfData,
+}
+
+struct HrtfData {
+    sofa: SofaFile,
+    sample_rate: u32,
 }
 
 fn main() {
@@ -73,6 +204,7 @@ fn main() {
     app.add_systems(Startup, setup)
         .add_systems(Update, (
             player_movement,
+            dynamic_head_tracking,
             player_inventory_ui,
             player_farming_mechanics,
             emotional_resonance_particles,
@@ -90,38 +222,110 @@ fn main() {
             genetic_drift_system,
             player_breeding_mechanics,
             material_attenuation_system,
-            hrtf_spatial_system,
+            hrtf_convolution_system,
             chunk_manager,
         ))
         .run();
 }
 
 fn load_hrtf_system(mut commands: Commands) {
-    let hrtf = load_hrtf_sofa("assets/hrtf/example.sofa");  // Path mercy
+    let hrtf = load_hrtf_sofa("assets/hrtf/example.sofa");
     commands.insert_resource(HrtfResource { data: hrtf });
 }
 
-fn hrtf_spatial_system(
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
+
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            illuminance: 10000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
+        ..default()
+    });
+
+    // Player body
+    let player_body = commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
+            transform: Transform::from_xyz(0.0, 30.0, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        Player {
+            tamed_creatures: Vec::new(),
+            show_inventory: false,
+            selected_creature: None,
+        },
+        Predicted,
+        RigidBody::Dynamic,
+        Collider::capsule_y(1.0, 0.5),
+        Velocity::zero(),
+        PositionHistory { buffer: VecDeque::new() },
+    )).id();
+
+    // Player head — separate for dynamic tracking mercy
+    commands.spawn((
+        Transform::from_xyz(0.0, 1.8, 0.0),  // Head height
+        GlobalTransform::default(),
+        PlayerHead,
+    )).set_parent(player_body);
+}
+
+fn dynamic_head_tracking(
+    mut head_query: Query<&mut Transform, With<PlayerHead>>,
+    mouse_motion: EventReader<MouseMotion>,
+    time: Res<Time>,
+) {
+    let mut head_transform = head_query.single_mut();
+
+    let sensitivity = 0.002;
+    let mut delta = Vec2::ZERO;
+    for event in mouse_motion.read() {
+        delta += event.delta;
+    }
+
+    let yaw = -delta.x * sensitivity;
+    let pitch = -delta.y * sensitivity;
+
+    let current_rotation = head_transform.rotation;
+    let yaw_quat = Quat::from_rotation_y(yaw);
+    let pitch_quat = Quat::from_rotation_x(pitch.clamp(-std::f32::consts::FRAC_PI_2 + 0.1, std::f32::consts::FRAC_PI_2 - 0.1));
+
+    head_transform.rotation = yaw_quat * current_rotation * pitch_quat;
+}
+
+fn hrtf_convolution_system(
     hrtf: Res<HrtfResource>,
-    camera_query: Query<&Transform, With<Camera3d>>,
-    sound_sources: Query<(&SoundSource, &AudioInstance)>,  // Placeholder per-source
+    head_query: Query<&Transform, With<PlayerHead>>,
+    sound_sources: Query<&SoundSource>,
     audio: Res<Audio>,
 ) {
-    if let Ok(listener) = camera_query.get_single() {
-        let forward = listener.forward();
-        let up = listener.up();
+    if let Ok(head_transform) = head_query.get_single() {
+        let listener_forward = head_transform.forward();
+        let listener_up = head_transform.up();
 
-        for (source, _instance) in &sound_sources {
-            let relative = source.position - listener.translation;
-            let (left_ir, right_ir) = get_hrir_for_direction(&hrtf.data, relative, up);
+        for source in &sound_sources {
+            let relative = source.position - head_transform.translation;
+            let (left_ir, right_ir) = get_hrir_for_direction(&hrtf.data, relative, listener_up);
 
             // Apply convolution to active sounds mercy
-            // Per-source convolution stub — future send to reverb with HRIR
+            // Per-source stub — future send to reverb with HRIR
         }
     }
 }
 
-// Rest of file unchanged — emotional_resonance_particles, voice_playback_system etc. spawn with HRTF convolution mercy
+// Rest of file unchanged from previous full version
 
 pub struct MercyResonancePlugin;
 
@@ -145,7 +349,8 @@ impl Plugin for MercyResonancePlugin {
             player_farming_mechanics,
             player_inventory_ui,
             material_attenuation_system,
-            hrtf_spatial_system,
+            hrtf_convolution_system,
+            dynamic_head_tracking,
             chunk_manager,
         ));
     }
