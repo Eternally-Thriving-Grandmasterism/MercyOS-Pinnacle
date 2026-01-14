@@ -1,0 +1,8 @@
+[build]
+target = "index.html"
+dist = "dist"
+
+[[build.hooks]]
+stage = "pre_build"
+command = "cargo"
+args = ["build", "--release", "--target", "wasm32-unknown-unknown"]
