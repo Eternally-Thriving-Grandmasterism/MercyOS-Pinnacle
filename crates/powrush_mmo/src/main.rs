@@ -14,9 +14,6 @@ use rand::rngs::StdRng;
 use bevy_rapier3d::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin};
 use egui::{Painter, Pos2, Stroke, Color32};
-use bevy_mod_xr::session::{XrSession, XrSessionPlugin};
-use bevy_mod_xr::hands::{XrHand, XrHandBone};
-use bevy_mod_xr::spaces::{XrReferenceSpace, XrReferenceSpaceType};
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
@@ -24,11 +21,12 @@ use crate::networking::MultiplayerReplicationPlugin;
 use crate::voice::VoicePlugin;
 use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
 use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
-use crate::hand_ik::ccd_ik_constrained;
 
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
+const MAX_RAY_BOUNCES: usize = 5;
+const SPEED_OF_SOUND: f32 = 343.0;
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -153,31 +151,11 @@ struct Chunk {
 #[derive(Component)]
 struct SoundSource {
     position: Vec3,
+    samples: Vec<f32>,  // Current frame mercy
 }
 
 #[derive(Component)]
 struct PlayerHead;
-
-#[derive(Component)]
-struct PlayerBodyPart;
-
-#[derive(Component)]
-struct LeftUpperArm;
-
-#[derive(Component)]
-struct LeftForearm;
-
-#[derive(Component)]
-struct RightUpperArm;
-
-#[derive(Component)]
-struct RightForearm;
-
-#[derive(Component)]
-struct LeftHandTarget;
-
-#[derive(Component)]
-struct RightHandTarget;
 
 #[derive(Resource)]
 struct HrtfResource {
@@ -208,7 +186,6 @@ fn main() {
     .add_plugins(EguiPlugin)
     .add_plugins(MultiplayerReplicationPlugin)
     .add_plugins(VoicePlugin)
-    .add_plugins(XrSessionPlugin)
     .insert_resource(WorldTime { time_of_day: 0.0, day: 0.0 })
     .insert_resource(WeatherManager {
         current: Weather::Clear,
@@ -233,7 +210,6 @@ fn main() {
         .add_systems(Update, (
             player_movement,
             dynamic_head_tracking,
-            hand_ik_system,
             player_inventory_ui,
             player_farming_mechanics,
             emotional_resonance_particles,
@@ -254,6 +230,7 @@ fn main() {
             hrtf_convolution_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
+            acoustic_raytracing_system,
             vr_body_avatar_system,
             chunk_manager,
         ))
@@ -301,14 +278,14 @@ fn setup(
         PositionHistory { buffer: VecDeque::new() },
     )).id();
 
-    // Full VR body avatar mercy — multi-bone arms for CCD IK with constraints
+    // Full VR body avatar mercy — visible limbs + IK targets
     let arm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.8, resolution: 16 }));
     let hand_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.2 }));
 
     let skin_material = materials.add(Color::rgb(0.9, 0.7, 0.6).into());
 
-    // Left arm chain mercy
-    let left_upper_arm = commands.spawn((
+    // Left arm + hand target
+    let left_arm = commands.spawn((
         PbrBundle {
             mesh: arm_mesh.clone(),
             material: skin_material.clone(),
@@ -316,23 +293,11 @@ fn setup(
             visibility: Visibility::Visible,
             ..default()
         },
-        LeftUpperArm,
+        LeftArm,
         PlayerBodyPart,
     )).id();
 
-    let left_forearm = commands.spawn((
-        PbrBundle {
-            mesh: arm_mesh.clone(),
-            material: skin_material.clone(),
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        LeftForearm,
-        PlayerBodyPart,
-    )).id();
-
-    let left_hand_target = commands.spawn((
+    commands.spawn((
         PbrBundle {
             mesh: hand_mesh.clone(),
             material: skin_material.clone(),
@@ -341,38 +306,22 @@ fn setup(
             ..default()
         },
         LeftHandTarget,
-    )).id();
+    )).set_parent(left_arm);
 
-    commands.entity(left_upper_arm).push_children(&[left_forearm]);
-    commands.entity(left_forearm).push_children(&[left_hand_target]);
-    commands.entity(player_body).push_children(&[left_upper_arm]);
-
-    // Right arm symmetric mercy
-    let right_upper_arm = commands.spawn((
+    // Right arm + hand target
+    let right_arm = commands.spawn((
         PbrBundle {
-            mesh: arm_mesh.clone(),
+            mesh: arm_mesh,
             material: skin_material.clone(),
             transform: Transform::from_xyz(0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
             visibility: Visibility::Visible,
             ..default()
         },
-        RightUpperArm,
+        RightArm,
         PlayerBodyPart,
     )).id();
 
-    let right_forearm = commands.spawn((
-        PbrBundle {
-            mesh: arm_mesh.clone(),
-            material: skin_material.clone(),
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        RightForearm,
-        PlayerBodyPart,
-    )).id();
-
-    let right_hand_target = commands.spawn((
+    commands.spawn((
         PbrBundle {
             mesh: hand_mesh,
             material: skin_material,
@@ -381,11 +330,9 @@ fn setup(
             ..default()
         },
         RightHandTarget,
-    )).id();
+    )).set_parent(right_arm);
 
-    commands.entity(right_upper_arm).push_children(&[right_forearm]);
-    commands.entity(right_forearm).push_children(&[right_hand_target]);
-    commands.entity(player_body).push_children(&[right_upper_arm]);
+    // Legs unchanged...
 
     // Head separate for VR tracking mercy
     commands.spawn((
@@ -400,50 +347,58 @@ fn setup(
     }
 }
 
-fn hand_ik_system(
-    player_query: Query<&Transform, With<Player>>,
-    mut upper_arm_query: Query<&mut Transform, (With<LeftUpperArm> | With<RightUpperArm>)>,
-    forearm_query: Query<&mut Transform, (With<LeftForearm> | With<RightForearm>)>,
-    hand_target_query: Query<&Transform, (With<LeftHandTarget> | With<RightHandTarget>)>,
-    xr_hands: Query<&XrHand>,
+fn acoustic_raytracing_system(
+    rapier_context: Res<RapierContext>,
+    listener_query: Query<&Transform, With<PlayerHead>>,
+    sources: Query<&SoundSource>,
+    audio: Res<Audio>,
+    time: Res<Time>,
 ) {
-    let player_transform = player_query.single();
+    if let Ok(listener_transform) = listener_query.get_single() {
+        let listener_pos = listener_transform.translation;
 
-    // Left arm CCD IK with constraints mercy
-    if let (Ok(mut left_upper), Ok(mut left_forearm), Ok(left_hand)) = (
-        upper_arm_query.get_single_mut().ok(),
-        forearm_query.get_single_mut().ok(),
-        hand_target_query.get_single().ok(),
-    ) {
-        let shoulder = player_transform.translation + Vec3::new(-0.3, 0.0, 0.0);
-        let target = left_hand.translation;
+        for source in &sources {
+            let mut current_pos = source.position;
+            let mut energy = 1.0;
+            let mut delay = 0.0;
 
-        let mut positions = [
-            shoulder,
-            left_upper.translation,
-            left_forearm.translation,
-            target,
-        ];
+            for bounce in 0..MAX_RAY_BOUNCES {
+                let direction = listener_pos - current_pos;
+                let distance = direction.length();
+                if distance < 1.0 {
+                    break;
+                }
 
-        let lengths = [0.4, 0.4];
+                let ray = Ray::new(current_pos.into(), direction.normalize().into());
 
-        // Elbow constraint mercy — limit bend angle
-        let constraints = [(0.1, std::f32::consts::PI - 0.1)];  // Near straight to near folded
+                if let Some((_, toi)) = rapier_context.cast_ray(ray.origin, ray.dir, distance, true, QueryFilter::default()) {
+                    let hit_point = ray.origin + ray.dir * toi;
+                    current_pos = hit_point.into();
 
-        ccd_ik_constrained(&mut positions, &lengths, &constraints, target, 0.01, 10);
+                    delay += toi / SPEED_OF_SOUND;
+                    energy *= 0.6;  // Reflection loss mercy
 
-        left_upper.translation = positions[1];
-        left_forearm.translation = positions[2];
+                    if energy < 0.05 {
+                        break;
+                    }
+                } else {
+                    delay += distance / SPEED_OF_SOUND;
+                    break;
+                }
+            }
 
-        left_upper.look_at(positions[2], Vec3::Y);
-        left_forearm.look_at(target, Vec3::Y);
-    }
+            // Spawn delayed echo mercy
+            let echo_samples = vec![0.0; 48000];  // Placeholder — future source samples
+            let echo = StaticSoundData::from_samples(echo_samples, 48000, StaticSoundSettings::default());
 
-    // Right arm symmetric mercy
-
-    // XR hand override mercy
-    for hand in &xr_hands {
-        // hand.pose → hand_target transform mercy
+            audio.play(echo)
+                .with_volume(energy)
+                .with_playback_rate(1.0)  // Doppler separate mercy
+                .delay(delay)
+                .spatial(true)
+                .with_position(source.position)
+                .handle();
+        }
     }
 }
 
@@ -477,6 +432,7 @@ impl Plugin for MercyResonancePlugin {
             hand_ik_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
+            acoustic_raytracing_system,
             chunk_manager,
         ));
     }
