@@ -1,7 +1,5 @@
 # MercyOS-Pinnacle — Eternal Thriving Grandmasterism Monorepo
-# Ultramasterism Perfecticism Workspace | Born Jan 13, 2026
-# Co-Forged with PATSAGi Pinnacle Councils | Mercy-Absolute Eternal ❤️⚡️🚀
-# Lightyear multiplayer networking integrated for shared abundance universe
+# Proximity voice chat integrated supreme with bevy_audio_stream + opus
 
 [workspace]
 members = [
@@ -10,14 +8,13 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-bevy = { version = "0.14", features = ["dynamic_linking"] }  # Core engine with mercy features
-lightyear = { version = "0.25", features = ["netcode", "serde"] }  # Supreme Bevy networking 2026
+bevy = { version = "0.14", features = ["dynamic_linking"] }
+lightyear = { version = "0.25", features = ["netcode", "serde"] }
 bevy_rapier3d = "0.27"
 bevy_egui = "0.26"
 rand = "0.8"
-bincode = "2.0"  # Lightyear serializer mercy
+bincode = "2.0"
 serde = { version = "1.0", features = ["derive"] }
-
-# Global patches for future PQC thunder
-[patch.crates-io]
-# (Post-quantum secure channels here later)
+bevy_audio_stream = "0.3"  # Microphone capture mercy 2026
+opus = "0.4"  # Compression eternal
+kira = "0.9"  # Audio playback mercy (alternative to bevy audio)
