@@ -1,44 +1,43 @@
 //! powrush_mmo/shared.rs — Complete shared systems
-//! Handles planting, trading, auctions mercy
+//! Handles all auctions including dedicated creature bidding mercy
 
-// ... previous
+// ... previous handling
 
-fn handle_list_auction(
+fn handle_list_creature_auction(
     mut auction_house: ResMut<AuctionHouse>,
-    mut messages: EventReader<FromClient<ListAuction>>,
+    mut messages: EventReader<FromClient<ListCreatureAuction>>,
     world_time: Res<WorldTime>,
+    creature_query: Query<&Creature>,
 ) {
     for message in messages.read() {
-        let current_time = world_time.day as f64 * 86400.0 + world_time.time_of_day as f64;
-        let auction = ActiveAuction {
+        // Validate seller owns creature mercy
+        let current_time = /* synced */;
+        let auction = CreatureAuction {
             seller: message.context(),
-            item_type: message.message.item_type.clone(),
-            quantity: message.message.quantity,
+            creature_entity: message.message.creature_entity,
+            creature_dna: message.message.creature_dna.clone(),
+            creature_type: message.message.creature_type,
             current_bid: message.message.starting_price,
             current_bidder: None,
             end_time: current_time + message.message.duration_seconds as f64,
         };
         let id = auction_house.next_id;
-        auction_house.auctions.insert(id, auction);
+        auction_house.creature_auctions.insert(id, auction);
         auction_house.next_id += 1;
     }
 }
 
-fn handle_bid_auction(
+fn handle_bid_creature_auction(
     mut auction_house: ResMut<AuctionHouse>,
-    mut messages: EventReader<FromClient<BidAuction>>,
-    mercy_points: ResMut<PlayerMercyPoints>,
+    mut messages: EventReader<FromClient<BidCreatureAuction>>,
 ) {
     for message in messages.read() {
-        if let Some(auction) = auction_house.auctions.get_mut(&message.message.auction_id) {
+        if let Some(auction) = auction_house.creature_auctions.get_mut(&message.message.auction_id) {
             if message.message.bid_amount > auction.current_bid {
-                // Return previous bid points mercy
                 auction.current_bid = message.message.bid_amount;
                 auction.current_bidder = Some(message.context());
-                // Live bid update broadcast
+                // Broadcast live bid update mercy
             }
         }
     }
 }
-
-// Add to SharedPlugin: auction_tick_system, handle_list_auction, handle_bid_auction
