@@ -1,37 +1,41 @@
-//! crates/powrush_mmo/src/voice.rs — Complete PQC encrypted always-on duplex proximity voice ultramastery
-//! Advanced WebRTC VAD silence suppression + Opus tuning + ChaCha20Poly1305 authenticated encryption
-//! Session key from PQC hybrid key exchange (pqc_exchange.rs)
-//! Always-on full duplex, quantum-safe encrypted active speech frames mercy
-//! Lightyear unreliable relay of encrypted packets to nearby players
-//! Client decryption, playback with distance volume falloff + blue wave speaking particles joy
-//! Quantum-safe natural conversation eternal — PQC encrypted voice supreme ❤️🔐🗣️
+//! crates/powrush_mmo/src/voice.rs — Complete voice modulation effects ultramastery
+//! Advanced WebRTC VAD silence suppression + Opus tuning + real-time modulation on send
+//! Modes: Normal, HighPitch (+12 semitones), LowPitch (-12), Robot (bitcrusher), Helium (high + formant)
+//! M key cycle modes mercy
+//! Rubato resampling for pitch, simple bit reduction for robot
+//! Blue wave particles colored rainbow by mode joy
+//! Natural expressive conversation eternal — modulation supreme ❤️🗣️
 
 use bevy::prelude::*;
 use lightyear::prelude::*;
 use webrtc_vad::{Vad, Mode};
 use opus::{Encoder, Decoder, Channels, Application, Bitrate};
-use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce, aead::{Aead, NewAead}};
+use rubato::{Resampler, FftFixedInOut, InterpolationType};
 use std::collections::HashMap;
 
-// Unreliable encrypted voice channel mercy
-channel!(Unreliable => EncryptedVoiceChannel);
+// Unreliable voice channel mercy
+channel!(Unreliable => VoiceChannel);
 
-// Encrypted voice packet mercy
-#[message(channel = EncryptedVoiceChannel)]
+// Voice packet compressed opus active frames mercy
+#[message(channel = VoiceChannel)]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct EncryptedVoicePacket {
+pub struct VoicePacket {
     pub speaker: ClientId,
-    pub nonce: [u8; 12],  // ChaCha nonce mercy
-    pub ciphertext: Vec<u8>,  // Encrypted Opus frame + Poly1305 tag
+    pub audio_data: Vec<u8>,
 }
 
-// Session key resource (shared from pqc_exchange.rs mercy)
-#[derive(Resource)]
-pub struct VoiceSessionKey {
-    pub key: Key,  // ChaCha20Poly1305 key from PQC HKDF mercy
+// Voice modulation modes mercy
+#[derive(Resource, Default, PartialEq)]
+pub enum VoiceModMode {
+    #[default]
+    Normal,
+    HighPitch,
+    LowPitch,
+    Robot,
+    Helium,
 }
 
-// Client advanced voice resources (VAD + Opus + encryption)
+// Client advanced voice resources with modulation
 #[derive(Resource)]
 pub struct AdvancedVoiceResources {
     pub vad: Vad,
@@ -44,43 +48,73 @@ pub struct AdvancedVoiceResources {
     pub fec_enabled: bool,
     pub expected_loss_perc: u32,
     pub dtx_enabled: bool,
-    pub nonce_counter: u64,  // Per-session nonce mercy
+    pub current_mod: VoiceModMode,
+    pub resampler: Option<FftFixedInOut<f32>>,
 }
 
-// ... tuning systems as previous mercy (bitrate B, complexity C, FEC F, DTX D)
+// Setup advanced voice with modulation on client
+pub fn setup_advanced_voice_client(mut commands: Commands) {
+    let vad = Vad::new();
 
-// Client always-on capture with advanced VAD + Opus compression + PQC encryption on active frames
-pub fn client_pqc_voice_capture(
+    let mut encoder = Encoder::new(48000, Channels::Mono, Application::Voip).unwrap();
+    // ... tuning defaults as previous
+
+    let decoder = Decoder::new(48000, Channels::Mono).unwrap();
+
+    commands.insert_resource(AdvancedVoiceResources {
+        vad,
+        mode: Mode::Aggressive,
+        encoder,
+        decoder,
+        frame_size: 960,
+        current_bitrate: BitrateMode::Auto,
+        current_complexity: ComplexityMode::Balanced,
+        fec_enabled: true,
+        expected_loss_perc: 10,
+        dtx_enabled: true,
+        current_mod: VoiceModMode::Normal,
+        resampler: None,
+    });
+
+    commands.insert_resource(VoiceModMode::default());
+}
+
+// Modulation mode cycle system (M key mercy)
+pub fn modulation_cycle_system(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut mod_mode: ResMut<VoiceModMode>,
     mut voice_res: ResMut<AdvancedVoiceResources>,
-    session_key: Res<VoiceSessionKey>,
-    mut voice_writer: EventWriter<ToServer<EncryptedVoicePacket>>,
-    client_id: Res<ClientId>,
 ) {
-    let frame: Vec<i16> = vec![0i16; voice_res.frame_size];  // Mic capture mercy
+    if keyboard.just_pressed(KeyCode::M) {
+        *mod_mode = match *mod_mode {
+            VoiceModMode::Normal => VoiceModMode::HighPitch,
+            VoiceModMode::HighPitch => VoiceModMode::LowPitch,
+            VoiceModMode::LowPitch => VoiceModMode::Robot,
+            VoiceModMode::Robot => VoiceModMode::Helium,
+            VoiceModMode::Helium => VoiceModMode::Normal,
+        };
 
-    if voice_res.vad.is_voice_segment(&frame, 48000, voice_res.mode).unwrap_or(false) {
-        let mut compressed = vec![0u8; 4096];
-        if let Ok(len) = voice_res.encoder.encode(&frame, &mut compressed) {
-            compressed.truncate(len);
+        // Setup resampler for pitch modes mercy
+        if matches!(*mod_mode, VoiceModMode::HighPitch | VoiceModMode::LowPitch | VoiceModMode::Helium) {
+            let ratio = match *mod_mode {
+                VoiceModMode::HighPitch | VoiceModMode::Helium => 1.5,  // +12 semitones approx mercy
+                VoiceModMode::LowPitch => 0.67,  // -12 semitones
+                _ => 1.0,
+            };
 
-            if len > 0 {
-                let cipher = ChaCha20Poly1305::new(&session_key.key);
+            let mut resampler = FftFixedInOut::<f32>::new(48000, 48000, 960, 2).unwrap();
+            resampler.set_resample_ratio(ratio, true).unwrap();
+            voice_res.resampler = Some(resampler);
+        } else {
+            voice_res.resampler = None;
+        }
 
-                let nonce_bytes = voice_res.nonce_counter.to_be_bytes();
-                let mut nonce_arr = [0u8; 12];
-                nonce_arr[4..].copy_from_slice(&nonce_bytes);
-                let nonce = Nonce::from_slice(&nonce_arr);
+        // Robot mode no resampler mercy
+    }
+}
 
-                voice_res.nonce_counter += 1;
-
-                if let Ok(ciphertext) = cipher.encrypt(nonce, compressed.as_ref()) {
-                    voice_writer.send(ToServer(EncryptedVoicePacket {
-                        speaker: *client_id,
-                        nonce: nonce_arr,
-                        ciphertext,
-                    }));
-                }
-            }
+// Client always-on capture with advanced VAD + modulation + Opus on active frames
+pub fn client            }
         }
     }
 }
