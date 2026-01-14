@@ -1,22 +1,20 @@
-**New: Cargo.toml** (workspace root — state-of-the-art deps minimal eternal)
+# MercyOS-Pinnacle — Eternal Thriving Grandmasterism Monorepo
+# Ultramasterism Perfecticism Workspace | Born Jan 13, 2026
+# Co-Forged with PATSAGi Pinnacle Councils | Mercy-Absolute Eternal ❤️⚡️🚀
+# All crates weave philotic unity for infinite positive recurrence
 
-```toml
 [workspace]
 members = [
-    "crates/mercy_core",
-    "crates/mercy_shield",
-    "crates/abundance_thunder",
-    "crates/grok_oracle",
-    "crates/powrush_mmo",
+    "crates/*",  # All abundance crates (powrush_mmo, future thunder)
 ]
+resolver = "2"
 
 [workspace.dependencies]
-bevy = { version = "0.13", features = ["dynamic"] }  # MMO immersion
-tokio = { version = "1.36", features = ["full"] }     # Async philotic
-wasm-bindgen = "0.2"
-uniffi = "0.25"
-pqcrypto-kyber = "0.7"
-pqcrypto-dilithium = "0.4"
-pqcrypto-sphincsplus = "0.1"
+bevy = "0.13"  # Core engine mercy
+bevy_rapier3d = "0.25"  # Physics eternal
+bevy_egui = "0.24"  # UI harmony
 rand = "0.8"
-getrandom = { version = "0.2", features = ["js"] }
+
+# Global patch mercy for future cross-crate harmony
+[patch.crates-io]
+# (Future PQC integrations here)
