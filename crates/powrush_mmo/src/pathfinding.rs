@@ -161,4 +161,85 @@ impl Plugin for PathfindingPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, pathfinding_system);
     }
+}}
+
+fn manhattan_distance(a: IVec3, b: IVec3) -> i32 {
+    (a.x - b.x).abs() + (a.y - b.y).abs() + (a.z - b.z).abs()
+}
+
+fn get_neighbors(pos: IVec3, chunk_query: &Query<(&Chunk, &Transform)>) -> Vec<IVec3> {
+    let mut neighbors = Vec::new();
+    let directions = [
+        IVec3::new(1, 0, 0), IVec3::new(-1, 0, 0),
+        IVec3::new(0, 1, 0), IVec3::new(0, -1, 0),
+        IVec3::new(0, 0, 1), IVec3::new(0, 0, -1),
+    ];
+
+    for dir in directions.iter() {
+        let neighbor = pos + *dir;
+        if is_walkable(neighbor, chunk_query) {
+            neighbors.push(neighbor);
+        }
+    }
+
+    neighbors
+}
+
+fn is_walkable(pos: IVec3, chunk_query: &Query<(&Chunk, &Transform)>) -> bool {
+    for (chunk, chunk_transform) in chunk_query {
+        let local = pos - chunk_transform.translation.as_ivec3();
+        if local.x >= 0 && local.x < CHUNK_SIZE as i32 &&
+           local.y >= 0 && local.y < CHUNK_SIZE as i32 &&
+           local.z >= 0 && local.z < CHUNK_SIZE as i32 {
+            let index = ChunkShape::linearize([local.x as u32, local.y as u32, local.z as u32]) as usize;
+            return chunk.voxels[index] == WALKABLE_VOXEL;
+        }
+    }
+    false  // Outside loaded chunks = blocked mercy
+}
+
+fn reconstruct_path(came_from: HashMap<IVec3, IVec3>, current: IVec3) -> Vec<IVec3> {
+    let mut path = vec![current];
+    let mut current = current;
+    while let Some(&prev) = came_from.get(&current) {
+        path.push(prev);
+        current = prev;
+    }
+    path.reverse();
+    path
+}
+
+pub fn pathfinding_system(
+    mut creature_query: Query<(&mut Path, &mut Transform, &Creature)>,
+    chunk_query: Query<(&Chunk, &Transform)>,
+) {
+    for (mut path, mut transform, creature) in &mut creature_query {
+        if let Some(goal) = creature.current_goal {
+            if path.points.is_empty() || path.points.last() != Some(&goal.as_ivec3()) {
+                if let Some(new_path) = a_star_pathfind(transform.translation.as_ivec3(), goal.as_ivec3(), &chunk_query) {
+                    path.points = new_path;
+                    path.current_index = 0;
+                }
+            }
+
+            // Follow path mercy
+            if path.current_index < path.points.len() {
+                let target = path.points[path.current_index].as_vec3();
+                let direction = (target - transform.translation).normalize_or_zero();
+                transform.translation += direction * creature.dna.speed * 0.05;  // Delta mercy
+
+                if (transform.translation - target).length_squared() < 1.0 {
+                    path.current_index += 1;
+                }
+            }
+        }
+    }
+}
+
+pub struct PathfindingPlugin;
+
+impl Plugin for PathfindingPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, pathfinding_system);
+    }
 }
