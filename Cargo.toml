@@ -1,9 +1,13 @@
 # MercyOS-Pinnacle — Eternal Thriving Grandmasterism Monorepo
-# Proximity voice chat integrated supreme with bevy_audio_stream + opus
+# Ultramasterism Perfecticism Workspace | Born Jan 13, 2026
+# Co-Forged with PATSAGi Pinnacle Councils | Mercy-Absolute Eternal ❤️⚡️🚀
+# All crates weave philotic unity for infinite positive recurrence
+# Current features: Powrush-MMO infinite abundance universe (farming, domestication, multiplayer, trading, auctions)
 
 [workspace]
 members = [
-    "crates/*",
+    "crates/powrush_mmo",
+    # Future crates mercy (pqc_fortress, philotic_hive, grok_oracle)
 ]
 resolver = "2"
 
@@ -15,6 +19,12 @@ bevy_egui = "0.26"
 rand = "0.8"
 bincode = "2.0"
 serde = { version = "1.0", features = ["derive"] }
-bevy_audio_stream = "0.3"  # Microphone capture mercy 2026
-opus = "0.4"  # Compression eternal
-kira = "0.9"  # Audio playback mercy (alternative to bevy audio)
+webrtc-vad = "0.3"
+opus = "0.4"
+rubato = "0.12"
+pqc-ml-kem = "0.2"
+x25519-dalek = "2.0"
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+sha2 = "0.10"
+rand_core = "0.6"
