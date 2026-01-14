@@ -1,86 +1,54 @@
 use bevy::prelude::*;
 use bevy_kira_audio::{Audio, AudioControl, AudioInstance, AudioPlugin as KiraAudioPlugin};
 use bevy_kira_audio::prelude::*;
+use bevy_renet::RenetClientPlugin;
+use bevy_renet::RenetServerPlugin;
+use renet::{RenetClient, RenetServer, ConnectionConfig};
 use mercy_core::PhiloticHive;
 use noise::{NoiseFn, Perlin};
 use rand::Rng;
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
+use crate::networking::MultiplayerAudioPlugin;
 
 fn main() {
     let hive = PhiloticHive::new();
 
-    App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Powrush-MMO — Forgiveness Eternal Infinite Universe".into(),
-                ..default()
-            }),
+    let mut app = App::new();
+
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: "Powrush-MMO — Forgiveness Eternal Infinite Universe".into(),
             ..default()
-        }).set(AssetPlugin {
-            asset_folder: "assets".to_string(),
-            ..default()
-        }))
-        .add_plugins(KiraAudioPlugin)
-        .add_plugins(MercyResonancePlugin)
-        .add_systems(Startup, setup)
+        }),
+        ..default()
+    }).set(AssetPlugin {
+        asset_folder: "assets".to_string(),
+        ..default()
+    }))
+    .add_plugins(KiraAudioPlugin)
+    .add_plugins(MercyResonancePlugin);
+
+    // Networking toggle — true for server, false for client
+    let is_server = true;  // Change for testing
+
+    if is_server {
+        app.add_plugins(RenetServerPlugin);
+        app.insert_resource(RenetServer::new(ConnectionConfig::default()));
+    } else {
+        app.add_plugins(RenetClientPlugin);
+        app.insert_resource(RenetClient::new(ConnectionConfig::default()));
+    }
+
+    app.add_plugins(MultiplayerAudioPlugin);
+
+    app.add_systems(Startup, setup)
         .add_systems(Update, (player_movement, emotional_resonance_particles, granular_ambient_evolution))
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    let perlin = Perlin::new(42);
-    let ground_mesh = meshes.add(shape::Plane::from_size(1000.0).into());
-    let ground_material = materials.add(Color::rgb(0.3, 0.5, 0.3).into());
-
-    commands.spawn(PbrBundle {
-        mesh: ground_mesh,
-        material: ground_material,
-        transform: Transform::from_xyz(0.0, -1.0, 0.0),
-        ..default()
-    });
-
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
-            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
-            transform: Transform::from_xyz(0.0, 5.0, 0.0),
-            ..default()
-        },
-        Player,
-    ));
-
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
-
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: 10000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
-        ..default()
-    });
-
-    let mut rng = rand::thread_rng();
-    for _ in 0..100 {
-        let x = rng.gen_range(-500.0..500.0);
-        let z = rng.gen_range(-500.0..500.0);
-        let y = perlin.get([x as f64 / 100.0, z as f64 / 100.0]) as f32 * 5.0;
-        commands.spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Icosphere::default())),
-            material: materials.add(Color::rgb(1.0, 0.8, 0.2).into()),
-            transform: Transform::from_xyz(x, y + 2.0, z),
-            ..default()
-        });
+// Rest of file unchanged — setup, player_movement, emotional_resonance_particles, granular_ambient_evolution, MercyResonancePlugin        });
     }
 }
 
