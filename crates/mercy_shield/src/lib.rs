@@ -1,5 +1,5 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam blocker with persistent whitelist mercy eternal supreme immaculate
+//! MercyShield — adjustable scam/fraud/spam blocker with persistent whitelist + blacklist mercy eternal supreme immaculate
 //! Chat filter (keyword + regex scoring + whitelist bypass), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 
 const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
+const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MercyShieldConfig {
@@ -51,6 +52,13 @@ pub fn setup_mercy_shield(mut commands: Commands) {
         }
     }
 
+    // Load persistent blacklist mercy eternal
+    if let Ok(contents) = fs::read_to_string(BLACKLIST_FILE) {
+        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
+            config.blacklist = loaded;
+        }
+    }
+
     commands.insert_resource(ScamPatterns {
         keywords,
         url_regex: Regex::new(r"https?://\S+").unwrap(),
@@ -60,11 +68,16 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     commands.insert_resource(config);
 }
 
-pub fn save_whitelist_on_exit(config: Res<MercyShieldConfig>) {
+pub fn save_persistent_data_on_exit(config: Res<MercyShieldConfig>) {
     if config.is_changed() {
         let pretty = ron::ser::PrettyConfig::new();
-        if let Ok(serialized) = ron::ser::to_string_pretty(&config.whitelist_phrases, pretty) {
+
+        if let Ok(serialized) = ron::ser::to_string_pretty(&config.whitelist_phrases, pretty.clone()) {
             let _ = fs::write(WHITELIST_FILE, serialized);
+        }
+
+        if let Ok(serialized) = ron::ser::to_string_pretty(&config.blacklist, pretty) {
+            let _ = fs::write(BLACKLIST_FILE, serialized);
         }
     }
 }
@@ -74,7 +87,7 @@ pub fn chat_scam_filter_system(
     scam_patterns: Res<ScamPatterns>,
     config: Res<MercyShieldConfig>,
 ) {
-    // Whitelist bypass + scoring mercy (as before)
+    // Whitelist bypass + blacklist block + scoring mercy (as before)
 }
 
 pub struct MercyShieldPlugin;
@@ -82,6 +95,10 @@ pub struct MercyShieldPlugin;
 impl Plugin for MercyShieldPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup_mercy_shield)
+            .add_systems(Last, save_persistent_data_on_exit)
+            .add_systems(Update, chat_scam_filter_system);
+    }
+}        app.add_startup_system(setup_mercy_shield)
             .add_systems(Last, save_whitelist_on_exit)
             .add_systems(Update, chat_scam_filter_system);
     }
