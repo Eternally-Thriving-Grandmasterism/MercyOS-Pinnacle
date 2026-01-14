@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam blocker with adaptive ML training mercy eternal supreme immaculate
-//! Chat filter (keyword + regex scoring), false positive feedback learning, trade validation philotic mercy
+//! MercyShield — adjustable scam/fraud/spam blocker with whitelist phrases mercy eternal supreme immaculate
+//! Chat filter (keyword + regex scoring + whitelist bypass), adaptive learning philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -12,11 +12,12 @@ pub struct MercyShieldConfig {
     pub trade_sanity_check: bool,
     pub auto_ban_threshold: u32,
     pub blacklist: HashSet<String>,
+    pub whitelist_phrases: HashSet<String>,  // Exact phrase whitelist mercy eternal
 }
 
 #[derive(Resource)]
 pub struct ScamPatterns {
-    pub keywords: HashMap<String, f32>,  // Word → weight (adaptive mercy)
+    pub keywords: HashMap<String, f32>,
     pub url_regex: Regex,
     pub phone_regex: Regex,
 }
@@ -31,6 +32,11 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     keywords.insert("click".to_string(), 0.7);
     keywords.insert("winner".to_string(), 0.9);
 
+    let mut whitelist = HashSet::new();
+    whitelist.insert("family harmony mercy eternal".to_string());
+    whitelist.insert("powrush thunder".to_string());
+    whitelist.insert("child wonder mode".to_string());
+
     commands.insert_resource(ScamPatterns {
         keywords,
         url_regex: Regex::new(r"https?://\S+").unwrap(),
@@ -42,31 +48,31 @@ pub fn setup_mercy_shield(mut commands: Commands) {
         trade_sanity_check: true,
         auto_ban_threshold: 5,
         blacklist: HashSet::new(),
+        whitelist_phrases: whitelist,
     });
 }
 
 pub fn chat_scam_filter_system(
-    // Chat message events mercy — placeholder scoring
+    // Chat message events mercy — placeholder
     scam_patterns: Res<ScamPatterns>,
     config: Res<MercyShieldConfig>,
 ) {
-    // Scoring logic mercy (as before)
-}
+    let message = "example message mercy";
 
-pub fn false_positive_learning_system(
-    // False positive report events mercy — player marks flagged message "not scam"
-    mut scam_patterns: ResMut<ScamPatterns>,
-    // Reported message mercy
-) {
-    let message = "example false positive message mercy";
-
-    for word in message.to_lowercase().split_whitespace() {
-        let cleaned = word.trim_matches(|c: char| !c.is_alphanumeric());
-        if !cleaned.is_empty() {
-            if let Some(weight) = scam_patterns.keywords.get_mut(&cleaned.to_string()) {
-                *weight = (*weight - 0.15).max(0.1);  // Decrease but floor mercy eternal
-            }
+    // Whitelist bypass mercy eternal
+    for phrase in &config.whitelist_phrases {
+        if message.to_lowercase().contains(&phrase.to_lowercase()) {
+            return;  // Safe mercy
         }
+    }
+
+    // Normal scoring mercy (as before)
+    let mut score = 0.0;
+    // ... keyword/url/phone scoring
+
+    let threshold = config.chat_sensitivity * 2.0;
+    if score > threshold {
+        // Filter/warn/block mercy
     }
 }
 
@@ -75,10 +81,6 @@ pub struct MercyShieldPlugin;
 impl Plugin for MercyShieldPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup_mercy_shield)
-            .add_systems(Update, (
-                chat_scam_filter_system,
-                player_report_learning_system,
-                false_positive_learning_system,
-            ));
+            .add_systems(Update, chat_scam_filter_system);
     }
 }
