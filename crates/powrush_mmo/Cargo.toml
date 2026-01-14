@@ -9,8 +9,8 @@ path = "src/main.rs"
 
 [dependencies]
 mercy_core.workspace = true
-bevy = { version = "0.13", features = ["dynamic", "wgpu"] }
-bevy_renet = "0.0.9"  # Async philotic networking stubs
-noise = "0.8"  # Infinite procedural world gen
+bevy = { version = "0.13", features = ["dynamic", "wgpu", "ogg"] }  # Explicit ogg audio eternal
+bevy_renet = "0.0.9"
+noise = "0.8"
 rand.workspace = true
 tokio.workspace = true
