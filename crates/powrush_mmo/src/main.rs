@@ -89,10 +89,10 @@ struct Creature {
 
 #[derive(Clone, Copy)]
 struct CreatureDNA {
-    speed: f32,
-    size: f32,
-    camouflage: f32,
-    aggression: f32,
+    speed: f32,         // 5.0-15.0
+    size: f32,          // 0.5-2.0
+    camouflage: f32,    // 0.0-1.0
+    aggression: f32,    // 0.0-1.0
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -258,7 +258,6 @@ fn player_inventory_ui(
                             struct Node {
                                 pos: Pos2,
                                 creature: Creature,
-                                entity: Entity,
                             }
 
                             let mut nodes = Vec::new();
@@ -270,9 +269,8 @@ fn player_inventory_ui(
                                     nodes.push(Node {
                                         pos: Pos2::new(center_x, y_offset),
                                         creature: c.clone(),
-                                        entity,
                                     });
-                                    y_offset += 80.0;
+                                    y_offset += 100.0;
                                     current = c.parent1.or(c.parent2).and_then(|id| creature_query.iter().find_map(|(e, cr)| if cr.parent1 == Some(id) || cr.parent2 == Some(id) { Some(e) } else { None }));
                                 } else {
                                     break;
@@ -285,21 +283,21 @@ fn player_inventory_ui(
                             for i in 0..nodes.len() - 1 {
                                 let from = nodes[i].pos;
                                 let to = nodes[i + 1].pos;
-                                painter.line_segment([from, to], Stroke::new(2.0, Color32::WHITE));
+                                painter.line_segment([from, to], Stroke::new(3.0, Color32::WHITE));
                             }
 
                             // Draw nodes
                             for node in &nodes {
-                                let rect = egui::Rect::from_center_size(node.pos, egui::vec2(200.0, 60.0));
-                                painter.rect_filled(rect, 10.0, Color32::from_black_alpha(180));
-                                painter.text(node.pos, egui::Align2::CENTER_CENTER, format!("Gen {}\n{:?}\nSpeed: {:.1} Size: {:.2}\nCamo: {:.2} Agg: {:.2}", 
+                                let rect = egui::Rect::from_center_size(node.pos, egui::vec2(220.0, 80.0));
+                                painter.rect_filled(rect, 12.0, Color32::from_black_alpha(200));
+                                painter.text(node.pos, egui::Align2::CENTER_CENTER, format!("Gen {}\n{:?}\nSpeed: {:.1} | Size: {:.2}\nCamo: {:.2} | Agg: {:.2}", 
                                     node.creature.generation, 
                                     node.creature.creature_type,
                                     node.creature.dna.speed,
                                     node.creature.dna.size,
                                     node.creature.dna.camouflage,
                                     node.creature.dna.aggression
-                                ), egui::FontId::proportional(14.0), Color32::WHITE);
+                                ), egui::FontId::proportional(16.0), Color32::WHITE);
                             }
                         }
                     }
@@ -314,7 +312,7 @@ fn player_inventory_ui(
     }
 }
 
-// Rest of file unchanged from previous full version (setup, player_movement, creature_behavior_cycle, creature_evolution_system with parent tracking, player_breeding_mechanics setting parent IDs, chunk_manager, etc.)
+// Rest of file unchanged from previous full version (setup, player_movement, creature_behavior_cycle, creature_evolution_system with parent tracking + generation increment, player_breeding_mechanics setting parent IDs + generation = max(parent generations) + 1, chunk_manager, etc.)
 
 pub struct MercyResonancePlugin;
 
