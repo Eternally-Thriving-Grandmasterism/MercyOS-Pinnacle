@@ -1,32 +1,70 @@
-// In multi_chain_ik_system mercy — leg chains with hip constraints
+// In multi_chain_ik_system mercy — all chains with natural constraints
 fn multi_chain_ik_system(
     player_query: Query<&Transform, With<Player>>,
-    mut leg_query: Query<&mut Transform, Or<(With<LeftUpperLeg>, With<LeftLowerLeg>, With<RightUpperLeg>, With<RightLowerLeg>)>>,
+    mut chain_query: Query<&mut Transform, Or<(With<SpineLower>, With<SpineMid>, With<SpineUpper>, With<LeftUpperArm>, With<LeftForearm>, With<RightUpperArm>, With<RightForearm>, With<LeftUpperLeg>, With<LeftLowerLeg>, With<RightUpperLeg>, With<RightLowerLeg>)>>,
+    head_query: Query<&Transform, With<PlayerHead>>,
+    hand_target_query: Query<&Transform, Or<(With<LeftHandTarget>, With<RightHandTarget>)>>,
     foot_target_query: Query<&Transform, Or<(With<LeftFootTarget>, With<RightFootTarget>)>>,
 ) {
     let player_transform = player_query.single();
 
-    // Left leg IK with hip + knee constraints mercy
+    // Spine chain mercy — limited side bend
+    if let Ok(head_transform) = head_query.get_single() {
+        let target = head_transform.translation;
+
+        let mut positions = [
+            player_transform.translation,
+            // spine_lower, mid, upper translations mercy
+            target,
+        ];
+
+        let lengths = [0.3, 0.3, 0.3];
+        let constraints = [(-0.3, 0.3), (-0.5, 0.5), (-0.4, 0.4)];  // Natural spine mercy
+
+        fabrik_constrained(&mut positions, &lengths, &constraints, target, 0.01, 10);
+
+        // Apply back + look_at mercy
+    }
+
+    // Left arm mercy — shoulder spherical + elbow bend
+    if let (Ok(mut left_upper), Ok(mut left_forearm), Ok(left_hand)) = (
+        chain_query.get_component_mut::<Transform>(/* left_upper_arm */),
+        chain_query.get_component_mut::<Transform>(/* left_forearm */),
+        hand_target_query.get_single().ok(),
+    ) {
+        let shoulder = player_transform.translation + Vec3::new(-0.3, 0.0, 0.0);
+        let mut positions = [shoulder, left_upper.translation, left_forearm.translation, left_hand.translation];
+
+        let lengths = [0.4, 0.4];
+        let constraints = [
+            (-1.0, 1.0),  // Shoulder wide mercy
+            (0.0, std::f32::consts::PI - 0.1),  // Elbow forward mercy
+        ];
+
+        fabrik_constrained(&mut positions, &lengths, &constraints, left_hand.translation, 0.01, 10);
+
+        left_upper.translation = positions[1];
+        left_forearm.translation = positions[2];
+
+        left_upper.look_at(positions[2], Vec3::Y);
+        left_forearm.look_at(left_hand.translation, Vec3::Y);
+    }
+
+    // Right arm symmetric mercy
+
+    // Left leg mercy — hip flexion/abduction + knee + ankle
     if let (Ok(mut left_upper_leg), Ok(mut left_lower_leg), Ok(left_foot)) = (
-        leg_query.get_component_mut::<Transform>(/* left_upper_leg entity */),
-        leg_query.get_component_mut::<Transform>(/* left_lower_leg entity */),
+        chain_query.get_component_mut::<Transform>(/* left_upper_leg */),
+        chain_query.get_component_mut::<Transform>(/* left_lower_leg */),
         foot_target_query.get_single().ok(),
     ) {
         let hip = player_transform.translation + Vec3::new(-0.2, -0.4, 0.0);
-        let mut positions = [
-            hip,
-            left_upper_leg.translation,
-            left_lower_leg.translation,
-            left_foot.translation,
-        ];
+        let mut positions = [hip, left_upper_leg.translation, left_lower_leg.translation, left_foot.translation];
 
         let lengths = [0.5, 0.5];
-
-        // Hip constraint mercy — limited side bend + forward/back
-        // Knee forward only mercy
         let constraints = [
-            (-0.4, 0.4),  // Hip abduction/adduction mercy
-            (0.0, std::f32::consts::PI - 0.1),  // Knee forward bend mercy
+            (-0.8, 0.8),  // Hip flexion/extension + abduction mercy
+            (0.0, std::f32::consts::PI - 0.1),  // Knee forward mercy
         ];
 
         fabrik_constrained(&mut positions, &lengths, &constraints, left_foot.translation, 0.01, 10);
@@ -39,8 +77,6 @@ fn multi_chain_ik_system(
     }
 
     // Right leg symmetric mercy
-
-    // Other chains unchanged
 }
 
 // Rest of file unchanged from previous full version
