@@ -225,7 +225,6 @@ fn main() {
             player_breeding_mechanics,
             material_attenuation_system,
             hrtf_convolution_system,
-            dynamic_head_tracking,
             ambisonics_encode_system,
             ambisonics_decode_system,
             chunk_manager,
@@ -233,7 +232,77 @@ fn main() {
         .run();
 }
 
-// Full remaining file unchanged from previous version (setup with PlayerHead, player_movement, emotional_resonance_particles with SoundSource, etc.)
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
+
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            illuminance: 10000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
+        ..default()
+    });
+
+    let player_body = commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
+            transform: Transform::from_xyz(0.0, 30.0, 0.0),
+            visibility: Visibility::Visible,
+            ..default()
+        },
+        Player {
+            tamed_creatures: Vec::new(),
+            show_inventory: false,
+            selected_creature: None,
+        },
+        Predicted,
+        RigidBody::Dynamic,
+        Collider::capsule_y(1.0, 0.5),
+        Velocity::zero(),
+        PositionHistory { buffer: VecDeque::new() },
+    )).id();
+
+    commands.spawn((
+        Transform::from_xyz(0.0, 1.8, 0.0),
+        GlobalTransform::default(),
+        PlayerHead,
+    )).set_parent(player_body);
+}
+
+fn dynamic_head_tracking(
+    mut head_query: Query<&mut Transform, With<PlayerHead>>,
+    mouse_motion: EventReader<MouseMotion>,
+    time: Res<Time>,
+) {
+    let mut head_transform = head_query.single_mut();
+
+    let sensitivity = 0.002;
+    let mut delta = Vec2::ZERO;
+    for event in mouse_motion.read() {
+        delta += event.delta;
+    }
+
+    let yaw = -delta.x * sensitivity;
+    let pitch = -delta.y * sensitivity.clamp(-0.1, 0.1);
+
+    let current = head_transform.rotation;
+    let yaw_quat = Quat::from_rotation_y(yaw);
+    let pitch_quat = Quat::from_rotation_x(pitch);
+
+    head_transform.rotation = yaw_quat * current * pitch_quat;
+}
+
+// Rest of file unchanged from previous full version
 
 pub struct MercyResonancePlugin;
 
