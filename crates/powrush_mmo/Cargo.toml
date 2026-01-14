@@ -1,27 +1,26 @@
-# powrush_mmo — Infinite Mercy Abundance MMO Universe
-# Proximity voice chat integrated
-
 [package]
 name = "powrush_mmo"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
+[[bin]]
+name = "powrush_mmo"
+path = "src/main.rs"
+
 [dependencies]
+mercy_core.workspace = true
 bevy = { workspace = true }
-lightyear = { workspace = true }
-bevy_rapier3d = { workspace = true }
-bevy_egui = { workspace = true }
-rand = { workspace = true }
-bincode = { workspace = true }
-serde = { workspace = true }
-bevy_audio_stream = { workspace = true }
-opus = { workspace = true }
-kira = { workspace = true }
-
-[[bin]]
-name = "server"
-path = "src/bin/server.rs"
-
-[[bin]]
-name = "client"
-path = "src/bin/client.rs"
+bevy_renet = "0.0.9"
+bevy_kira_audio = { version = "0.18", features = ["ogg"] }
+noise = "0.8"
+rand.workspace = true
+tokio.workspace = true
+kira = "0.8"
+pqc-ml-kem = { workspace = true }
+x25519-dalek = { workspace = true }
+chacha20poly1305 = { workspace = true }
+hkdf = { workspace = true }
+sha2 = { workspace = true }
+lightyear = "0.13"  # Reliable channel handshake mercy
+bincode = "1.3"
+serde = { version = "1.0", features = ["derive"] }
