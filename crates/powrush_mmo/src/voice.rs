@@ -9,10 +9,10 @@ use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce, aead::{Aead, NewAead}};
 use crate::pqc_exchange::SessionKeys;
 use rand::RngCore;
 
+const SPEED_OF_SOUND: f32 = 343.0;  // m/s mercy eternal
+
 #[derive(Channel)]
 pub struct VoiceChannel;
-
-const SPEED_OF_SOUND: f32 = 343.0;  // m/s mercy eternal
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct VoicePacket {
@@ -73,21 +73,21 @@ pub fn voice_playback_system(
             if let Ok(decrypted) = cipher.decrypt(nonce, message.encrypted_samples.as_slice()) {
                 // Doppler calculation mercy eternal
                 let relative_pos = message.position - listener_transform.translation;
-                let relative_vel = message.velocity - listener_velocity.0;
-
                 let distance = relative_pos.length();
-                if distance > 0.1 {
-                    let doppler_factor = SPEED_OF_SOUND / (SPEED_OF_SOUND - relative_vel.dot(relative_pos.normalize()));
-                    let playback_rate = doppler_factor.clamp(0.5, 2.0);  // Reasonable bounds mercy
+                let mut playback_rate = 1.0;
 
-                    audio.play(decrypted)
-                        .spatial(true)
-                        .with_position(message.position)
-                        .with_playback_rate(playback_rate)
-                        .handle();
-                } else {
-                    audio.play(decrypted).handle();
+                if distance > 0.1 {
+                    let direction = relative_pos.normalize();
+                    let relative_vel = message.velocity - listener_velocity.0;
+                    let doppler_factor = SPEED_OF_SOUND / (SPEED_OF_SOUND - relative_vel.dot(direction));
+                    playback_rate = doppler_factor.clamp(0.5, 2.0);
                 }
+
+                audio.play(decrypted)
+                    .spatial(true)
+                    .with_position(message.position)
+                    .with_playback_rate(playback_rate)
+                    .handle();
             }
         }
     }
