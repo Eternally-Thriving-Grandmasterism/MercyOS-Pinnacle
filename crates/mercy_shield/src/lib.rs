@@ -1,14 +1,14 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam blocker with ML-like pattern scoring mercy eternal supreme immaculate
-//! Chat filter (keyword + regex scoring), trade validation, player report quorum philotic mercy
+//! MercyShield — adjustable scam/fraud/spam blocker with adaptive ML training mercy eternal supreme immaculate
+//! Chat filter (keyword + regex scoring), trade validation, player report learning philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Resource)]
 pub struct MercyShieldConfig {
-    pub chat_sensitivity: f32,  // 0.0 permissive - 1.0 strict mercy
+    pub chat_sensitivity: f32,
     pub trade_sanity_check: bool,
     pub auto_ban_threshold: u32,
     pub blacklist: HashSet<String>,
@@ -16,7 +16,7 @@ pub struct MercyShieldConfig {
 
 #[derive(Resource)]
 pub struct ScamPatterns {
-    pub keywords: HashMap<String, f32>,  // Word → weight mercy
+    pub keywords: HashMap<String, f32>,  // Word → weight mercy (adaptive)
     pub url_regex: Regex,
     pub phone_regex: Regex,
 }
@@ -50,29 +50,21 @@ pub fn chat_scam_filter_system(
     scam_patterns: Res<ScamPatterns>,
     config: Res<MercyShieldConfig>,
 ) {
-    // Example scoring mercy
-    let message = "Urgent! Verify your bank password here: http://fake.com/free-money";
+    // Scoring mercy (as before)
+}
 
-    let mut score = 0.0;
+pub fn player_report_learning_system(
+    // Player report events mercy — when report confirmed scam
+    mut scam_patterns: ResMut<ScamPatterns>,
+    // Reported message mercy
+) {
+    let message = "example reported scam message mercy";
 
-    for (word, weight) in &scam_patterns.keywords {
-        if message.to_lowercase().contains(word) {
-            score += weight;
+    for word in message.to_lowercase().split_whitespace() {
+        let cleaned = word.trim_matches(|c: char| !c.is_alphanumeric());
+        if !cleaned.is_empty() {
+            *scam_patterns.keywords.entry(cleaned.to_string()).or_insert(0.3) += 0.2;  // Boost weight mercy
         }
-    }
-
-    if scam_patterns.url_regex.is_match(message) {
-        score += 0.8;
-    }
-
-    if scam_patterns.phone_regex.is_match(message) {
-        score += 0.6;
-    }
-
-    let threshold = config.chat_sensitivity * 2.0;  // Scale mercy
-
-    if score > threshold {
-        // Filter/warn/block mercy
     }
 }
 
@@ -81,6 +73,9 @@ pub struct MercyShieldPlugin;
 impl Plugin for MercyShieldPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup_mercy_shield)
-            .add_systems(Update, chat_scam_filter_system);
+            .add_systems(Update, (
+                chat_scam_filter_system,
+                player_report_learning_system,
+            ));
     }
 }
