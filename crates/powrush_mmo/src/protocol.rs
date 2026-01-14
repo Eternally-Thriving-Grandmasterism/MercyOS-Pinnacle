@@ -1,27 +1,29 @@
 //! powrush_mmo/protocol.rs — Complete shared networking protocol
-//! Lightyear replication + trading + auction messages for eternal sync mercy
+//! Lightyear replication + trading + general auctions + dedicated creature bidding mercy
 
 use bevy::prelude::*;
 use lightyear::prelude::*;
 use serde::{Serialize, Deserialize};
 
-// ... previous channels/messages
+// ... previous channels/messages (PlantCrop, OfferTrade, AcceptTrade, ListAuction, BidAuction)
 
+// Dedicated creature bidding messages
 #[message(channel = Actions)]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ListAuction {
-    pub auction_id: u64,  // Client-generated, server validates
-    pub item_type: String,
-    pub quantity: u32,
+pub struct ListCreatureAuction {
+    pub auction_id: u64,
+    pub creature_entity: Entity,  // Server reference mercy
+    pub creature_dna: CreatureDNA,
+    pub creature_type: CreatureType,
     pub starting_price: u32,
-    pub duration_seconds: f32,  // Auction length mercy
+    pub duration_seconds: f32,
 }
 
 #[message(channel = Actions)]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct BidAuction {
+pub struct BidCreatureAuction {
     pub auction_id: u64,
     pub bid_amount: u32,
 }
 
-// ... previous replication
+// BidAuction can be shared, but dedicated for clarity mercy
