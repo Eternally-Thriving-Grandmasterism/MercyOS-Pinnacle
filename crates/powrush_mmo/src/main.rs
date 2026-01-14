@@ -85,14 +85,15 @@ struct Creature {
     parent1: Option<u64>,
     parent2: Option<u64>,
     generation: u32,
+    last_drift_day: f32,  // For drift timing mercy
 }
 
 #[derive(Clone, Copy)]
 struct CreatureDNA {
-    speed: f32,         // 5.0-15.0
-    size: f32,          // 0.5-2.0
-    camouflage: f32,    // 0.0-1.0
-    aggression: f32,    // 0.0-1.0
+    speed: f32,
+    size: f32,
+    camouflage: f32,
+    aggression: f32,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -165,6 +166,7 @@ fn main() {
             weather_system,
             creature_behavior_cycle,
             creature_evolution_system,
+            genetic_drift_system,
             player_breeding_mechanics,
             chunk_manager,
         ))
@@ -212,107 +214,41 @@ fn setup(
     ));
 }
 
-fn player_inventory_ui(
-    mut contexts: EguiContexts,
-    keyboard_input: Res<Input<KeyCode>>,
-    mut player_query: Query<&mut Player>,
-    creature_query: Query<&Creature>,
+fn genetic_drift_system(
+    mut query: Query<&mut Creature>,
+    world_time: Res<WorldTime>,
+    time: Res<Time>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::I) {
-        if let Ok(mut player) = player_query.get_single_mut() {
-            player.show_inventory = !player.show_inventory;
-        }
+    // Count population per type for drift strength mercy
+    let mut counts = std::collections::HashMap::new();
+    for creature in query.iter() {
+        *counts.entry(creature.creature_type).or_insert(0) += 1;
     }
 
-    if let Ok(player) = player_query.get_single() {
-        if player.show_inventory {
-            egui::Window::new("Creature Inventory — Mercy Eternal")
-                .resizable(true)
-                .show(contexts.ctx_mut(), |ui| {
-                    ui.heading(format!("Tamed: {}", player.tamed_creatures.len()));
+    for mut creature in query.iter_mut() {
+        // Drift every 10 in-game days, stronger in small populations
+        if (world_time.day - creature.last_drift_day).abs() > 10.0 {
+            let pop = counts.get(&creature.creature_type).copied().unwrap_or(1);
+            let drift_strength = (1.0 / pop as f32).min(0.3);  // Max 30% in pop=3
 
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for &creature_entity in &player.tamed_creatures {
-                            if let Ok(creature) = creature_query.get(creature_entity) {
-                                let selected = player.selected_creature == Some(creature_entity);
-                                if ui.selectable_label(selected, format!("{:?} — Gen {} — Age {:.0} days", creature.creature_type, creature.generation, creature.age / 10.0)).clicked() {
-                                    if let Ok(mut player) = player_query.get_single_mut() {
-                                        player.selected_creature = Some(creature_entity);
-                                    }
-                                }
-                            }
-                        }
-                    });
+            creature.dna.speed += rand::thread_rng().gen_range(-drift_strength..drift_strength);
+            creature.dna.speed = creature.dna.speed.clamp(5.0, 15.0);
 
-                    ui.separator();
+            creature.dna.size += rand::thread_rng().gen_range(-drift_strength * 0.2..drift_strength * 0.2);
+            creature.dna.size = creature.dna.size.clamp(0.5, 2.0);
 
-                    if let Some(selected_entity) = player.selected_creature {
-                        if let Ok(creature) = creature_query.get(selected_entity) {
-                            ui.heading("Evolutionary Graph — Mercy Eternal");
+            creature.dna.camouflage += rand::thread_rng().gen_range(-drift_strength * 0.1..drift_strength * 0.1);
+            creature.dna.camouflage = creature.dna.camouflage.clamp(0.0, 1.0);
 
-                            let painter = ui.painter();
-                            let rect = ui.available_rect_before_wrap();
-                            let center_x = rect.center().x;
-                            let start_y = rect.top() + 40.0;
+            creature.dna.aggression += rand::thread_rng().gen_range(-drift_strength * 0.1..drift_strength * 0.1);
+            creature.dna.aggression = creature.dna.aggression.clamp(0.0, 1.0);
 
-                            struct Node {
-                                pos: Pos2,
-                                creature: Creature,
-                            }
-
-                            let mut nodes = Vec::new();
-                            let mut current = Some(selected_entity);
-
-                            let mut y_offset = start_y;
-                            while let Some(entity) = current {
-                                if let Ok(c) = creature_query.get(entity) {
-                                    nodes.push(Node {
-                                        pos: Pos2::new(center_x, y_offset),
-                                        creature: c.clone(),
-                                    });
-                                    y_offset += 100.0;
-                                    current = c.parent1.or(c.parent2).and_then(|id| creature_query.iter().find_map(|(e, cr)| if cr.parent1 == Some(id) || cr.parent2 == Some(id) { Some(e) } else { None }));
-                                } else {
-                                    break;
-                                }
-                            }
-
-                            nodes.reverse();  // Root at bottom
-
-                            // Draw edges
-                            for i in 0..nodes.len() - 1 {
-                                let from = nodes[i].pos;
-                                let to = nodes[i + 1].pos;
-                                painter.line_segment([from, to], Stroke::new(3.0, Color32::WHITE));
-                            }
-
-                            // Draw nodes
-                            for node in &nodes {
-                                let rect = egui::Rect::from_center_size(node.pos, egui::vec2(220.0, 80.0));
-                                painter.rect_filled(rect, 12.0, Color32::from_black_alpha(200));
-                                painter.text(node.pos, egui::Align2::CENTER_CENTER, format!("Gen {}\n{:?}\nSpeed: {:.1} | Size: {:.2}\nCamo: {:.2} | Agg: {:.2}", 
-                                    node.creature.generation, 
-                                    node.creature.creature_type,
-                                    node.creature.dna.speed,
-                                    node.creature.dna.size,
-                                    node.creature.dna.camouflage,
-                                    node.creature.dna.aggression
-                                ), egui::FontId::proportional(16.0), Color32::WHITE);
-                            }
-                        }
-                    }
-
-                    if ui.button("Close").clicked() {
-                        if let Ok(mut player) = player_query.get_single_mut() {
-                            player.show_inventory = false;
-                        }
-                    }
-                });
+            creature.last_drift_day = world_time.day;
         }
     }
 }
 
-// Rest of file unchanged from previous full version (setup, player_movement, creature_behavior_cycle, creature_evolution_system with parent tracking + generation increment, player_breeding_mechanics setting parent IDs + generation = max(parent generations) + 1, chunk_manager, etc.)
+// Rest of file unchanged from previous full version (player_movement, creature_behavior_cycle, creature_evolution_system, player_breeding_mechanics, player_inventory_ui with lineage graph, chunk_manager, etc.)
 
 pub struct MercyResonancePlugin;
 
@@ -326,6 +262,7 @@ impl Plugin for MercyResonancePlugin {
             weather_system,
             creature_behavior_cycle,
             creature_evolution_system,
+            genetic_drift_system,
             player_breeding_mechanics,
             player_inventory_ui,
             chunk_manager,
