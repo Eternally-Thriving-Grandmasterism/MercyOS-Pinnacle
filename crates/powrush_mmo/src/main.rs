@@ -1,46 +1,35 @@
-// In multi_chain_ik_system mercy — leg chains with hip + knee + ankle constraints
+// In multi_chain_ik_system mercy — arm chains with shoulder constraints
 fn multi_chain_ik_system(
     player_query: Query<&Transform, With<Player>>,
-    mut leg_query: Query<&mut Transform, Or<(With<LeftUpperLeg>, With<LeftLowerLeg>, With<RightUpperLeg>, With<RightLowerLeg>)>>,
-    foot_target_query: Query<&Transform, Or<(With<LeftFootTarget>, With<RightFootTarget>)>>,
+    mut arm_query: Query<&mut Transform, Or<(With<LeftUpperArm>, With<RightUpperArm>, With<LeftForearm>, With<RightForearm>)>>,
+    hand_target_query: Query<&Transform, Or<(With<LeftHandTarget>, With<RightHandTarget>)>>,
 ) {
     let player_transform = player_query.single();
 
-    // Left leg IK with hip + knee + ankle constraints mercy
-    if let (Ok(mut left_upper_leg), Ok(mut left_lower_leg), Ok(left_foot)) = (
-        leg_query.get_component_mut::<Transform>(/* left_upper_leg entity */),
-        leg_query.get_component_mut::<Transform>(/* left_lower_leg entity */),
-        foot_target_query.get_single().ok(),
+    // Left arm TRIK + shoulder constraints mercy
+    if let (Ok(mut left_upper), Ok(mut left_forearm), Ok(left_hand)) = (
+        arm_query.get_component_mut::<Transform>(/* left_upper_arm entity */),
+        arm_query.get_component_mut::<Transform>(/* left_forearm entity */),
+        hand_target_query.get_single().ok(),
     ) {
-        let hip = player_transform.translation + Vec3::new(-0.2, -0.4, 0.0);
-        let mut positions = [
-            hip,
-            left_upper_leg.translation,
-            left_lower_leg.translation,
-            left_foot.translation,
-        ];
+        let shoulder = player_transform.translation + Vec3::new(-0.3, 0.0, 0.0);
+        let target = left_hand.translation;
 
-        let lengths = [0.5, 0.5];
+        let (elbow, _) = trik_two_bone(shoulder, 0.4, 0.4, target);
 
-        // Hip, knee, ankle constraints mercy eternal
-        let constraints = [
-            (-0.8, 0.8),  // Hip flexion/extension + abduction mercy
-            (0.0, std::f32::consts::PI - 0.1),  // Knee forward mercy
-            (-0.5, 0.5),  // Ankle dorsiflexion/plantarflexion mercy
-        ];
+        left_upper.translation = (shoulder + elbow) / 2.0;
+        left_upper.look_at(elbow, Vec3::Y);
 
-        fabrik_constrained(&mut positions, &lengths, &constraints, left_foot.translation, 0.01, 10);
+        left_forearm.translation = (elbow + target) / 2.0;
+        left_forearm.look_at(target, Vec3::Y);
 
-        left_upper_leg.translation = positions[1];
-        left_lower_leg.translation = positions[2];
-
-        left_upper_leg.look_at(positions[2], Vec3::Y);
-        left_lower_leg.look_at(left_foot.translation, Vec3::Y);
+        // Apply shoulder spherical constraints mercy
+        apply_shoulder_constraints(shoulder, &mut left_upper, player_transform.forward(), player_transform.up());
     }
 
-    // Right leg symmetric mercy
+    // Right arm symmetric mercy
 
-    // Other chains unchanged
+    // Spine and legs unchanged mercy
 }
 
 // Rest of file unchanged from previous full version
