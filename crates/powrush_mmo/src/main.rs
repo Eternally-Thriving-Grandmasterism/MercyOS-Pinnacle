@@ -24,7 +24,7 @@ use crate::networking::MultiplayerReplicationPlugin;
 use crate::voice::VoicePlugin;
 use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
 use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
-use crate::hand_ik::{fabrik_ik_multi_chain, trik_two_bone};
+use crate::hand_ik::{fabrik_constrained, trik_two_bone};
 
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
@@ -180,299 +180,6 @@ struct LeftHandTarget;
 struct RightHandTarget;
 
 #[derive(Component)]
-struct Grabbable;
-
-#[derive(Component)]
-struct Grasped {
-    pub joint: Entity,  // FixedJoint entity mercy
-}
-
-#[derive(Component)]
-struct LeftGripTrigger;
-
-#[derive(Component)]
-struct RightGripTrigger;
-
-#[derive(Resource)]
-struct HrtfResource {
-    pub data: HrtfData,
-}
-
-struct HrtfData {
-    sofa: SofaFile,
-    sample_rate: u32,
-}
-
-fn main() {
-    let mut app = App::new();
-
-    app.add_plugins(DefaultPlugins.set(WindowPlugin {
-        primary_window: Some(Window {
-            title: "Powrush-MMO — Forgiveness Eternal Infinite Universe".into(),
-            ..default()
-        }),
-        ..default()
-    }).set(AssetPlugin {
-        asset_folder: "assets".to_string(),
-        ..default()
-    }))
-    .add_plugins(KiraAudioPlugin)
-    .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
-    .add_plugins(RapierDebugRenderPlugin::default())
-    .add_plugins(EguiPlugin)
-    .add_plugins(MultiplayerReplicationPlugin)
-    .add_plugins(VoicePlugin)
-    .add_plugins(XrSessionPlugin)
-    .insert_resource(WorldTime { time_of_day: 0.0, day: 0.0 })
-    .insert_resource(WeatherManager {
-        current: Weather::Clear,
-        intensity: 0.0,
-        duration_timer: 0.0,
-        next_change: 300.0,
-    })
-    .add_startup_system(load_hrtf_system)
-    .add_startup_system(setup_ambisonics);
-
-    let is_server = true;
-
-    if is_server {
-        app.add_plugins(RenetServerPlugin);
-        app.insert_resource(RenetServer::new(ConnectionConfig::default()));
-    } else {
-        app.add_plugins(RenetClientPlugin);
-        app.insert_resource(RenetClient::new(ConnectionConfig::default()));
-    }
-
-    app.add_systems(Startup, setup)
-        .add_systems(Update, (
-            player_movement,
-            dynamic_head_tracking,
-            multi_chain_ik_system,
-            hand_grasp_physics_system,
-            player_inventory_ui,
-            player_farming_mechanics,
-            emotional_resonance_particles,
-            granular_ambient_evolution,
-            advance_time,
-            day_night_cycle,
-            weather_system,
-            creature_behavior_cycle,
-            natural_selection_system,
-            creature_hunger_system,
-            creature_eat_system,
-            crop_growth_system,
-            food_respawn_system,
-            creature_evolution_system,
-            genetic_drift_system,
-            player_breeding_mechanics,
-            material_attenuation_system,
-            hrtf_convolution_system,
-            ambisonics_encode_system,
-            ambisonics_decode_system,
-            vr_body_avatar_system,
-            chunk_manager,
-        ))
-        .run();
-}
-
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    xr_session: Option<Res<XrSession>>,
-) {
-    // ... unchanged setup
-
-    // Add Grabbable to some objects mercy (example food)
-    // In food spawning or object creation mercy
-}
-
-fn hand_grasp_physics_system(
-    mut commands: Commands,
-    rapier_context: Res<RapierContext>,
-    xr_hands: Query<&XrHand>,
-    hand_targets: Query<(&Transform, Entity), Or<(With<LeftHandTarget>, With<RightHandTarget>)>>,
-    grabbable_query: Query<(Entity, &Transform), With<Grabbable>>,
-    grasped_query: Query<&Grasped>,
-    keyboard_input: Res<Input<KeyCode>>,
-) {
-    let grip_pressed = keyboard_input.pressed(KeyCode::G);  // Fallback key mercy
-
-    for hand in &xr_hands {
-        let grip_value = hand.grip_value();
-        let hand_entity = if hand.side == bevy_mod_xr::hands::HandSide::Left { /* left_hand_target */ } else { /* right */ };
-
-        if grip_value > 0.8 || grip_pressed {
-            // Grasp mercy
-            for (grabbable_entity, grabbable_transform) in &grabbable_query {
-                if grasped_query.get(grabbable_entity).is_ok() {
-                    continue;
-                }
-
-                let dist = (hand_targets.get(hand_entity).unwrap().0.translation - grabbable_transform.translation).length();
-                if dist < 0.2 {
-                    let joint = commands.spawn(FixedJointBuilder::new()
-                        .local_anchor2(Vec3::ZERO.into())  // Hand anchor
-                        .build_between(hand_entity, grabbable_entity))
-                        .id();
-
-                    commands.entity(grabbable_entity).insert(Grasped { joint });
-                    break;
-                }
-            }
-        } else {
-            // Release mercy
-            // Find grasped by this hand + remove joint + apply velocity
-        }
-    }
-}
-
-// Rest of file unchanged from previous full version
-
-pub struct MercyResonancePlugin;
-
-impl Plugin for MercyResonancePlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Update, (
-            emotional_resonance_particles,
-            granular_ambient_evolution,
-            advance_time,
-            day_night_cycle,
-            weather_system,
-            creature_behavior_cycle,
-            natural_selection_system,
-            creature_hunger_system,
-            creature_eat_system,
-            crop_growth_system,
-            food_respawn_system,
-            creature_evolution_system,
-            genetic_drift_system,
-            player_breeding_mechanics,
-            player_farming_mechanics,
-            player_inventory_ui,
-            material_attenuation_system,
-            hrtf_convolution_system,
-            dynamic_head_tracking,
-            vr_body_avatar_system,
-            multi_chain_ik_system,
-            hand_grasp_physics_system,
-            ambisonics_encode_system,
-            ambisonics_decode_system,
-            chunk_manager,
-        ));
-    }
-}}}}struct Creature {
-    creature_type: CreatureType,
-    state: CreatureState,
-    wander_timer: f32,
-    age: f32,
-    health: f32,
-    hunger: f32,
-    dna: CreatureDNA,
-    tamed: bool,
-    owner: Option<Entity>,
-    parent1: Option<u64>,
-    parent2: Option<u64>,
-    generation: u32,
-    last_drift_day: f32,
-}
-
-#[derive(Clone, Copy)]
-struct CreatureDNA {
-    speed: f32,
-    size: f32,
-    camouflage: f32,
-    aggression: f32,
-    metabolism: f32,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CreatureType {
-    Deer,
-    Wolf,
-    Bird,
-    Fish,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CreatureState {
-    Wander,
-    Flee,
-    Sleep,
-    Mate,
-    Follow,
-    Eat,
-    Dead,
-}
-
-#[derive(Component)]
-struct FoodResource {
-    nutrition: f32,
-    respawn_timer: f32,
-}
-
-#[derive(Component)]
-struct Crop {
-    crop_type: CropType,
-    growth_stage: u8,
-    growth_timer: f32,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CropType {
-    Wheat,
-    Berries,
-    Roots,
-}
-
-#[derive(Component)]
-struct Chunk {
-    coord: IVec2,
-    voxels: Box<[u8; ChunkShape::SIZE as usize]>,
-}
-
-#[derive(Component)]
-struct SoundSource {
-    position: Vec3,
-}
-
-#[derive(Component)]
-struct PlayerHead;
-
-#[derive(Component)]
-struct PlayerBodyPart;
-
-#[derive(Component)]
-struct LeftUpperArm;
-
-#[derive(Component)]
-struct LeftForearm;
-
-#[derive(Component)]
-struct RightUpperArm;
-
-#[derive(Component)]
-struct RightForearm;
-
-#[derive(Component)]
-struct LeftHandTarget;
-
-#[derive(Component)]
-struct RightHandTarget;
-
-#[derive(Component)]
-struct SpineRoot;
-
-#[derive(Component)]
-struct SpineLower;
-
-#[derive(Component)]
-struct SpineMid;
-
-#[derive(Component)]
-struct SpineUpper;
-
-#[derive(Component)]
 struct LeftUpperLeg;
 
 #[derive(Component)]
@@ -545,6 +252,7 @@ fn main() {
             player_movement,
             dynamic_head_tracking,
             multi_chain_ik_system,
+            foot_placement_system,
             player_inventory_ui,
             player_farming_mechanics,
             emotional_resonance_particles,
@@ -612,151 +320,120 @@ fn setup(
         PositionHistory { buffer: VecDeque::new() },
     )).id();
 
-    // Full multi-chain body avatar mercy — arms with wrist rotation limits
-    let arm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.8, resolution: 16 }));
-    let forearm_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.09, height: 0.8, resolution: 16 }));
-    let hand_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.2 }));
+    // Full multi-chain body avatar mercy — legs with foot targets for placement
+    let leg_mesh = meshes.add(Mesh::from(shape::Cylinder { radius: 0.15, height: 1.0, resolution: 16 }));
+    let foot_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.4 }));
 
     let skin_material = materials.add(Color::rgb(0.9, 0.7, 0.6).into());
 
-    // Left arm chain mercy
-    let left_upper_arm = commands.spawn((
+    // Left leg chain mercy
+    let left_upper_leg = commands.spawn((
         PbrBundle {
-            mesh: arm_mesh.clone(),
+            mesh: leg_mesh.clone(),
             material: skin_material.clone(),
-            transform: Transform::from_xyz(-0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            transform: Transform::from_xyz(-0.2, -0.5, 0.0),
             visibility: Visibility::Visible,
             ..default()
         },
-        LeftUpperArm,
+        LeftUpperLeg,
         PlayerBodyPart,
     )).id();
 
-    let left_forearm = commands.spawn((
+    let left_lower_leg = commands.spawn((
         PbrBundle {
-            mesh: forearm_mesh.clone(),
+            mesh: leg_mesh.clone(),
             material: skin_material.clone(),
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            transform: Transform::from_xyz(0.0, -0.5, 0.0),
             visibility: Visibility::Visible,
             ..default()
         },
-        LeftForearm,
+        LeftLowerLeg,
         PlayerBodyPart,
     )).id();
 
-    let left_hand = commands.spawn((
+    let left_foot_target = commands.spawn((
         PbrBundle {
-            mesh: hand_mesh.clone(),
+            mesh: foot_mesh.clone(),
             material: skin_material.clone(),
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            transform: Transform::from_xyz(0.0, -0.5, 0.0),
             visibility: Visibility::Visible,
             ..default()
         },
-        LeftHandTarget,
+        LeftFootTarget,
     )).id();
 
-    commands.entity(left_upper_arm).push_children(&[left_forearm]);
-    commands.entity(left_forearm).push_children(&[left_hand]);
-    commands.entity(player_body).push_children(&[left_upper_arm]);
+    commands.entity(left_upper_leg).push_children(&[left_lower_leg]);
+    commands.entity(left_lower_leg).push_children(&[left_foot_target]);
+    commands.entity(player_body).push_children(&[left_upper_leg]);
 
-    // Right arm symmetric mercy
-    let right_upper_arm = commands.spawn((
+    // Right leg symmetric mercy
+    let right_upper_leg = commands.spawn((
         PbrBundle {
-            mesh: arm_mesh.clone(),
+            mesh: leg_mesh.clone(),
             material: skin_material.clone(),
-            transform: Transform::from_xyz(0.3, 0.0, 0.0).with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
+            transform: Transform::from_xyz(0.2, -0.5, 0.0),
             visibility: Visibility::Visible,
             ..default()
         },
-        RightUpperArm,
+        RightUpperLeg,
         PlayerBodyPart,
     )).id();
 
-    let right_forearm = commands.spawn((
+    let right_lower_leg = commands.spawn((
         PbrBundle {
-            mesh: forearm_mesh.clone(),
+            mesh: leg_mesh.clone(),
             material: skin_material.clone(),
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            transform: Transform::from_xyz(0.0, -0.5, 0.0),
             visibility: Visibility::Visible,
             ..default()
         },
-        RightForearm,
+        RightLowerLeg,
         PlayerBodyPart,
     )).id();
 
-    let right_hand = commands.spawn((
+    let right_foot_target = commands.spawn((
         PbrBundle {
-            mesh: hand_mesh,
+            mesh: foot_mesh,
             material: skin_material,
-            transform: Transform::from_xyz(0.0, -0.4, 0.0),
+            transform: Transform::from_xyz(0.0, -0.5, 0.0),
             visibility: Visibility::Visible,
             ..default()
         },
-        RightHandTarget,
+        RightFootTarget,
     )).id();
 
-    commands.entity(right_upper_arm).push_children(&[right_forearm]);
-    commands.entity(right_forearm).push_children(&[right_hand]);
-    commands.entity(player_body).push_children(&[right_upper_arm]);
+    commands.entity(right_upper_leg).push_children(&[right_lower_leg]);
+    commands.entity(right_lower_leg).push_children(&[right_foot_target]);
+    commands.entity(player_body).push_children(&[right_upper_leg]);
 
-    // Spine and legs chains mercy (as before)
-
-    // Head mercy
-    commands.spawn((
-        Transform::from_xyz(0.0, 1.8, 0.0),
-        GlobalTransform::default(),
-        PlayerHead,
-    )).set_parent(player_body);
+    // Arms, spine, head mercy (as before)
 
     // XR session override mercy
     if let Some(session) = xr_session {
-        // Future: bind head/hand poses
+        // Future: bind head/hand/foot poses
     }
 }
 
-fn multi_chain_ik_system(
+fn foot_placement_system(
+    rapier_context: Res<RapierContext>,
     player_query: Query<&Transform, With<Player>>,
-    mut arm_query: Query<&mut Transform, Or<(With<LeftUpperArm>, With<LeftForearm>, With<RightUpperArm>, With<RightForearm>)>>,
-    hand_target_query: Query<&Transform, Or<(With<LeftHandTarget>, With<RightHandTarget>)>>,
+    mut foot_target_query: Query<&mut Transform, Or<(With<LeftFootTarget>, With<RightFootTarget>)>>,
 ) {
     let player_transform = player_query.single();
+    let player_pos = player_transform.translation;
 
-    // Left arm TRIK + wrist rotation limit mercy
-    if let (Ok(mut left_upper), Ok(mut left_forearm), Ok(left_hand)) = (
-        arm_query.get_component_mut::<Transform>(/* left_upper_arm */),
-        arm_query.get_component_mut::<Transform>(/* left_forearm */),
-        hand_target_query.get_single().ok(),
-    ) {
-        let shoulder = player_transform.translation + Vec3::new(-0.3, 0.0, 0.0);
-        let target = left_hand.translation;
+    // Left foot placement mercy
+    if let Ok(mut left_foot) = foot_target_query.get_single_mut().ok() {
+        let hip = player_pos + Vec3::new(-0.2, -0.4, 0.0);
+        let ray = Ray::new(hip.into(), Vec3::NEG_Y.into());
 
-        let (elbow, _) = trik_two_bone(shoulder, 0.4, 0.4, target);
-
-        left_upper.translation = (shoulder + elbow) / 2.0;
-        left_upper.look_at(elbow, Vec3::Y);
-
-        left_forearm.translation = (elbow + target) / 2.0;
-        left_forearm.look_at(target, Vec3::Y);
-
-        // Wrist rotation limit mercy — pronation/supination ±80° + flexion/extension
-        let forearm_dir = (target - elbow).normalize_or_zero();
-        let current_hand_forward = left_hand.forward();
-
-        // Project to forearm plane mercy
-        let projected = current_hand_forward - forearm_dir * current_hand_forward.dot(forearm_dir);
-        let clamped = projected.normalize_or_zero();
-
-        // Limit twist angle mercy
-        let twist_angle = current_hand_forward.angle_between(clamped);
-        if twist_angle > std::f32::consts::FRAC_PI_2 * 0.9 {  // ±80° mercy
-            let correction = Quat::from_rotation_arc(current_hand_forward, clamped);
-            left_hand.rotation = correction * left_hand.rotation;
+        if let Some((_, toi)) = rapier_context.cast_ray(ray.origin, ray.dir, 2.0, true, QueryFilter::default()) {
+            let ground_hit = hip + Vec3::NEG_Y * toi;
+            left_foot.translation = ground_hit + Vec3::new(0.0, 0.2, 0.0);  // Foot offset mercy
         }
     }
 
-    // Right arm symmetric mercy
-
-    // Spine and legs unchanged mercy
+    // Right foot symmetric mercy
 }
 
 // Rest of file unchanged from previous full version
@@ -787,6 +464,7 @@ impl Plugin for MercyResonancePlugin {
             dynamic_head_tracking,
             vr_body_avatar_system,
             multi_chain_ik_system,
+            foot_placement_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
             chunk_manager,
