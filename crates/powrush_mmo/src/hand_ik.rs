@@ -1,6 +1,6 @@
 //! crates/powrush_mmo/src/hand_ik.rs
-//! Hybrid TRIK-FABRIK Inverse Kinematics solver mercy eternal supreme immaculate
-//! TRIK analytical two-bone exact for arms, FABRIK iterative multi-chain fallback philotic mercy
+//! Hybrid TRIK-FABRIK with joint constraints mercy eternal supreme immaculate
+//! TRIK analytical two-bone exact for arms, FABRIK multi-chain with angle constraints for spine mercy
 
 use bevy::prelude::*;
 
@@ -40,10 +40,11 @@ pub fn trik_two_bone(
     (elbow, target)
 }
 
-/// FABRIK multi-chain fallback mercy eternal
-pub fn fabrik_multi_chain(
+/// FABRIK multi-chain with per-joint angle constraints mercy eternal
+pub fn fabrik_constrained(
     positions: &mut [Vec3],
     lengths: &[f32],
+    constraints: &[(f32, f32)],  // (min_angle, max_angle) radians per joint mercy
     target: Vec3,
     tolerance: f32,
     max_iterations: usize,
@@ -64,16 +65,29 @@ pub fn fabrik_multi_chain(
     let original_target = positions[end_idx];
 
     for _ in 0..max_iterations {
+        // Backward
         positions[end_idx] = target;
         for i in (1..=end_idx).rev() {
             let direction = (positions[i - 1] - positions[i]).normalize_or_zero();
             positions[i - 1] = positions[i] + direction * lengths[i - 1];
         }
 
+        // Forward with constraints mercy
         positions[0] = positions[0];
         for i in 1..=end_idx {
-            let direction = (positions[i] - positions[i - 1]).normalize_or_zero();
-            positions[i] = positions[i - 1] + direction * lengths[i - 1];
+            let prev_dir = positions[i] - positions[i - 1];
+            let desired_dir = (positions[i] - positions[i - 1]).normalize_or_zero();
+
+            let mut angle = prev_dir.angle_between(desired_dir);
+            if i - 1 < constraints.len() {
+                let (min, max) = constraints[i - 1];
+                angle = angle.clamp(min, max);
+            }
+
+            let axis = prev_dir.cross(desired_dir).normalize_or_zero();
+            let rotation = Quat::from_axis_angle(axis, angle);
+
+            positions[i] = positions[i - 1] + rotation * prev_dir.normalize_or_zero() * lengths[i - 1];
         }
 
         if (positions[end_idx] - target).length_squared() < tolerance * tolerance {
@@ -81,6 +95,9 @@ pub fn fabrik_multi_chain(
         }
     }
 
+    positions[end_idx] = original_target;
+    false
+}
     positions[end_idx] = original_target;
     false
 }
