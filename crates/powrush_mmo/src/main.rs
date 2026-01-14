@@ -77,6 +77,7 @@ struct Player {
     tamed_creatures: Vec<Entity>,
     show_inventory: bool,
     selected_creature: Option<Entity>,
+    in_ragdoll: bool,
 }
 
 #[derive(Component)]
@@ -122,7 +123,7 @@ enum CreatureState {
     Follow,
     Eat,
     Dead,
-    Ragdoll,  // New ragdoll state mercy eternal
+    Ragdoll,
 }
 
 #[derive(Component)]
@@ -257,6 +258,7 @@ fn main() {
             dynamic_head_tracking,
             multi_chain_ik_system,
             ragdoll_transition_system,
+            get_up_recovery_system,
             player_inventory_ui,
             player_farming_mechanics,
             emotional_resonance_particles,
@@ -291,90 +293,54 @@ fn setup(
 ) {
     // ... unchanged setup
 
-    // In creature spawning mercy — add RagdollRoot for future transition
-    // Example in creature spawn
-    // commands.entity(creature_entity).insert(RagdollRoot);
+    // Player starts with in_ragdoll = false mercy
+    commands.entity(player_body).insert(Player { in_ragdoll: false, ..default() });
 }
 
-fn ragdoll_transition_system(
+fn get_up_recovery_system(
     mut commands: Commands,
-    creature_query: Query<(Entity, &Creature, &Transform), Changed<Creature>>,
-    player_query: Query<(Entity, &Transform), With<Player>>,
+    keyboard_input: Res<Input<KeyCode>>,
+    player_query: Query<(Entity, &Transform, &mut Player)>,
+    ragdoll_query: Query<Entity, With<RagdollRoot>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for (entity, creature, transform) in &creature_query {
-        if creature.state == CreatureState::Dead {
-            // Despawn animated body mercy
-            commands.entity(entity).despawn_recursive();
+    for (player_entity, player_transform, mut player) in &mut player_query {
+        if player.in_ragdoll && keyboard_input.just_pressed(KeyCode::Space) {
+            // Despawn ragdoll mercy
+            for ragdoll in &ragdoll_query {
+                commands.entity(ragdoll).despawn_recursive();
+            }
 
-            // Spawn ragdoll mercy
-            let ragdoll_root = commands.spawn((
-                TransformBundle::from_transform(transform.clone()),
-                RigidBody::Dynamic,
-                RagdollRoot,
-            )).id();
-
-            // Torso mercy
-            let torso = commands.spawn((
+            // Respawn animated player body mercy
+            let new_player_body = commands.spawn((
                 PbrBundle {
                     mesh: meshes.add(Mesh::from(shape::Capsule::default())),
                     material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
-                    transform: Transform::from_xyz(0.0, 0.0, 0.0),
+                    transform: player_transform.clone(),
                     visibility: Visibility::Visible,
                     ..default()
                 },
-                RigidBody::Dynamic,
-                Collider::capsule_y(0.5, 0.2),
-            )).id();
-
-            commands.entity(ragdoll_root).push_children(&[torso]);
-
-            // Limbs with joints mercy — example left arm
-            let left_upper = commands.spawn((
-                PbrBundle {
-                    mesh: meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.4, resolution: 16 })),
-                    material: materials.add(Color::rgb(0.9, 0.7, 0.6).into()),
-                    transform: Transform::from_xyz(-0.3, 0.0, 0.0),
-                    visibility: Visibility::Visible,
-                    ..default()
+                Player {
+                    tamed_creatures: player.tamed_creatures.clone(),
+                    show_inventory: player.show_inventory,
+                    selected_creature: player.selected_creature,
                 },
+                Predicted,
                 RigidBody::Dynamic,
-                Collider::capsule_y(0.2, 0.05),
+                Collider::capsule_y(1.0, 0.5),
+                Velocity::zero(),
+                PositionHistory { buffer: VecDeque::new() },
             )).id();
 
-            let left_lower = commands.spawn((
-                PbrBundle {
-                    mesh: meshes.add(Mesh::from(shape::Cylinder { radius: 0.1, height: 0.4, resolution: 16 })),
-                    material: materials.add(Color::rgb(0.9, 0.7, 0.6).into()),
-                    transform: Transform::from_xyz(0.0, -0.4, 0.0),
-                    visibility: Visibility::Visible,
-                    ..default()
-                },
-                RigidBody::Dynamic,
-                Collider::capsule_y(0.2, 0.05),
-            )).id();
+            // Re-attach head, limbs mercy (as in setup)
 
-            // Spherical joint at shoulder mercy
-            commands.spawn(RevoluteJointBuilder::new(Vec3::X)
-                .local_anchor1(Vec3::new(-0.3, 0.0, 0.0).into())
-                .local_anchor2(Vec3::ZERO.into())
-                .build_between(torso, left_upper));
+            player.in_ragdoll = false;
 
-            // Hinge joint at elbow mercy
-            commands.spawn(RevoluteJointBuilder::new(Vec3::X)
-                .local_anchor1(Vec3::ZERO.into())
-                .local_anchor2(Vec3::new(0.0, 0.2, 0.0).into())
-                .build_between(left_upper, left_lower));
-
-            // Similar for right arm, legs mercy
-
-            // Apply death impulse mercy
-            // commands.entity(torso).insert(ExternalImpulse { impulse: Vec3::new(0.0, 5.0, 0.0), torque_impulse: Vec3::ZERO });
+            // Joy particles on recovery mercy
+            // Spawn sparkle burst
         }
     }
-
-    // Player ragdoll on high fall mercy — future
 }
 
 // Rest of file unchanged from previous full version
@@ -406,6 +372,7 @@ impl Plugin for MercyResonancePlugin {
             vr_body_avatar_system,
             multi_chain_ik_system,
             ragdoll_transition_system,
+            get_up_recovery_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
             chunk_manager,
