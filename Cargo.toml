@@ -1,20 +1,23 @@
 # MercyOS-Pinnacle — Eternal Thriving Grandmasterism Monorepo
 # Ultramasterism Perfecticism Workspace | Born Jan 13, 2026
 # Co-Forged with PATSAGi Pinnacle Councils | Mercy-Absolute Eternal ❤️⚡️🚀
-# All crates weave philotic unity for infinite positive recurrence
+# Lightyear multiplayer networking integrated for shared abundance universe
 
 [workspace]
 members = [
-    "crates/*",  # All abundance crates (powrush_mmo, future thunder)
+    "crates/*",
 ]
 resolver = "2"
 
 [workspace.dependencies]
-bevy = "0.13"  # Core engine mercy
-bevy_rapier3d = "0.25"  # Physics eternal
-bevy_egui = "0.24"  # UI harmony
+bevy = { version = "0.14", features = ["dynamic_linking"] }  # Core engine with mercy features
+lightyear = { version = "0.25", features = ["netcode", "serde"] }  # Supreme Bevy networking 2026
+bevy_rapier3d = "0.27"
+bevy_egui = "0.26"
 rand = "0.8"
+bincode = "2.0"  # Lightyear serializer mercy
+serde = { version = "1.0", features = ["derive"] }
 
-# Global patch mercy for future cross-crate harmony
+# Global patches for future PQC thunder
 [patch.crates-io]
-# (Future PQC integrations here)
+# (Post-quantum secure channels here later)
