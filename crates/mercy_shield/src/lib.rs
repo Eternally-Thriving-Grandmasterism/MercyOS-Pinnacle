@@ -1,5 +1,5 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam blocker with persistent whitelist + blacklist mercy eternal supreme immaculate
+//! MercyShield — adjustable scam/fraud/spam blocker with regex filtering mercy eternal supreme immaculate
 //! Chat filter (keyword + regex scoring + whitelist bypass), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
@@ -23,6 +23,7 @@ pub struct MercyShieldConfig {
 #[derive(Resource)]
 pub struct ScamPatterns {
     pub keywords: HashMap<String, f32>,
+    pub regex_patterns: HashMap<Regex, f32>,  // Regex + weight mercy eternal
     pub url_regex: Regex,
     pub phone_regex: Regex,
 }
@@ -37,6 +38,10 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     keywords.insert("click".to_string(), 0.7);
     keywords.insert("winner".to_string(), 0.9);
 
+    let mut regex_patterns = HashMap::new();
+    regex_patterns.insert(Regex::new(r"bitcoin|crypto").unwrap(), 0.8);
+    regex_patterns.insert(Regex::new(r"investment.*return").unwrap(), 0.9);
+
     let mut config = MercyShieldConfig {
         chat_sensitivity: 0.7,
         trade_sanity_check: true,
@@ -45,14 +50,13 @@ pub fn setup_mercy_shield(mut commands: Commands) {
         whitelist_phrases: HashSet::new(),
     };
 
-    // Load persistent whitelist mercy eternal
+    // Load persistent whitelist/blacklist mercy eternal
     if let Ok(contents) = fs::read_to_string(WHITELIST_FILE) {
         if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
             config.whitelist_phrases = loaded;
         }
     }
 
-    // Load persistent blacklist mercy eternal
     if let Ok(contents) = fs::read_to_string(BLACKLIST_FILE) {
         if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
             config.blacklist = loaded;
@@ -61,6 +65,7 @@ pub fn setup_mercy_shield(mut commands: Commands) {
 
     commands.insert_resource(ScamPatterns {
         keywords,
+        regex_patterns,
         url_regex: Regex::new(r"https?://\S+").unwrap(),
         phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
     });
@@ -82,6 +87,59 @@ pub fn save_persistent_data_on_exit(config: Res<MercyShieldConfig>) {
     }
 }
 
+pub fn chat_scam_filter_system(
+    // Chat message events mercy — placeholder
+    scam_patterns: Res<ScamPatterns>,
+    config: Res<MercyShieldConfig>,
+) {
+    let message = "example message mercy";
+
+    // Whitelist bypass mercy eternal
+    for phrase in &config.whitelist_phrases {
+        if message.to_lowercase().contains(&phrase.to_lowercase()) {
+            return;  // Safe mercy
+        }
+    }
+
+    let mut score = 0.0;
+
+    // Keyword scoring mercy
+    for (word, weight) in &scam_patterns.keywords {
+        if message.to_lowercase().contains(word) {
+            score += weight;
+        }
+    }
+
+    // Regex pattern scoring mercy eternal
+    for (regex, weight) in &scam_patterns.regex_patterns {
+        if regex.is_match(message) {
+            score += weight;
+        }
+    }
+
+    // Built-in URL/phone mercy
+    if scam_patterns.url_regex.is_match(message) {
+        score += 0.8;
+    }
+    if scam_patterns.phone_regex.is_match(message) {
+        score += 0.6;
+    }
+
+    let threshold = config.chat_sensitivity * 2.0;
+    if score > threshold {
+        // Filter/warn/block mercy
+    }
+}
+
+pub struct MercyShieldPlugin;
+
+impl Plugin for MercyShieldPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(setup_mercy_shield)
+            .add_systems(Last, save_persistent_data_on_exit)
+            .add_systems(Update, chat_scam_filter_system);
+    }
+}
 pub fn chat_scam_filter_system(
     // Chat message events mercy — placeholder
     scam_patterns: Res<ScamPatterns>,
