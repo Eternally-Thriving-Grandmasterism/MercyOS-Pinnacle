@@ -141,11 +141,7 @@ enum CropType {
 #[derive(Component)]
 struct Chunk {
     coord: IVec2,
-}
-
-#[derive(Component)]
-struct SoundSource {
-    position: Vec3,
+    voxels: Box<[u8; ChunkShape::SIZE as usize]>,
 }
 
 fn main() {
@@ -204,69 +200,34 @@ fn main() {
             creature_evolution_system,
             genetic_drift_system,
             player_breeding_mechanics,
-            occlusion_attenuation_system,
+            material_attenuation_system,
             chunk_manager,
         ))
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
-
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: 10000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
-        ..default()
-    });
-
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Capsule::default())),
-            material: materials.add(Color::rgb(0.8, 0.7, 0.9).into()),
-            transform: Transform::from_xyz(0.0, 30.0, 0.0),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        Player {
-            tamed_creatures: Vec::new(),
-            show_inventory: false,
-            selected_creature: None,
-        },
-        Predicted,
-        RigidBody::Dynamic,
-        Collider::capsule_y(1.0, 0.5),
-        Velocity::zero(),
-        PositionHistory { buffer: VecDeque::new() },
-    ));
-}
-
-fn occlusion_attenuation_system(
+fn material_attenuation_system(
     rapier_context: Res<RapierContext>,
     player_query: Query<&Transform, With<Player>>,
-    mut sound_query: Query<(&SoundSource, &mut AudioInstance)>,
+    mut sound_instances: Query<&mut AudioInstance>,
+    sound_sources: Query<&SoundSource>,
 ) {
     if let Ok(listener_transform) = player_query.get_single() {
         let listener_pos = listener_transform.translation;
 
-        for (source, mut instance) in &mut sound_query {
+        for (source, mut instance) in sound_sources.iter().zip(sound_instances.iter_mut()) {
             let direction = source.position - listener_pos;
             let distance = direction.length();
             if distance > 0.1 {
-                let ray = Ray::new(listener_pos.into(), direction.normalize().into());
-                if let Some((_, toi)) = rapier_context.cast_ray(ray.origin, ray.dir, distance, true, QueryFilter::default()) {
-                    let occlusion_factor = (toi / distance).clamp(0.0, 1.0);
-                    let attenuation = 1.0 - occlusion_factor * 0.8;  // 80% max attenuation mercy
+                let ray = Ray::new(Point::from(listener_pos), direction.normalize());
+
+                if let Some((handle, toi)) = rapier_context.cast_ray(ray.origin, ray.dir, distance, true, QueryFilter::default()) {
+                    // Get hit voxel material mercy (stub — future chunk lookup)
+                    let attenuation = match toi {  // Placeholder material based on distance/toi
+                        _ if toi < distance * 0.3 => 0.2,  // Stone-like
+                        _ if toi < distance * 0.6 => 0.5,  // Dirt-like
+                        _ => 0.8,  // Grass-like open
+                    };
                     instance.set_volume(attenuation);
                 } else {
                     instance.set_volume(1.0);
@@ -276,14 +237,7 @@ fn occlusion_attenuation_system(
     }
 }
 
-// In emotional_resonance_particles, voice_playback_system, etc. — add SoundSource component with position when spawning audio mercy
-
-// Example in emotional_resonance_particles:
-commands.spawn((
-    // ... audio play
-)).insert(SoundSource { position: player_pos + offset });
-
-// Rest of file unchanged from previous full version
+// Rest of file unchanged from previous full version (add SoundSource component on audio spawns)
 
 pub struct MercyResonancePlugin;
 
@@ -306,7 +260,7 @@ impl Plugin for MercyResonancePlugin {
             player_breeding_mechanics,
             player_farming_mechanics,
             player_inventory_ui,
-            occlusion_attenuation_system,
+            material_attenuation_system,
             chunk_manager,
         ));
     }
