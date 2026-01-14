@@ -80,7 +80,7 @@ impl Plugin for MercyResonancePlugin {
             chunk_manager,
         ));
     }
-}}struct Creature {
+}}}struct Creature {
     creature_type: CreatureType,
     state: CreatureState,
     wander_timer: f32,
