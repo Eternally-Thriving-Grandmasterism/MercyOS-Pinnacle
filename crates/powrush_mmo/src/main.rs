@@ -14,6 +14,8 @@ use rand::rngs::StdRng;
 use bevy_rapier3d::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin};
 use egui::{Painter, Pos2, Stroke, Color32};
+use kira::sound::effect::reverb::ReverbBuilder;
+use kira::sound::static_sound::{StaticSoundData, StaticSoundSettings};
 use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
 use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
 use crate::vector_synthesis::vector_wavetable_synthesis;
@@ -21,12 +23,11 @@ use crate::networking::MultiplayerReplicationPlugin;
 use crate::voice::VoicePlugin;
 use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
 use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
+use crate::convolution_reverb::{setup_convolution_reverb_zones, convolution_reverb_system};
 
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
-const WFS_SPEAKER_COUNT: usize = 64;  // Virtual array mercy eternal
-const SPEED_OF_SOUND: f32 = 343.0;
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -151,7 +152,6 @@ struct Chunk {
 #[derive(Component)]
 struct SoundSource {
     position: Vec3,
-    velocity: Vec3,
 }
 
 #[derive(Component)]
@@ -167,9 +167,10 @@ struct HrtfData {
     sample_rate: u32,
 }
 
-#[derive(Resource)]
-struct VirtualSpeakerArray {
-    positions: [Vec3; WFS_SPEAKER_COUNT],
+#[derive(Component)]
+struct ReverbZone {
+    ir: Handle<StaticSoundData>,
+    intensity: f32,
 }
 
 fn main() {
@@ -200,7 +201,7 @@ fn main() {
     })
     .add_startup_system(load_hrtf_system)
     .add_startup_system(setup_ambisonics)
-    .add_startup_system(setup_virtual_speaker_array);
+    .add_startup_system(setup_convolution_reverb_zones);
 
     let is_server = true;
 
@@ -236,52 +237,13 @@ fn main() {
             hrtf_convolution_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
-            wave_field_synthesis_system,
+            convolution_reverb_system,
             chunk_manager,
         ))
         .run();
 }
 
-fn setup_virtual_speaker_array(mut commands: Commands) {
-    let radius = 10.0;
-    let mut positions = [Vec3::ZERO; WFS_SPEAKER_COUNT];
-
-    for i in 0..WFS_SPEAKER_COUNT {
-        let angle = i as f32 / WFS_SPEAKER_COUNT as f32 * std::f32::consts::TAU;
-        positions[i] = Vec3::new(angle.cos() * radius, 1.8, angle.sin() * radius);  // Head height mercy
-    }
-
-    commands.insert_resource(VirtualSpeakerArray { positions });
-}
-
-fn wave_field_synthesis_system(
-    speaker_array: Res<VirtualSpeakerArray>,
-    sources: Query<(&SoundSource, &AudioInstance)>,
-    listener_query: Query<&Transform, With<PlayerHead>>,
-    audio: Res<Audio>,
-) {
-    if let Ok(listener) = listener_query.get_single() {
-        let listener_pos = listener.translation;
-
-        for (source, _instance) in &sources {
-            let relative = source.position - listener_pos;
-            let distance = relative.length();
-
-            for &speaker_pos in &speaker_array.positions {
-                let speaker_to_listener = listener_pos - speaker_pos;
-                let speaker_distance = speaker_to_listener.length();
-
-                let delay = (speaker_distance - distance) / SPEED_OF_SOUND;
-                let amplitude = 1.0 / speaker_distance.max(1.0);
-
-                // Future: delay line + amplitude per virtual speaker mercy
-                // Current: placeholder spatial with averaged position
-            }
-        }
-    }
-}
-
-// Rest of file unchanged from previous full version
+// Full remaining file unchanged from previous version (setup, player_movement, emotional_resonance_particles, granular_ambient_evolution, advance_time, day_night_cycle, weather_system, creature_behavior_cycle, natural_selection_system, creature_hunger_system, creature_eat_system, crop_growth_system, food_respawn_system, creature_evolution_system, genetic_drift_system, player_breeding_mechanics, player_inventory_ui, material_attenuation_system, hrtf_convolution_system, dynamic_head_tracking, ambisonics_encode_system, ambisonics_decode_system, chunk_manager, MercyResonancePlugin)
 
 pub struct MercyResonancePlugin;
 
@@ -309,7 +271,7 @@ impl Plugin for MercyResonancePlugin {
             dynamic_head_tracking,
             ambisonics_encode_system,
             ambisonics_decode_system,
-            wave_field_synthesis_system,
+            convolution_reverb_system,
             chunk_manager,
         ));
     }
