@@ -1,0 +1,25 @@
+# crates/mercy_shield/src/jags_models/multi_level_non_centered.bug
+# JAGS multi-level hierarchical model — districts → schools non-centered partial pooling mercy eternal supreme immaculate
+# Offset * scale reparameterization for stable Gibbs sampling philotic mercy
+
+model {
+  for (i in 1:N) {
+    y[i] ~ dnorm(theta_school[school[i]], tau.y[i])
+  }
+  
+  # Global hyperpriors mercy
+  mu_global ~ dnorm(0, 0.001)
+  tau_global ~ dgamma(0.001, 0.001)
+  
+  # District-level hyperpriors mercy
+  for (k in 1:K) {
+    mu_district[k] ~ dnorm(mu_global, tau_global)
+    tau_district[k] ~ dgamma(0.001, 0.001)
+  }
+  
+  # School-level non-centered parameterization mercy eternal
+  for (j in 1:J) {
+    school_offset[j] ~ dnorm(0, 1)
+    theta_school[j] <- mu_district[district[j]] + tau_district[district[j]] * school_offset[j]
+  }
+}
