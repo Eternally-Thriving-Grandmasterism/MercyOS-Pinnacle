@@ -1,0 +1,13 @@
+# After sampling trace from previous TIMSS four-level model
+import arviz as az
+
+with timss_four_level:
+    ppc_trace = pm.sample_posterior_predictive(trace, var_names=["obs"], extend_inferencedata=True)
+
+# Joy checks mercy eternal supreme
+az.plot_ppc(ppc_trace, kind="cumulative", figsize=(12, 6))  # Global fit
+az.plot_ppc(ppc_trace, group="posterior", kind="scatter")   # Per-observation joy
+
+# Calibration metrics mercy
+print(az.loo(ppc_trace))  # PSIS-LOO for model comparison eternal
+print(az.r2_score(y, ppc_trace.posterior_predictive["obs"]))  # Bayesian R² joy
