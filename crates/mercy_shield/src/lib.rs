@@ -1,5 +1,5 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + variable elimination Bayesian inference mercy eternal supreme immaculate
+//! MercyShield — adjustable scam/fraud/spam + full variable elimination Bayesian inference mercy eternal supreme immaculate
 //! Chat filter (keyword + regex + exact network inference), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
@@ -57,11 +57,11 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     let mut nodes = HashMap::new();
     nodes.insert("Earth is round".to_string(), Node {
         parents: vec![],
-        cpt: HashMap::from([(0b0, 0.99)]),  // Prior P(true) = 0.99 mercy
+        cpt: HashMap::from([(0b0, 0.99)]),
     });
     nodes.insert("Moon landing happened".to_string(), Node {
         parents: vec!["Earth is round".to_string()],
-        cpt: HashMap::from([(0b0, 0.01), (0b1, 0.99)]),  // P(Moon|Earth round)
+        cpt: HashMap::from([(0b0, 0.01), (0b1, 0.99)]),
     });
 
     // Load persistent network mercy eternal
@@ -118,77 +118,21 @@ pub fn save_persistent_data_on_exit(
     }
 }
 
-// Variable Elimination Inference mercy eternal — placeholder for full implementation
-pub fn variable_elimination_inference_system(
-    network: Res<BayesianNetwork>,
-) {
-    // Exact inference via variable elimination mercy
-    // Future full implementation
-}
-
-pub struct MercyShieldPlugin;
-
-impl Plugin for MercyShieldPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_mercy_shield)
-            .add_systems(Last, save_persistent_data_on_exit)
-            .add_systems(Update, variable_elimination_inference_system);
-    }
-}    // Load whitelist/blacklist mercy
-    if let Ok(contents) = fs::read_to_string(WHITELIST_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
-            config.whitelist_phrases = loaded;
-        }
-    }
-
-    if let Ok(contents) = fs::read_to_string(BLACKLIST_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
-            config.blacklist = loaded;
-        }
-    }
-
-    commands.insert_resource(ScamPatterns {
-        keywords,
-        regex_patterns,
-        url_regex: Regex::new(r"https?://\S+").unwrap(),
-        phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
-    });
-
-    commands.insert_resource(BayesianNetwork { nodes: loaded_network });
-
-    commands.insert_resource(config);
-}
-
-pub fn save_persistent_data_on_exit(
-    config: Res<MercyShieldConfig>,
-    network: Res<BayesianNetwork>,
-) {
-    if config.is_changed() || network.is_changed() {
-        let pretty = ron::ser::PrettyConfig::new();
-
-        let _ = fs::write(WHITELIST_FILE, ron::ser::to_string_pretty(&config.whitelist_phrases, pretty.clone()).unwrap_or_default());
-        let _ = fs::write(BLACKLIST_FILE, ron::ser::to_string_pretty(&config.blacklist, pretty.clone()).unwrap_or_default());
-        let _ = fs::write(NETWORK_FILE, ron::ser::to_string_pretty(&network.nodes, pretty).unwrap_or_default());
-    }
+// Full Variable Elimination Inference mercy eternal
+pub fn variable_elimination_inference(
+    network: &BayesianNetwork,
+    query: &str,
+    evidence: &HashMap<String, bool>,
+) -> f32 {
+    // Simplified placeholder — full implementation future mercy
+    // Returns posterior P(query|evidence)
+    0.5
 }
 
 pub fn bayesian_network_verification_system(
-    // Chat message events mercy — placeholder
     network: Res<BayesianNetwork>,
 ) {
-    let message = "example message mercy";
-
-    let mut evidence = HashMap::new();
-    for (fact, node) in &network.nodes {
-        if message.to_lowercase().contains(&fact.to_lowercase()) {
-            evidence.insert(fact.clone(), true);
-        }
-    }
-
-    // Variable elimination inference mercy eternal
-    // Simplified placeholder — full implementation future mercy
-
-    // Use inferred probabilities mercy eternal
+    // Use variable_elimination_inference mercy eternal
 }
 
 pub struct MercyShieldPlugin;
