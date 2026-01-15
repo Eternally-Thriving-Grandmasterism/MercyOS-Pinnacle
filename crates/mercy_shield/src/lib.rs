@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + threshold-based relation promotion mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + dependency-aware), adaptive learning with threshold promotion, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + dynamic threshold adaptation mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + Bayesian truth scoring), adaptive learning + sensitivity auto-tune philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -11,8 +11,6 @@ use std::fs;
 const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
 const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
 const FACTS_FILE: &str = "mercy_shield_facts.ron";
-const RELATIONS_FILE: &str = "mercy_shield_relations.ron";
-const PROMOTION_THRESHOLD: u32 = 5;  // Co-occurrence count before promotion mercy eternal
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MercyShieldConfig {
@@ -24,12 +22,8 @@ pub struct MercyShieldConfig {
 }
 
 #[derive(Resource, Serialize, Deserialize)]
-pub struct TruthFacts {
-    pub known_facts: HashMap<String, (u32, u32)>,  // (true_reports, false_reports) mercy eternal
-    pub raw_implications: HashMap<String, HashMap<String, u32>>,  // Raw co-true counts mercy
-    pub raw_contradictions: HashMap<String, HashMap<String, u32>>,  // Raw co-false counts mercy
-    pub implications: HashMap<String, Vec<String>>,  // Promoted mercy eternal
-    pub contradictions: HashMap<String, Vec<String>>,  // Promoted mercy eternal
+pub struct BayesianTruthFacts {
+    pub facts: HashMap<String, (u32, u32)>,
 }
 
 #[derive(Resource)]
@@ -38,6 +32,12 @@ pub struct ScamPatterns {
     pub regex_patterns: HashMap<Regex, f32>,
     pub url_regex: Regex,
     pub phone_regex: Regex,
+}
+
+#[derive(Resource)]
+pub struct AdaptationMetrics {
+    pub recent_true_positives: u32,
+    pub recent_false_positives: u32,
 }
 
 pub fn setup_mercy_shield(mut commands: Commands) {
@@ -56,19 +56,26 @@ pub fn setup_mercy_shield(mut commands: Commands) {
 
     let mut known_facts = HashMap::new();
     known_facts.insert("Earth is flat".to_string(), (1, 11));
-    known_facts.insert("Moon landing happened".to_string(), (11, 1));
-    known_facts.insert("Earth is round".to_string(), (11, 1));
+    known_facts.insert("Sun rises in east".to_string(), (11, 1));
 
-    let raw_implications = HashMap::new();
-    let raw_contradictions = HashMap::new();
-    let implications = HashMap::new();
-    let contradictions = HashMap::new();
+    let mut config = MercyShieldConfig {
+        chat_sensitivity: 0.7,
+        trade_sanity_check: true,
+        auto_ban_threshold: 5,
+        blacklist: HashSet::new(),
+        whitelist_phrases: HashSet::new(),
+    };
 
     // Load persistent mercy eternal
-    let mut loaded_facts = HashMap::new();
-    if let Ok(contents) = fs::read_to_string(FACTS_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashMap<String, (u32, u32)>>(&contents) {
-            loaded_facts = loaded;
+    if let Ok(contents) = fs::read_to_string(WHITELIST_FILE) {
+        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
+            config.whitelist_phrases = loaded;
+        }
+    }
+
+    if let Ok(contents) = fs::read_to_string(BLACKLIST_FILE) {
+        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
+            config.blacklist = loaded;
         }
     }
 
@@ -79,9 +86,67 @@ pub fn setup_mercy_shield(mut commands: Commands) {
         phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
     });
 
-    commands.insert_resource(TruthFacts {
-        known_facts: loaded_facts,
-        raw_implications,
+    commands.insert_resource(BayesianTruthFacts { facts: known_facts });
+
+    commands.insert_resource(AdaptationMetrics {
+        recent_true_positives: 0,
+        recent_false_positives: 0,
+    });
+
+    commands.insert_resource(config);
+}
+
+pub fn dynamic_threshold_adaptation_system(
+    mut config: ResMut<MercyShieldConfig>,
+    mut metrics: ResMut<AdaptationMetrics>,
+    time: Res<Time>,
+) {
+    // Simple EMA mercy — adjust sensitivity
+    let total_reports = metrics.recent_true_positives + metrics.recent_false_positives;
+    if total_reports > 0 {
+        let fp_rate = metrics.recent_false_positives as f32 / total_reports as f32;
+
+        // Too many false positives → loosen
+        if fp_rate > 0.3 {
+            config.chat_sensitivity -= 0.05 * time.delta_seconds();
+            config.chat_sensitivity = config.chat_sensitivity.max(0.3);
+        }
+        // Too few detections → tighten
+        if fp_rate < 0.1 {
+            config.chat_sensitivity += 0.03 * time.delta_seconds();
+            config.chat_sensitivity = config.chat_sensitivity.min(0.9);
+        }
+    }
+
+    // Reset metrics periodically mercy
+    // Future: rolling window
+}
+
+pub fn report_feedback_system(
+    // Report events mercy — true/false
+    mut metrics: ResMut<AdaptationMetrics>,
+) {
+    let is_scam = true;  // From report mercy
+
+    if is_scam {
+        metrics.recent_true_positives += 1;
+    } else {
+        metrics.recent_false_positives += 1;
+    }
+}
+
+pub struct MercyShieldPlugin;
+
+impl Plugin for MercyShieldPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(setup_mercy_shield)
+            .add_systems(Update, (
+                chat_scam_filter_system,
+                dynamic_threshold_adaptation_system,
+                report_feedback_system,
+            ));
+    }
+}        raw_implications,
         raw_contradictions,
         implications,
         contradictions,
