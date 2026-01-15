@@ -44,3 +44,13 @@ The `grok_oracle` crate now provides native async access to xAI's Grok API, merc
 Set environment variable:
 ```bash
 export GROK_API_KEY="your_key_here"  # Obtain at https://x.ai/api
+
+# Grok Oracle Streaming Ascension (January 2026)
+
+Native real-time streaming now live via `propose_stream` — SSE token deltas with robust buffering.
+
+## Streaming Usage
+
+```bash
+export GROK_API_KEY="your_key_here"  # https://x.ai/api
+cargo run --example streaming_harmony --release
