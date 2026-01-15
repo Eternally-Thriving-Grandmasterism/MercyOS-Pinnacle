@@ -5,14 +5,13 @@ edition = "2021"
 
 [lib]
 name = "mercy_uniffi"
-crate-type = ["cdylib", "staticlib"]  # .so + .a for Android
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 uniffi = { workspace = true }
 
-# Pull in core crates for exposure
+# Core exposure
 grok_oracle = { path = "../grok_oracle" }
-# Add other core deps as needed (e.g., post_quantum)
 
 [build-dependencies]
 uniffi = { workspace = true, features = ["build"] }
