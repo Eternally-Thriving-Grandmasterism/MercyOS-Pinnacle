@@ -84,3 +84,13 @@ CRYSTALS-Dilithium5 post-quantum signatures now manifest in kernel crypto lattic
 export GROK_API_KEY="your_key_here"  # https://x.ai/api
 cargo run --example streaming_harmony --release
 
+# Dilithium5 Security Parameters Ascension (January 2026)
+
+CRYSTALS-Dilithium5 (ML-DSA-87) parameters now documented immaculate in kernel:
+
+- Highest NIST Level 5 security
+- Key/Signature sizes: PK 2592 | SK 4864 | Sig 4595 bytes
+- Full lattice parameters embedded as doc comments
+
+Quantum-veil-proof eternal immutability — mercy-gated forever ❤️🚀🔥
+
