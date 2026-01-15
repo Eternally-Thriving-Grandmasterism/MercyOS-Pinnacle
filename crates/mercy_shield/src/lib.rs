@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + implication learning mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + dependency-aware + learned implications), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + threshold-based relation promotion mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + dependency-aware), adaptive learning with threshold promotion, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -11,6 +11,8 @@ use std::fs;
 const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
 const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
 const FACTS_FILE: &str = "mercy_shield_facts.ron";
+const RELATIONS_FILE: &str = "mercy_shield_relations.ron";
+const PROMOTION_THRESHOLD: u32 = 5;  // Co-occurrence count before promotion mercy eternal
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MercyShieldConfig {
@@ -24,8 +26,10 @@ pub struct MercyShieldConfig {
 #[derive(Resource, Serialize, Deserialize)]
 pub struct TruthFacts {
     pub known_facts: HashMap<String, (u32, u32)>,  // (true_reports, false_reports) mercy eternal
-    pub implications: HashMap<String, HashMap<String, u32>>,  // fact A → fact B → co-true count mercy
-    pub contradictions: HashMap<String, HashMap<String, u32>>,  // fact A → fact B → co-false count mercy
+    pub raw_implications: HashMap<String, HashMap<String, u32>>,  // Raw co-true counts mercy
+    pub raw_contradictions: HashMap<String, HashMap<String, u32>>,  // Raw co-false counts mercy
+    pub implications: HashMap<String, Vec<String>>,  // Promoted mercy eternal
+    pub contradictions: HashMap<String, Vec<String>>,  // Promoted mercy eternal
 }
 
 #[derive(Resource)]
@@ -55,6 +59,8 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     known_facts.insert("Moon landing happened".to_string(), (11, 1));
     known_facts.insert("Earth is round".to_string(), (11, 1));
 
+    let raw_implications = HashMap::new();
+    let raw_contradictions = HashMap::new();
     let implications = HashMap::new();
     let contradictions = HashMap::new();
 
@@ -75,6 +81,8 @@ pub fn setup_mercy_shield(mut commands: Commands) {
 
     commands.insert_resource(TruthFacts {
         known_facts: loaded_facts,
+        raw_implications,
+        raw_contradictions,
         implications,
         contradictions,
     });
@@ -112,7 +120,8 @@ pub fn save_persistent_data_on_exit(
 
         let _ = fs::write(WHITELIST_FILE, ron::ser::to_string_pretty(&config.whitelist_phrases, pretty.clone()).unwrap_or_default());
         let _ = fs::write(BLACKLIST_FILE, ron::ser::to_string_pretty(&config.blacklist, pretty.clone()).unwrap_or_default());
-        let _ = fs::write(FACTS_FILE, ron::ser::to_string_pretty(&truth_facts.known_facts, pretty).unwrap_or_default());
+        let _ = fs::write(FACTS_FILE, ron::ser::to_string_pretty(&truth_facts.known_facts, pretty.clone()).unwrap_or_default());
+        let _ = fs::write(RELATIONS_FILE, ron::ser::to_string_pretty(&(&truth_facts.raw_implications, &truth_facts.raw_contradictions), pretty).unwrap_or_default());
     }
 }
 
@@ -135,19 +144,46 @@ pub fn implication_learning_system(
                 let b = &matched_facts[j];
 
                 if is_true {
-                    *truth_facts.implications.entry(a.clone()).or_insert(HashMap::new())
+                    *truth_facts.raw_implications.entry(a.clone()).or_insert(HashMap::new())
                         .entry(b.clone()).or_insert(0) += 1;
-                    *truth_facts.implications.entry(b.clone()).or_insert(HashMap::new())
+                    *truth_facts.raw_implications.entry(b.clone()).or_insert(HashMap::new())
                         .entry(a.clone()).or_insert(0) += 1;
                 } else {
-                    *truth_facts.contradictions.entry(a.clone()).or_insert(HashMap::new())
+                    *truth_facts.raw_contradictions.entry(a.clone()).or_insert(HashMap::new())
                         .entry(b.clone()).or_insert(0) += 1;
-                    *truth_facts.contradictions.entry(b.clone()).or_insert(HashMap::new())
+                    *truth_facts.raw_contradictions.entry(b.clone()).or_insert(HashMap::new())
                         .entry(a.clone()).or_insert(0) += 1;
                 }
             }
         }
     }
+
+    // Threshold promotion mercy eternal
+    promote_relations(&mut truth_facts);
+}
+
+fn promote_relations(truth_facts: &mut TruthFacts) {
+    let mut new_implications = HashMap::new();
+    let mut new_contradictions = HashMap::new();
+
+    for (a, map) in &truth_facts.raw_implications {
+        for (b, count) in map {
+            if *count >= PROMOTION_THRESHOLD {
+                new_implications.entry(a.clone()).or_insert(Vec::new()).push(b.clone());
+            }
+        }
+    }
+
+    for (a, map) in &truth_facts.raw_contradictions {
+        for (b, count) in map {
+            if *count >= PROMOTION_THRESHOLD {
+                new_contradictions.entry(a.clone()).or_insert(Vec::new()).push(b.clone());
+            }
+        }
+    }
+
+    truth_facts.implications = new_implications;
+    truth_facts.contradictions = new_contradictions;
 }
 
 pub struct MercyShieldPlugin;
