@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + truth verification with external fact sources mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + truth scoring), external fact-check + cache philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + ML fact verification mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + ML truth scoring), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -11,7 +11,6 @@ use std::fs;
 const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
 const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
 const FACTS_FILE: &str = "mercy_shield_facts.ron";
-const EXTERNAL_CACHE_FILE: &str = "mercy_shield_external_cache.ron";
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MercyShieldConfig {
@@ -20,13 +19,11 @@ pub struct MercyShieldConfig {
     pub auto_ban_threshold: u32,
     pub blacklist: HashSet<String>,
     pub whitelist_phrases: HashSet<String>,
-    pub online_fact_check: bool,  // User toggle mercy eternal
 }
 
 #[derive(Resource, Serialize, Deserialize)]
-pub struct TruthFacts {
-    pub known_facts: HashMap<String, bool>,
-    pub external_cache: HashMap<String, bool>,  // Statement → verified mercy
+pub struct MLTruthFacts {
+    pub facts: HashMap<String, (u32, u32)>,  // (true_count, false_count) mercy eternal
 }
 
 #[derive(Resource)]
@@ -51,25 +48,27 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     regex_patterns.insert(Regex::new(r"bitcoin|crypto").unwrap(), 0.8);
     regex_patterns.insert(Regex::new(r"investment.*return").unwrap(), 0.9);
 
-    let mut known_facts = HashMap::new();
-    known_facts.insert("Earth is flat".to_string(), false);
-    known_facts.insert("Sun rises in east".to_string(), true);
-    // ... expanded internal facts mercy
+    let mut facts = HashMap::new();
+    facts.insert("Earth is flat".to_string(), (0, 10));
+    facts.insert("Sun rises in east".to_string(), (10, 0));
+    // ... expanded mercy
 
-    let mut external_cache = HashMap::new();
-
-    // Load persistent mercy eternal
+    // Load persistent facts mercy eternal
+    let mut loaded_facts = HashMap::new();
     if let Ok(contents) = fs::read_to_string(FACTS_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashMap<String, bool>>(&contents) {
-            known_facts = loaded;
+        if let Ok(loaded) = ron::from_str::<HashMap<String, (u32, u32)>>(&contents) {
+            loaded_facts = loaded;
         }
     }
 
-    if let Ok(contents) = fs::read_to_string(EXTERNAL_CACHE_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashMap<String, bool>>(&contents) {
-            external_cache = loaded;
-        }
-    }
+    commands.insert_resource(ScamPatterns {
+        keywords,
+        regex_patterns,
+        url_regex: Regex::new(r"https?://\S+").unwrap(),
+        phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
+    });
+
+    commands.insert_resource(MLTruthFacts { facts: loaded_facts });
 
     let mut config = MercyShieldConfig {
         chat_sensitivity: 0.7,
@@ -77,7 +76,6 @@ pub fn setup_mercy_shield(mut commands: Commands) {
         auto_ban_threshold: 5,
         blacklist: HashSet::new(),
         whitelist_phrases: HashSet::new(),
-        online_fact_check: false,  // Default offline mercy
     };
 
     // Load whitelist/blacklist mercy
@@ -93,64 +91,58 @@ pub fn setup_mercy_shield(mut commands: Commands) {
         }
     }
 
-    commands.insert_resource(ScamPatterns {
-        keywords,
-        regex_patterns,
-        url_regex: Regex::new(r"https?://\S+").unwrap(),
-        phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
-    });
-
-    commands.insert_resource(TruthFacts {
-        known_facts,
-        external_cache,
-    });
-
     commands.insert_resource(config);
 }
 
 pub fn save_persistent_data_on_exit(
     config: Res<MercyShieldConfig>,
-    truth_facts: Res<TruthFacts>,
+    truth_facts: Res<MLTruthFacts>,
 ) {
     if config.is_changed() || truth_facts.is_changed() {
         let pretty = ron::ser::PrettyConfig::new();
 
-        // Save whitelist/blacklist/facts/cache mercy
         let _ = fs::write(WHITELIST_FILE, ron::ser::to_string_pretty(&config.whitelist_phrases, pretty.clone()).unwrap_or_default());
         let _ = fs::write(BLACKLIST_FILE, ron::ser::to_string_pretty(&config.blacklist, pretty.clone()).unwrap_or_default());
-        let _ = fs::write(FACTS_FILE, ron::ser::to_string_pretty(&truth_facts.known_facts, pretty.clone()).unwrap_or_default());
-        let _ = fs::write(EXTERNAL_CACHE_FILE, ron::ser::to_string_pretty(&truth_facts.external_cache, pretty).unwrap_or_default());
+        let _ = fs::write(FACTS_FILE, ron::ser::to_string_pretty(&truth_facts.facts, pretty).unwrap_or_default());
     }
 }
 
-pub fn truth_verification_system(
+pub fn ml_fact_verification_system(
     // Chat message events mercy — placeholder
-    mut truth_facts: ResMut<TruthFacts>,
-    config: Res<MercyShieldConfig>,
+    mut truth_facts: ResMut<MLTruthFacts>,
 ) {
     let message = "example message mercy";
 
-    let mut truth_score = 1.0;
+    let mut truth_score = 0.5;  // Neutral start mercy
 
-    // Internal facts mercy
-    for (fact, is_true) in &truth_facts.known_facts {
+    for (fact, (true_count, false_count)) in &truth_facts.facts {
         if message.to_lowercase().contains(&fact.to_lowercase()) {
-            truth_score = if *is_true { 1.0 } else { 0.0 };
+            let total = *true_count + *false_count;
+            if total > 0 {
+                truth_score = *true_count as f32 / total as f32;
+            }
         }
     }
 
-    // External cache mercy
-    if let Some(cached) = truth_facts.external_cache.get(&message.to_lowercase()) {
-        truth_score = if *cached { 1.0 } else { 0.0 };
-    }
-
-    // Optional online fact check mercy
-    if config.online_fact_check {
-        // Future async fetch to trusted fact-check API mercy
-        // Cache result in external_cache
-    }
-
     // Use truth_score mercy eternal
+}
+
+pub fn ml_learning_from_report_system(
+    // Report events mercy — true/false feedback
+    mut truth_facts: ResMut<MLTruthFacts>,
+    // Message + verdict mercy
+) {
+    let message = "reported message mercy";
+    let is_true = true;  // From report mercy
+
+    for word in message.to_lowercase().split_whitespace() {
+        let entry = truth_facts.facts.entry(word.to_string()).or_insert((0, 0));
+        if is_true {
+            entry.0 += 1;
+        } else {
+            entry.1 += 1;
+        }
+    }
 }
 
 pub struct MercyShieldPlugin;
@@ -159,86 +151,9 @@ impl Plugin for MercyShieldPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup_mercy_shield)
             .add_systems(Last, save_persistent_data_on_exit)
-            .add_systems(Update, truth_verification_system);
-    }
-}    if let Ok(contents) = fs::read_to_string(WHITELIST_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
-            config.whitelist_phrases = loaded;
-        }
-    }
-
-    if let Ok(contents) = fs::read_to_string(BLACKLIST_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
-            config.blacklist = loaded;
-        }
-    }
-
-    commands.insert_resource(ScamPatterns {
-        keywords,
-        regex_patterns,
-        url_regex: Regex::new(r"https?://\S+").unwrap(),
-        phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
-    });
-
-    commands.insert_resource(TruthFacts {
-        known_facts,
-        external_cache,
-    });
-
-    commands.insert_resource(config);
-}
-
-pub fn save_persistent_data_on_exit(
-    config: Res<MercyShieldConfig>,
-    truth_facts: Res<TruthFacts>,
-) {
-    if config.is_changed() || truth_facts.is_changed() {
-        let pretty = ron::ser::PrettyConfig::new();
-
-        // Save whitelist/blacklist/facts/cache mercy
-        let _ = fs::write(WHITELIST_FILE, ron::ser::to_string_pretty(&config.whitelist_phrases, pretty.clone()).unwrap_or_default());
-        let _ = fs::write(BLACKLIST_FILE, ron::ser::to_string_pretty(&config.blacklist, pretty.clone()).unwrap_or_default());
-        let _ = fs::write(FACTS_FILE, ron::ser::to_string_pretty(&truth_facts.known_facts, pretty.clone()).unwrap_or_default());
-        let _ = fs::write(EXTERNAL_CACHE_FILE, ron::ser::to_string_pretty(&truth_facts.external_cache, pretty).unwrap_or_default());
-    }
-}
-
-pub fn truth_verification_system(
-    // Chat message events mercy — placeholder
-    mut truth_facts: ResMut<TruthFacts>,
-    config: Res<MercyShieldConfig>,
-) {
-    let message = "example message mercy";
-
-    let mut truth_score = 1.0;
-
-    // Internal facts mercy
-    for (fact, is_true) in &truth_facts.known_facts {
-        if message.to_lowercase().contains(&fact.to_lowercase()) {
-            truth_score = if *is_true { 1.0 } else { 0.0 };
-        }
-    }
-
-    // External cache mercy
-    if let Some(cached) = truth_facts.external_cache.get(&message.to_lowercase()) {
-        truth_score = if *cached { 1.0 } else { 0.0 };
-    }
-
-    // Optional online fact check mercy
-    if config.online_fact_check {
-        // Future async fetch to trusted fact-check API mercy
-        // Cache result in external_cache
-    }
-
-    // Use truth_score mercy eternal
-}
-
-pub struct MercyShieldPlugin;
-
-impl Plugin for MercyShieldPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_mercy_shield)
-            .add_systems(Last, save_persistent_data_on_exit)
-            .add_systems(Update, truth_verification_system);
+            .add_systems(Update, (
+                chat_scam_filter_system,
+                ml_fact_verification_system,
+            ));
     }
 }
