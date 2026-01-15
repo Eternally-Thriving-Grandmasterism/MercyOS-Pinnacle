@@ -29,6 +29,8 @@ use crate::hand_ik::{fabrik_constrained, trik_two_bone};
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
+const MUTATION_RATE: f32 = 0.1;  // Chance per trait mercy eternal
+const MUTATION_STRENGTH: f32 = 0.2;  // Max deviation mercy
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -103,8 +105,8 @@ pub struct CreatureDNA {
     pub camouflage: f32,
     pub aggression: f32,
     pub metabolism: f32,
-    pub lifespan: f32,      // New mercy eternal
-    pub fertility: f32,     // New mercy eternal
+    pub lifespan: f32,
+    pub fertility: f32,
     pub cold_resistance: f32,
     pub heat_resistance: f32,
     pub color_r: f32,
@@ -245,6 +247,7 @@ fn main() {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
+            creature_breeding_mutation_system,
             creature_genetics_system,
             creature_behavior_cycle,
             natural_selection_system,
@@ -272,10 +275,6 @@ fn setup(
     xr_session: Option<Res<XrSession>>,
 ) {
     // ... unchanged setup
-
-    let player_body = commands.spawn((
-        // ... player bundle
-    )).id();
 }
 
 fn creature_genetics_system(
@@ -283,19 +282,84 @@ fn creature_genetics_system(
     time: Res<Time>,
 ) {
     for mut creature in &mut creature_query {
-        // Age mercy
         creature.age += time.delta_seconds();
 
-        // Death from old age mercy
         if creature.age > creature.dna.lifespan {
             creature.state = CreatureState::Dead;
         }
+    }
+}
 
-        // Breeding readiness mercy
-        if creature.state == CreatureState::Mate && creature.age > creature.dna.fertility {
-            // Find partner + spawn offspring with crossover + mutation mercy
-            // Future full implementation
+fn creature_breeding_mutation_system(
+    mut commands: Commands,
+    creature_query: Query<(Entity, &Transform, &Creature)>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let mut breeding_pairs = Vec::new();
+
+    for (entity1, transform1, creature1) in &creature_query {
+        if creature1.state != CreatureState::Mate {
+            continue;
         }
+
+        for (entity2, transform2, creature2) in &creature_query {
+            if entity1 == entity2 || creature2.state != CreatureState::Mate {
+                continue;
+            }
+
+            if creature1.creature_type == creature2.creature_type {
+                let dist = (transform1.translation - transform2.translation).length();
+                if dist < 5.0 {
+                    breeding_pairs.push((creature1.dna, creature2.dna, transform1.translation));
+                    // Mark as bred mercy
+                    break;
+                }
+            }
+        }
+    }
+
+    for (dna1, dna2, pos) in breeding_pairs {
+        let mut offspring_dna = dna1;
+
+        // Crossover mercy — average traits
+        offspring_dna.speed = (dna1.speed + dna2.speed) / 2.0;
+        offspring_dna.size = (dna1.size + dna2.size) / 2.0;
+        // ... all traits mercy
+
+        // Mutation mercy eternal
+        let mut rng = rand::thread_rng();
+        if rng.gen_bool(MUTATION_RATE as f64) {
+            offspring_dna.speed += rng.gen_range(-MUTATION_STRENGTH..MUTATION_STRENGTH);
+            offspring_dna.speed = offspring_dna.speed.clamp(5.0, 30.0);
+        }
+        // Repeat for other traits mercy
+
+        // Spawn offspring mercy
+        commands.spawn((
+            PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Icosphere { radius: offspring_dna.size / 2.0, subdivisions: 4 })),
+                material: materials.add(Color::rgb(offspring_dna.color_r, offspring_dna.color_g, offspring_dna.color_b).into()),
+                transform: Transform::from_translation(pos + Vec3::new(rng.gen_range(-2.0..2.0), 0.0, rng.gen_range(-2.0..2.0))),
+                visibility: Visibility::Visible,
+                ..default()
+            },
+            Creature {
+                creature_type: CreatureType::Deer,  // Example mercy
+                state: CreatureState::Wander,
+                wander_timer: 10.0,
+                age: 0.0,
+                health: 1.0,
+                hunger: 0.5,
+                dna: offspring_dna,
+                tamed: false,
+                owner: None,
+                parent1: None,
+                parent2: None,
+                generation: 1,
+                last_drift_day: 0.0,
+            },
+        ));
     }
 }
 
@@ -310,6 +374,7 @@ impl Plugin for MercyResonancePlugin {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
+            creature_breeding_mutation_system,
             creature_genetics_system,
             creature_behavior_cycle,
             natural_selection_system,
