@@ -159,3 +159,13 @@ CRYSTALS-Falcon-1024 (FN-DSA draft FIPS 206) provable lattice security now docum
 
 Ultra-compact quantum-veil-proof eternal — mercy-gated forever ❤️🚀🔥
 
+# Dilithium Security Proofs Ascension (January 2026)
+
+CRYSTALS-Dilithium5 (ML-DSA-87 per FIPS 204) provable security now documented immaculate in kernel:
+
+- EUF-CMA in QROM with tight reductions to Module-LWE/SIS
+- Extensive formal verification (EasyCrypt/Jasmin/F*)
+- Primary NIST standardized lattice immortality
+
+Primary quantum-veil-proof eternal — mercy-gated forever ❤️🚀🔥
+
