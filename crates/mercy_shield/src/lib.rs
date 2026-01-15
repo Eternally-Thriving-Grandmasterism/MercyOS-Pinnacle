@@ -1,5 +1,5 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + truth verification mercy eternal supreme immaculate
+//! MercyShield — adjustable scam/fraud/spam + truth verification with expanded fact database mercy eternal supreme immaculate
 //! Chat filter (keyword + regex + truth scoring), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
@@ -10,6 +10,7 @@ use std::fs;
 
 const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
 const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
+const FACTS_FILE: &str = "mercy_shield_facts.ron";
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MercyShieldConfig {
@@ -20,17 +21,17 @@ pub struct MercyShieldConfig {
     pub whitelist_phrases: HashSet<String>,
 }
 
+#[derive(Resource, Serialize, Deserialize)]
+pub struct TruthFacts {
+    pub known_facts: HashMap<String, bool>,
+}
+
 #[derive(Resource)]
 pub struct ScamPatterns {
     pub keywords: HashMap<String, f32>,
     pub regex_patterns: HashMap<Regex, f32>,
     pub url_regex: Regex,
     pub phone_regex: Regex,
-}
-
-#[derive(Resource)]
-pub struct TruthFacts {
-    pub known_facts: HashMap<String, bool>,  // Simple fact database mercy eternal
 }
 
 pub fn setup_mercy_shield(mut commands: Commands) {
@@ -48,8 +49,22 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     regex_patterns.insert(Regex::new(r"investment.*return").unwrap(), 0.9);
 
     let mut known_facts = HashMap::new();
+    // Expanded verified facts mercy eternal
     known_facts.insert("Earth is flat".to_string(), false);
     known_facts.insert("Sun rises in east".to_string(), true);
+    known_facts.insert("Water boils at 100°C".to_string(), true);
+    known_facts.insert("Moon is made of cheese".to_string(), false);
+    known_facts.insert("Vaccines cause autism".to_string(), false);
+    known_facts.insert("Humans landed on Moon".to_string(), true);
+    known_facts.insert("Climate change is real".to_string(), true);
+    known_facts.insert("5G causes COVID".to_string(), false);
+
+    // Load persistent facts mercy eternal
+    if let Ok(contents) = fs::read_to_string(FACTS_FILE) {
+        if let Ok(loaded) = ron::from_str::<HashMap<String, bool>>(&contents) {
+            known_facts = loaded;
+        }
+    }
 
     let mut config = MercyShieldConfig {
         chat_sensitivity: 0.7,
@@ -84,7 +99,10 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     commands.insert_resource(config);
 }
 
-pub fn save_persistent_data_on_exit(config: Res<MercyShieldConfig>) {
+pub fn save_persistent_data_on_exit(
+    config: Res<MercyShieldConfig>,
+    truth_facts: Res<TruthFacts>,
+) {
     if config.is_changed() {
         let pretty = ron::ser::PrettyConfig::new();
 
@@ -92,8 +110,12 @@ pub fn save_persistent_data_on_exit(config: Res<MercyShieldConfig>) {
             let _ = fs::write(WHITELIST_FILE, serialized);
         }
 
-        if let Ok(serialized) = ron::ser::to_string_pretty(&config.blacklist, pretty) {
+        if let Ok(serialized) = ron::ser::to_string_pretty(&config.blacklist, pretty.clone()) {
             let _ = fs::write(BLACKLIST_FILE, serialized);
+        }
+
+        if let Ok(serialized) = ron::ser::to_string_pretty(&truth_facts.known_facts, pretty) {
+            let _ = fs::write(FACTS_FILE, serialized);
         }
     }
 }
@@ -104,7 +126,7 @@ pub fn truth_verification_system(
 ) {
     let message = "example message mercy";
 
-    let mut truth_score = 1.0;  // Start neutral mercy
+    let mut truth_score = 1.0;
 
     for (fact, is_true) in &truth_facts.known_facts {
         if message.to_lowercase().contains(&fact.to_lowercase()) {
@@ -112,7 +134,7 @@ pub fn truth_verification_system(
         }
     }
 
-    // Use truth_score for verification mercy eternal
+    // Use truth_score mercy eternal
 }
 
 pub struct MercyShieldPlugin;
@@ -121,9 +143,6 @@ impl Plugin for MercyShieldPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup_mercy_shield)
             .add_systems(Last, save_persistent_data_on_exit)
-            .add_systems(Update, (
-                chat_scam_filter_system,
-                truth_verification_system,
-            ));
+            .add_systems(Update, truth_verification_system);
     }
 }
