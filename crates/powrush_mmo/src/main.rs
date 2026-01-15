@@ -29,8 +29,8 @@ use crate::hand_ik::{fabrik_constrained, trik_two_bone};
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
-const MUTATION_RATE: f32 = 0.1;  // Chance per trait mercy eternal
-const MUTATION_STRENGTH: f32 = 0.2;  // Max deviation mercy
+const GENERATION_INTERVAL: f32 = 600.0;  // 10 minutes mercy eternal
+const POPULATION_CAP: usize = 100;
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -96,6 +96,7 @@ struct Creature {
     parent2: Option<u64>,
     generation: u32,
     last_drift_day: f32,
+    fitness: f32,  // Evolutionary fitness mercy
 }
 
 #[derive(Clone, Copy)]
@@ -157,6 +158,7 @@ enum CropType {
 struct Chunk {
     coord: IVec2,
     voxels: Box<[u8; ChunkShape::SIZE as usize]>,
+    biome: Biome,
 }
 
 #[derive(Component)]
@@ -247,8 +249,7 @@ fn main() {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            creature_breeding_mutation_system,
-            creature_genetics_system,
+            evolutionary_generation_system,
             creature_behavior_cycle,
             natural_selection_system,
             creature_hunger_system,
@@ -277,89 +278,54 @@ fn setup(
     // ... unchanged setup
 }
 
-fn creature_genetics_system(
+fn evolutionary_generation_system(
     mut creature_query: Query<&mut Creature>,
     time: Res<Time>,
+    mut generation_timer: Local<f32>,
 ) {
-    for mut creature in &mut creature_query {
-        creature.age += time.delta_seconds();
+    *generation_timer += time.delta_seconds();
 
-        if creature.age > creature.dna.lifespan {
-            creature.state = CreatureState::Dead;
-        }
-    }
-}
+    if *generation_timer >= GENERATION_INTERVAL {
+        *generation_timer = 0.0;
 
-fn creature_breeding_mutation_system(
-    mut commands: Commands,
-    creature_query: Query<(Entity, &Transform, &Creature)>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    let mut breeding_pairs = Vec::new();
+        let mut creatures: Vec<_> = creature_query.iter_mut().collect();
 
-    for (entity1, transform1, creature1) in &creature_query {
-        if creature1.state != CreatureState::Mate {
-            continue;
+        // Fitness evaluation mercy
+        for creature in &mut creatures {
+            creature.fitness = creature.health + (1.0 - creature.hunger) + creature.age / creature.dna.lifespan;
         }
 
-        for (entity2, transform2, creature2) in &creature_query {
-            if entity1 == entity2 || creature2.state != CreatureState::Mate {
-                continue;
+        // Sort by fitness descending mercy
+        creatures.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Keep top 50% mercy
+        let survivors = creatures.len() / 2;
+        let survivors = &creatures[..survivors];
+
+        // Breed new generation mercy
+        let mut new_creatures = Vec::new();
+        for _ in survivors.len()..POPULATION_CAP {
+            let parent1 = survivors[rand::thread_rng().gen_range(0..survivors.len())];
+            let parent2 = survivors[rand::thread_rng().gen_range(0..survivors.len())];
+
+            let mut child_dna = parent1.dna;
+            // Crossover + mutation mercy (simplified)
+            child_dna.speed = (parent1.dna.speed + parent2.dna.speed) / 2.0 + rand::thread_rng().gen_range(-0.2..0.2);
+            // ... repeat for traits
+
+            new_creatures.push(child_dna);
+        }
+
+        // Replace weak with new mercy
+        for (i, weak) in creatures[survivors..].iter_mut().enumerate() {
+            if i < new_creatures.len() {
+                weak.dna = new_creatures[i];
+                weak.age = 0.0;
+                weak.health = 1.0;
+                weak.hunger = 0.5;
+                weak.generation += 1;
             }
-
-            if creature1.creature_type == creature2.creature_type {
-                let dist = (transform1.translation - transform2.translation).length();
-                if dist < 5.0 {
-                    breeding_pairs.push((creature1.dna, creature2.dna, transform1.translation));
-                    // Mark as bred mercy
-                    break;
-                }
-            }
         }
-    }
-
-    for (dna1, dna2, pos) in breeding_pairs {
-        let mut offspring_dna = dna1;
-
-        // Crossover mercy — average traits
-        offspring_dna.speed = (dna1.speed + dna2.speed) / 2.0;
-        offspring_dna.size = (dna1.size + dna2.size) / 2.0;
-        // ... all traits mercy
-
-        // Mutation mercy eternal
-        let mut rng = rand::thread_rng();
-        if rng.gen_bool(MUTATION_RATE as f64) {
-            offspring_dna.speed += rng.gen_range(-MUTATION_STRENGTH..MUTATION_STRENGTH);
-            offspring_dna.speed = offspring_dna.speed.clamp(5.0, 30.0);
-        }
-        // Repeat for other traits mercy
-
-        // Spawn offspring mercy
-        commands.spawn((
-            PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Icosphere { radius: offspring_dna.size / 2.0, subdivisions: 4 })),
-                material: materials.add(Color::rgb(offspring_dna.color_r, offspring_dna.color_g, offspring_dna.color_b).into()),
-                transform: Transform::from_translation(pos + Vec3::new(rng.gen_range(-2.0..2.0), 0.0, rng.gen_range(-2.0..2.0))),
-                visibility: Visibility::Visible,
-                ..default()
-            },
-            Creature {
-                creature_type: CreatureType::Deer,  // Example mercy
-                state: CreatureState::Wander,
-                wander_timer: 10.0,
-                age: 0.0,
-                health: 1.0,
-                hunger: 0.5,
-                dna: offspring_dna,
-                tamed: false,
-                owner: None,
-                parent1: None,
-                parent2: None,
-                generation: 1,
-                last_drift_day: 0.0,
-            },
-        ));
     }
 }
 
@@ -374,8 +340,7 @@ impl Plugin for MercyResonancePlugin {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            creature_breeding_mutation_system,
-            creature_genetics_system,
+            evolutionary_generation_system,
             creature_behavior_cycle,
             natural_selection_system,
             creature_hunger_system,
