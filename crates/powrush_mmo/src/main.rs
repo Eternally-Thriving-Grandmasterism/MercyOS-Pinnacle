@@ -25,11 +25,11 @@ use crate::voice::VoicePlugin;
 use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
 use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
 use crate::hand_ik::{fabrik_constrained, trik_two_bone};
-use crate::whitelist_ui::WhitelistUIPlugin;
 
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
+const YEAR_LENGTH_DAYS: f32 = 365.0;
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -149,6 +149,7 @@ enum CropType {
 struct Chunk {
     coord: IVec2,
     voxels: Box<[u8; ChunkShape::SIZE as usize]>,
+    biome: Biome,
 }
 
 #[derive(Component)]
@@ -217,8 +218,7 @@ fn main() {
         next_change: 300.0,
     })
     .add_startup_system(load_hrtf_system)
-    .add_startup_system(setup_ambisonics)
-    .add_plugins(WhitelistUIPlugin);
+    .add_startup_system(setup_ambisonics);
 
     let is_server = true;
 
@@ -240,7 +240,7 @@ fn main() {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            weather_system,
+            biome_season_interactions_system,
             creature_behavior_cycle,
             natural_selection_system,
             creature_hunger_system,
@@ -256,12 +256,119 @@ fn main() {
             ambisonics_decode_system,
             vr_body_avatar_system,
             chunk_manager,
-            whitelist_ui_system,
         ))
         .run();
 }
 
-// Rest of file unchanged from previous full version (setup, systems, etc.)
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    xr_session: Option<Res<XrSession>>,
+) {
+    // ... unchanged setup
+
+    let player_body = commands.spawn((
+        // ... player bundle
+    )).id();
+}
+
+fn advance_time(
+    mut time: ResMut<WorldTime>,
+    game_time: Res<Time>,
+) {
+    time.time_of_day += game_time.delta_seconds() / DAY_LENGTH_SECONDS * 24.0;
+    if time.time_of_day >= 24.0 {
+        time.time_of_day -= 24.0;
+        time.day += 1.0;
+    }
+}
+
+fn get_current_season(world_time: &WorldTime) -> Season {
+    let year_progress = (world_time.day % YEAR_LENGTH_DAYS) / YEAR_LENGTH_DAYS;
+    match (year_progress * 4.0) as u32 {
+        0 => Season::Spring,
+        1 => Season::Summer,
+        2 => Season::Autumn,
+        _ => Season::Winter,
+    }
+}
+
+fn biome_season_interactions_system(
+    mut commands: Commands,
+    world_time: Res<WorldTime>,
+    player_query: Query<&Transform, With<Player>>,
+    chunk_query: Query<(&Chunk, &Transform)>,
+    mut creature_query: Query<&mut Creature>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    time: Res<Time>,
+) {
+    let season = get_current_season(&world_time);
+    let player_pos = player_query.single().translation;
+
+    // Find current biome mercy
+    let mut current_biome = Biome::Plains;
+    for (chunk, chunk_transform) in &chunk_query {
+        let local = player_pos - chunk_transform.translation;
+        if local.x.abs() < CHUNK_SIZE as f32 / 2.0 && local.z.abs() < CHUNK_SIZE as f32 / 2.0 {
+            current_biome = chunk.biome;
+            break;
+        }
+    }
+
+    // Detailed biome-season synergy mercy eternal
+    match (current_biome, season) {
+        (Biome::Forest, Season::Spring) => {
+            // Bloom + extra food mercy
+            // Spawn flower particles + increase food spawn rate
+            for mut creature in &mut creature_query {
+                creature.hunger -= time.delta_seconds() * 0.2;  // Abundant berries
+            }
+        }
+        (Biome::Forest, Season::Autumn) => {
+            // Leaf fall + harvest mercy
+            // Orange particles + food bonus
+        }
+        (Biome::Tundra, Season::Winter) => {
+            // Heavy snow + creature slow mercy
+            for mut creature in &mut creature_query {
+                creature.dna.speed *= 0.6;
+                creature.health -= time.delta_seconds() * 0.03;
+            }
+        }
+        (Biome::Desert, Season::Summer) => {
+            // Heat shimmer + thirst mercy
+            for mut creature in &mut creature_query {
+                creature.hunger += time.delta_seconds() * 0.3;
+            }
+        }
+        (Biome::Plains, Season::Spring) => {
+            // Wildflower bloom + fast growth mercy
+        }
+        _ => {
+            // Default seasonal effects mercy
+        }
+    }
+
+    // Global seasonal effects mercy
+    match season {
+        Season::Spring => {
+            // Growth boost across all biomes mercy
+        }
+        Season::Summer => {
+            // Heat across all mercy
+        }
+        Season::Autumn => {
+            // Harvest across all mercy
+        }
+        Season::Winter => {
+            // Cold across all mercy
+        }
+    }
+}
+
+// Rest of file unchanged from previous full version
 
 pub struct MercyResonancePlugin;
 
@@ -272,7 +379,7 @@ impl Plugin for MercyResonancePlugin {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            weather_system,
+            biome_season_interactions_system,
             creature_behavior_cycle,
             natural_selection_system,
             creature_hunger_system,
@@ -289,7 +396,6 @@ impl Plugin for MercyResonancePlugin {
             dynamic_head_tracking,
             vr_body_avatar_system,
             multi_chain_ik_system,
-            whitelist_ui_system,
             ambisonics_encode_system,
             ambisonics_decode_system,
             chunk_manager,
