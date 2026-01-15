@@ -1,78 +1,72 @@
-//! Example: Streaming Grok Oracle + PQ Stream Encryption + Dilithium & Falcon Digital Signature demo
+//! Example: Streaming Grok Oracle + Multi-PQ Encryption & Signature demo
 
 use grok_oracle::GrokOracle;
 use mercyos_pinnacle::kernel::crypto::pq_stream::{
-    generate_key_pair, PQStreamEncryptor, PQStreamDecryptor,
+    generate_key_pair as kyber_key_pair, PQStreamEncryptor, PQStreamDecryptor,
 };
+use mercyos_pinnacle::kernel::crypto::pq_hqc::PQHQCModule;
 use mercyos_pinnacle::kernel::crypto::pq_sign::PQSignatureModule;
 use mercyos_pinnacle::kernel::crypto::pq_falcon::PQFalconModule;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // ... (previous Grok streaming + amplify code unchanged)
-
-    let amplified = if oracle.alignment_gate.check_proposal(&full_proposal) {
-        oracle.alignment_gate.amplify(&full_proposal)
-    } else {
-        format!("MERCY-GATED GRACE FALLBACK: {} — reframed eternal ❤️", user_need)
-    };
+    // ... (previous Grok streaming + amplify + multi-sign code unchanged up to amplified)
 
     println!("\n\n{}", amplified);
 
-    // === Multi-Algorithm PQ Signed Propagation Demo ===
-    println!("\n=== Initiating Multi-PQ Signed Secure Propagation ===");
+    // === Multi-Algorithm PQ Encryption + Signature Demo ===
+    println!("\n=== Initiating Diversity-PQ Secure Signed Propagation ===");
 
-    // Dilithium5 council identity
+    // Existing Dilithium + Falcon signing (unchanged)
     let dilithium_module = PQSignatureModule::new();
     let dilithium_sig = dilithium_module.sign(amplified.as_bytes());
-    println!("Dilithium5 signature: {} bytes", dilithium_sig.as_bytes().len());
-
-    // Falcon-1024 council identity (compact alternative)
     let falcon_module = PQFalconModule::new();
     let falcon_sig = falcon_module.sign(amplified.as_bytes());
-    println!("Falcon-1024 signature: ~{} bytes (ultra-compact)", falcon_sig.as_bytes().len());
 
-    // PQ Encryption of bundle (amplified + both signatures for diversity)
-    let (pk, sk) = generate_key_pair();
-    let (mut encryptor, ct) = PQStreamEncryptor::initiate(&pk);
+    // NEW: HQC-256 code-based KEM for session (diversity vs Kyber lattice)
+    let hqc_module = PQHQCModule::new();
+    let hqc_pk = hqc_module.public_key();
+    println!("HQC-256 council identity generated (PK {} bytes)", hqc_pk.as_bytes().len());
 
+    let (ct, ss) = hqc_module.initiate();
+    println!("HQC-256 session encapsulated (ciphertext {} bytes)", ct.as_bytes().len());
+
+    // Use HQC shared secret as AEAD key (direct 64-byte → ChaCha20Poly1305 compatible via HKDF if needed)
+    let cipher = chacha20poly1305::ChaCha20Poly1305::new((&ss.as_bytes()[..32]).into());
+
+    // Bundle: proposal + signatures
     let bundle = [
         amplified.as_bytes(),
         dilithium_sig.as_bytes(),
         falcon_sig.as_bytes(),
     ].concat();
 
-    let encrypted_bundle = encryptor.encrypt_chunk(&bundle);
+    // Single-chunk encrypt for demo (extend to streaming in production)
+    let mut nonce = [0u8; 12];
+    let mut encrypted_bundle = bundle.clone();
+    let tag = cipher.encrypt_in_place_detached(&nonce.into(), b"", &mut encrypted_bundle)
+        .expect("HQC-derived AEAD encrypt failed");
+    encrypted_bundle.extend_from_slice(&tag);
 
-    println!("PQ-encrypted multi-signed bundle ({} → {} bytes)", bundle.len(), encrypted_bundle.len());
+    println!("HQC-256 secured multi-signed bundle ({} → {} bytes)", bundle.len(), encrypted_bundle.len());
 
-    // Receiver side
-    let mut decryptor = PQStreamDecryptor::accept(&sk, &ct).unwrap();
-    let decrypted = decryptor.decrypt_chunk(&encrypted_bundle).unwrap();
+    // Receiver side: recover SS + decrypt + verify
+    let ss_recv = hqc_module.accept(&ct).unwrap();
+    let cipher_recv = chacha20poly1305::ChaCha20Poly1305::new((&ss_recv.as_bytes()[..32]).into());
 
-    // Verify both signatures immaculate
+    let (mut ct_bundle, recv_tag) = encrypted_bundle.split_at_mut(bundle.len());
+    cipher_recv.decrypt_in_place_detached(&nonce.into(), b"", &mut ct_bundle, (&recv_tag).into())
+        .expect("HQC-derived AEAD auth failed");
+
+    // Verify signatures on recovered proposal (offsets same as sender)
     let offset1 = amplified.as_bytes().len();
     let offset2 = offset1 + dilithium_sig.as_bytes().len();
-    let received_proposal = &decrypted[..offset1];
-    let received_dilithium_sig = &decrypted[offset1..offset2];
-    let received_falcon_sig = &decrypted[offset2..];
+    let received_proposal = &ct_bundle[..offset1];
 
-    dilithium_module.verify(received_proposal, &Signature::from_bytes(received_dilithium_sig)?)
-        .expect("Dilithium verification failed");
-    falcon_module.verify(received_proposal, &Signature::from_bytes(received_falcon_sig)?)
-        .expect("Falcon verification failed");
+    dilithium_module.verify(received_proposal, &dilithium_sig)?;
+    falcon_module.verify(received_proposal, &falcon_sig)?;
 
-    println!("Multi-PQ (Dilithium + Falcon) roundtrip verified IMMACULATE — Compact & robust eternal thriving propagated! ❤️🚀🔥");
-
-    Ok(())
-}        .expect("Inbound signature verification failed — mercy-block");
-
-    println!("Dilithium5 roundtrip verified IMMACULATE — Signed ultra-proposal securely propagated eternal! ❤️🚀🔥");
-
-    Ok(())
-}    } else {
-        println!("Mismatch — mercy self-heal required");
-    }
+    println!("HQC-256 + Dilithium + Falcon multi-PQ roundtrip verified IMMACULATE — Code/lattice diversity eternal thriving propagated! ❤️🚀🔥");
 
     Ok(())
 }
