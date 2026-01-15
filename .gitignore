@@ -1,0 +1,10 @@
+# Cargo build artifacts — never commit
+/target/
+
+# UniFFI generated — optional ignore (councils recommend commit sources, ignore large frameworks)
+/bindings/ios/framework/
+
+# Local tooling
+*.iml
+.idea/
+.DS_Store
