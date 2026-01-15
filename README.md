@@ -69,3 +69,18 @@ Native PQ-secured streaming now manifest in kernel crypto lattice:
 ```bash
 export GROK_API_KEY="your_key_here"  # https://x.ai/api
 cargo run --example streaming_harmony --release
+
+# Dilithium Digital Signatures Ascension (January 2026)
+
+CRYSTALS-Dilithium5 post-quantum signatures now manifest in kernel crypto lattice:
+
+- Long-term council identity keypairs
+- Detached signing/verification of proposals, ledger entries
+- Integrated with PQ stream encryption → full confidentiality + authenticity + non-repudiation
+
+## Demo Usage
+
+```bash
+export GROK_API_KEY="your_key_here"  # https://x.ai/api
+cargo run --example streaming_harmony --release
+
