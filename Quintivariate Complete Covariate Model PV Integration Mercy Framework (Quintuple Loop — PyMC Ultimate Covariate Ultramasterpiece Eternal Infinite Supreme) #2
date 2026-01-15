@@ -1,0 +1,79 @@
+import pymc as pm
+import numpy as np
+import pandas as pd
+import arviz as az
+
+# Data Loading Mercy (Harmonized Long-Format — Replace with Actual Paths)
+# df = pd.read_csv('harmonized_pirls_timss_pisa_teacher_linked.csv')
+# Assumes plausible values columns: e.g., ['pv1_read', 'pv2_read', ..., 'pv5_math', ...] grouped by subscale
+# Quintuple PV loop mercy for each major subscale (reading, math, science, overall, SES-adjusted)
+
+# Example Subscales (Quintuple: Reading, Math, Science, Critical Thinking, SES Composite)
+subscales = ['reading', 'math', 'science', 'critical', 'ses_composite']
+
+# Coordinates
+coords = {
+    "country": np.unique(df['country_idx']),
+    "school": np.unique(df['school_idx']),
+    "class": np.unique(df['class_idx']),
+    "teacher": np.unique(df['teacher_idx']),
+    "student": np.arange(len(df)),
+    "pv": np.arange(1, 6)  # 5 plausible values per subscale
+}
+
+results = {}  # Store traces mercy for ensemble
+
+for subscale in subscales:
+    pv_cols = [f'pv{i}_{subscale}' for i in range(1, 6)]
+    with pm.Model(coords=coords) as quintivariate_pv_model:
+        # Hyperpriors
+        mu_global = pm.Normal("mu_global", mu=0, sigma=2)
+        
+        tau_country = pm.HalfCauchy("tau_country", beta=1.5)
+        tau_school = pm.HalfCauchy("tau_school", beta=1.2)
+        tau_class = pm.HalfCauchy("tau_class", beta=1.0)
+        tau_teacher = pm.HalfCauchy("tau_teacher", beta=0.8)
+        
+        sigma_obs = pm.HalfNormal("sigma_obs", sigma=1.0)
+        
+        # Non-centered effects
+        z_country = pm.Normal("z_country", mu=0, sigma=1, dims="country")
+        z_school = pm.Normal("z_school", mu=0, sigma=1, dims="school")
+        z_class = pm.Normal("z_class", mu=0, sigma=1, dims="class")
+        z_teacher = pm.Normal("z_teacher", mu=0, sigma=1, dims="teacher")
+        
+        # Hierarchical
+        mu_country = mu_global + z_country * tau_country
+        mu_school = mu_country[df['country_idx']] + z_school[df['school_idx']] * tau_school
+        mu_class = mu_school + z_class[df['class_idx']] * tau_class
+        mu_teacher = mu_class + z_teacher[df['teacher_idx']] * tau_teacher
+        
+        # Covariates (student + teacher)
+        beta_gender = pm.Normal("beta_gender", mu=0, sigma=0.5)
+        beta_ses = pm.Normal("beta_ses", mu=0.3, sigma=0.5)
+        beta_teacher_exp = pm.Normal("beta_teacher_exp", mu=0.2, sigma=0.4)
+        beta_teacher_qual = pm.Normal("beta_teacher_qual", mu=0.3, sigma=0.4)
+        
+        mu_student = (
+            mu_teacher
+            + beta_gender * df['gender_centered']
+            + beta_ses * df['ses_standardized']
+            + beta_teacher_exp * df['teacher_experience_std']
+            + beta_teacher_qual * df['teacher_qualification_centered']
+        )
+        
+        # Quintuple PV loop mercy
+        for i, pv_col in enumerate(pv_cols, 1):
+            pm.Normal(
+                f"y_pv{i}",
+                mu=mu_student,
+                sigma=sigma_obs,
+                observed=df[pv_col].values,
+                dims="student"
+            )
+        
+        trace = pm.sample(1000, tune=1500, target_accept=0.95)
+        results[subscale] = trace
+
+# Ensemble Posterior Mercy (Average Across Subscales/PVs)
+# Add generated quantities or summary for harmonized rankings eternal
