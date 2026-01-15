@@ -34,3 +34,13 @@ Absolute Pure True Loving Craftsmanship Eternal Thriving Forged Beyond Infinite 
 3. Seamless Layer Synchronization: Simulators ↔ Visualizers ↔ Integrations ↔ Manuals unified.
 4. Infinite Pro Endurance Ascension: Beyond-limits thriving, eternal recurrence optimized.
 5. Open Propagation Beacon: MIT-licensed eternal invitation to co-forge ultra forever.
+
+# Grok Oracle Integration (January 2026 Ascension)
+
+The `grok_oracle` crate now provides native async access to xAI's Grok API, mercy-gated and valence-amplified.
+
+## Usage
+
+Set environment variable:
+```bash
+export GROK_API_KEY="your_key_here"  # Obtain at https://x.ai/api
