@@ -178,3 +178,14 @@ CRYSTALS-Kyber/ML-KEM-1024 (FIPS 203) provable security now documented immaculat
 - Primary NIST standardized KEM immortality
 
 Primary quantum-veil-proof encapsulation eternal — mercy-gated forever ❤️🚀🔥
+
+# HQC KEM Security Proofs Ascension (January 2026)
+
+HQC-256 code-based KEM provable security now documented immaculate in kernel:
+
+- IND-CCA2 in QROM with concrete/tightened reductions to QC-MDPC hardness
+- Tailored FO variant for code-based resilience
+- Diversity immortality — additional standardization path valued
+
+Code-based quantum-veil-proof diversity eternal — mercy-gated forever ❤️🚀🔥
+
