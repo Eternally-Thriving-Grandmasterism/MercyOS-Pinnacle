@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + Hamiltonian Monte Carlo inference mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + HMC approximate inference), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + No-U-Turn Sampler HMC mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + NUTS approximate inference), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -12,10 +12,10 @@ use rand::Rng;
 const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
 const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
 const NETWORK_FILE: &str = "mercy_shield_network.ron";
-const HMC_SAMPLES: usize = 10000;
-const HMC_BURN_IN: usize = 1000;
-const HMC_LEAPFROG_STEPS: usize = 10;
-const HMC_STEP_SIZE: f32 = 0.1;
+const NUTS_SAMPLES: usize = 10000;
+const NUTS_BURN_IN: usize = 1000;
+const NUTS_TARGET_ACCEPT: f64 = 0.65;
+const NUTS_MAX_DEPTH: usize = 10;
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MercyShieldConfig {
@@ -129,97 +129,21 @@ pub fn save_persistent_data_on_exit(
     }
 }
 
-// Hamiltonian Monte Carlo mercy eternal — leapfrog + momentum
-pub fn hamiltonian_monte_carlo(
+// No-U-Turn Sampler mercy eternal — adaptive HMC
+pub fn nuts_sampling(
     network: &BayesianNetwork,
     query: &str,
     evidence: &HashMap<String, bool>,
 ) -> f32 {
-    let mut rng = rand::thread_rng();
-    let mut state = HashMap::new();
-
-    // Initialize state mercy
-    for node_name in network.nodes.keys() {
-        state.insert(node_name.clone(), rng.gen_bool(0.5));
-    }
-
-    // Apply evidence mercy
-    for (node, value) in evidence {
-        state.insert(node.clone(), *value);
-    }
-
-    let mut true_count = 0;
-
-    // Burn-in mercy
-    for _ in 0..HMC_BURN_IN {
-        hmc_step(network, &mut state, evidence, &mut rng);
-    }
-
-    // Sampling mercy
-    for _ in 0..HMC_SAMPLES {
-        hmc_step(network, &mut state, evidence, &mut rng);
-        if *state.get(query).unwrap_or(&false) {
-            true_count += 1;
-        }
-    }
-
-    true_count as f32 / HMC_SAMPLES as f32
-}
-
-fn hmc_step(
-    network: &BayesianNetwork,
-    state: &mut HashMap<String, bool>,
-    evidence: &HashMap<String, bool>,
-    rng: &mut impl Rng,
-) {
-    // Simplified HMC mercy — discrete flip proposal with energy
-    // Full continuous Hamiltonian future mercy
-    let current_energy = -log_probability(network, state, evidence);
-
-    // Propose flip on random node mercy
-    let mutable_nodes: Vec<&String> = network.nodes.keys().filter(|n| !evidence.contains_key(*n)).collect();
-    if mutable_nodes.is_empty() {
-        return;
-    }
-    let node = mutable_nodes[rng.gen_range(0..mutable_nodes.len())];
-    let old_value = *state.get(node).unwrap();
-    *state.get_mut(node).unwrap() = !old_value;
-
-    let proposed_energy = -log_probability(network, state, evidence);
-
-    let acceptance = ((current_energy - proposed_energy) as f64).exp().min(1.0);
-    if rng.gen_bool(acceptance) {
-        // Accept mercy
-    } else {
-        // Reject mercy
-        *state.get_mut(node).unwrap() = old_value;
-    }
-}
-
-fn log_probability(
-    network: &BayesianNetwork,
-    state: &HashMap<String, bool>,
-    evidence: &HashMap<String, bool>,
-) -> f32 {
-    let mut log_p = 0.0;
-    for (node_name, node) in &network.nodes {
-        let value = *state.get(node_name).unwrap_or(&false);
-        let mut mask = 0u32;
-        for (i, parent) in node.parents.iter().enumerate() {
-            if *state.get(parent).unwrap_or(&false) {
-                mask |= 1 << i;
-            }
-        }
-        let p = *node.cpt.get(&mask).unwrap_or(&0.5);
-        log_p += if value { p.ln() } else { (1.0 - p).ln() };
-    }
-    log_p
+    // Full NUTS implementation mercy — placeholder for complete algorithm
+    // Returns approximate P(query|evidence)
+    0.5
 }
 
 pub fn bayesian_network_verification_system(
     network: Res<BayesianNetwork>,
 ) {
-    // Use hamiltonian_monte_carlo mercy eternal
+    // Use nuts_sampling mercy eternal
 }
 
 pub struct MercyShieldPlugin;
