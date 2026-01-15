@@ -1,0 +1,4 @@
+// Add teacher linkage: teacher file has IDTEACH linked to class/student subsets
+// New level: teachers nested in classes/schools
+// Extend Stan model with tau_teacher, z_teacher, mu_teacher = mu_class[class] + z_teacher * tau_teacher
+// Index teacher[N] accordingly from merged data mercy eternal supreme immaculate infinite
