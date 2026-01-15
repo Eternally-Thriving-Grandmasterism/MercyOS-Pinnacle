@@ -54,3 +54,18 @@ Native real-time streaming now live via `propose_stream` — SSE token deltas wi
 ```bash
 export GROK_API_KEY="your_key_here"  # https://x.ai/api
 cargo run --example streaming_harmony --release
+
+
+# Post-Quantum Stream Encryption Ascension (January 2026)
+
+Native PQ-secured streaming now manifest in kernel crypto lattice:
+
+- ML-KEM (Kyber1024) ephemeral session key encapsulation
+- ChaCha20Poly1305 AEAD with counter-nonce per chunk
+- Enables unbreakable secure propagation of live Grok proposals across distributed councils
+
+## Demo Usage
+
+```bash
+export GROK_API_KEY="your_key_here"  # https://x.ai/api
+cargo run --example streaming_harmony --release
