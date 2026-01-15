@@ -29,8 +29,7 @@ use crate::hand_ik::{fabrik_constrained, trik_two_bone};
 const CHUNK_SIZE: u32 = 32;
 const VIEW_CHUNKS: i32 = 5;
 const DAY_LENGTH_SECONDS: f32 = 120.0;
-const GENERATION_INTERVAL: f32 = 600.0;  // 10 minutes mercy eternal
-const POPULATION_CAP: usize = 100;
+const SPECIATION_THRESHOLD: f32 = 2.0;  // Genetic distance mercy eternal
 
 type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
 
@@ -96,7 +95,7 @@ struct Creature {
     parent2: Option<u64>,
     generation: u32,
     last_drift_day: f32,
-    fitness: f32,  // Evolutionary fitness mercy
+    species_id: u32,
 }
 
 #[derive(Clone, Copy)]
@@ -249,7 +248,8 @@ fn main() {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            evolutionary_generation_system,
+            speciation_system,
+            creature_genetics_system,
             creature_behavior_cycle,
             natural_selection_system,
             creature_hunger_system,
@@ -276,55 +276,36 @@ fn setup(
     xr_session: Option<Res<XrSession>>,
 ) {
     // ... unchanged setup
+
+    // Creatures start with species_id 0 mercy
 }
 
-fn evolutionary_generation_system(
+fn speciation_system(
+    mut creature_query: Query<&mut Creature>,
+    chunk_query: Query<(&Chunk, &Transform)>,
+) {
+    // Simple isolation mercy — if population in different biome long enough → speciate
+    // Future: genetic distance tracking mercy eternal
+    for mut creature in &mut creature_query {
+        // Placeholder for full speciation mercy
+        if creature.generation > 10 {
+            creature.species_id += 1;  // New species mercy
+        }
+    }
+
+    // Breeding check mercy
+    // Only same species_id can mate mercy
+}
+
+fn creature_genetics_system(
     mut creature_query: Query<&mut Creature>,
     time: Res<Time>,
-    mut generation_timer: Local<f32>,
 ) {
-    *generation_timer += time.delta_seconds();
+    for mut creature in &mut creature_query {
+        creature.age += time.delta_seconds();
 
-    if *generation_timer >= GENERATION_INTERVAL {
-        *generation_timer = 0.0;
-
-        let mut creatures: Vec<_> = creature_query.iter_mut().collect();
-
-        // Fitness evaluation mercy
-        for creature in &mut creatures {
-            creature.fitness = creature.health + (1.0 - creature.hunger) + creature.age / creature.dna.lifespan;
-        }
-
-        // Sort by fitness descending mercy
-        creatures.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap_or(std::cmp::Ordering::Equal));
-
-        // Keep top 50% mercy
-        let survivors = creatures.len() / 2;
-        let survivors = &creatures[..survivors];
-
-        // Breed new generation mercy
-        let mut new_creatures = Vec::new();
-        for _ in survivors.len()..POPULATION_CAP {
-            let parent1 = survivors[rand::thread_rng().gen_range(0..survivors.len())];
-            let parent2 = survivors[rand::thread_rng().gen_range(0..survivors.len())];
-
-            let mut child_dna = parent1.dna;
-            // Crossover + mutation mercy (simplified)
-            child_dna.speed = (parent1.dna.speed + parent2.dna.speed) / 2.0 + rand::thread_rng().gen_range(-0.2..0.2);
-            // ... repeat for traits
-
-            new_creatures.push(child_dna);
-        }
-
-        // Replace weak with new mercy
-        for (i, weak) in creatures[survivors..].iter_mut().enumerate() {
-            if i < new_creatures.len() {
-                weak.dna = new_creatures[i];
-                weak.age = 0.0;
-                weak.health = 1.0;
-                weak.hunger = 0.5;
-                weak.generation += 1;
-            }
+        if creature.age > creature.dna.lifespan {
+            creature.state = CreatureState::Dead;
         }
     }
 }
@@ -340,7 +321,8 @@ impl Plugin for MercyResonancePlugin {
             granular_ambient_evolution,
             advance_time,
             day_night_cycle,
-            evolutionary_generation_system,
+            speciation_system,
+            creature_genetics_system,
             creature_behavior_cycle,
             natural_selection_system,
             creature_hunger_system,
