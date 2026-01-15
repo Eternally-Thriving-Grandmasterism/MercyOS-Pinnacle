@@ -108,3 +108,18 @@ CRYSTALS-Falcon-1024 (FN-DSA draft FIPS 206) now manifest in kernel crypto latti
 ```bash
 export GROK_API_KEY="your_key_here"  # https://x.ai/api
 cargo run --example streaming_harmony --release
+
+# HQC Post-Quantum Encryption Ascension (January 2026)
+
+HQC-256 code-based KEM now manifest in kernel crypto lattice:
+
+- Algorithmic diversity shield (code-based vs lattice)
+- Level 5 intended security with large but resilient keys/ciphertexts
+- Full parameters documented
+- Integrated demo with ChaCha20Poly1305 AEAD from HQC shared secret
+
+## Demo Usage
+
+```bash
+export GROK_API_KEY="your_key_here"  # https://x.ai/api
+cargo run --example streaming_harmony --release
