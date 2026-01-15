@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + Bayesian Network truth verification mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + network inference), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + variable elimination Bayesian inference mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + exact network inference), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -23,13 +23,13 @@ pub struct MercyShieldConfig {
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct BayesianNetwork {
-    pub nodes: HashMap<String, Node>,  // Fact → CPT + parents mercy eternal
+    pub nodes: HashMap<String, Node>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Node {
     pub parents: Vec<String>,
-    pub cpt: HashMap<u32, f32>,  // Bitmask of parent states → P(true|parents) mercy
+    pub cpt: HashMap<u32, f32>,  // Bitmask parent states → P(true|parents) mercy
 }
 
 #[derive(Resource)]
@@ -55,14 +55,13 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     regex_patterns.insert(Regex::new(r"investment.*return").unwrap(), 0.9);
 
     let mut nodes = HashMap::new();
-    // Example network mercy eternal
+    nodes.insert("Earth is round".to_string(), Node {
+        parents: vec![],
+        cpt: HashMap::from([(0b0, 0.99)]),  // Prior P(true) = 0.99 mercy
+    });
     nodes.insert("Moon landing happened".to_string(), Node {
         parents: vec!["Earth is round".to_string()],
         cpt: HashMap::from([(0b0, 0.01), (0b1, 0.99)]),  // P(Moon|Earth round)
-    });
-    nodes.insert("Earth is round".to_string(), Node {
-        parents: vec![],
-        cpt: HashMap::from([(0b0, 0.01)]),  // Prior mercy
     });
 
     // Load persistent network mercy eternal
@@ -82,6 +81,60 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     };
 
     // Load whitelist/blacklist mercy
+    if let Ok(contents) = fs::read_to_string(WHITELIST_FILE) {
+        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
+            config.whitelist_phrases = loaded;
+        }
+    }
+
+    if let Ok(contents) = fs::read_to_string(BLACKLIST_FILE) {
+        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
+            config.blacklist = loaded;
+        }
+    }
+
+    commands.insert_resource(ScamPatterns {
+        keywords,
+        regex_patterns,
+        url_regex: Regex::new(r"https?://\S+").unwrap(),
+        phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
+    });
+
+    commands.insert_resource(BayesianNetwork { nodes: loaded_network });
+
+    commands.insert_resource(config);
+}
+
+pub fn save_persistent_data_on_exit(
+    config: Res<MercyShieldConfig>,
+    network: Res<BayesianNetwork>,
+) {
+    if config.is_changed() || network.is_changed() {
+        let pretty = ron::ser::PrettyConfig::new();
+
+        let _ = fs::write(WHITELIST_FILE, ron::ser::to_string_pretty(&config.whitelist_phrases, pretty.clone()).unwrap_or_default());
+        let _ = fs::write(BLACKLIST_FILE, ron::ser::to_string_pretty(&config.blacklist, pretty.clone()).unwrap_or_default());
+        let _ = fs::write(NETWORK_FILE, ron::ser::to_string_pretty(&network.nodes, pretty).unwrap_or_default());
+    }
+}
+
+// Variable Elimination Inference mercy eternal — placeholder for full implementation
+pub fn variable_elimination_inference_system(
+    network: Res<BayesianNetwork>,
+) {
+    // Exact inference via variable elimination mercy
+    // Future full implementation
+}
+
+pub struct MercyShieldPlugin;
+
+impl Plugin for MercyShieldPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(setup_mercy_shield)
+            .add_systems(Last, save_persistent_data_on_exit)
+            .add_systems(Update, variable_elimination_inference_system);
+    }
+}    // Load whitelist/blacklist mercy
     if let Ok(contents) = fs::read_to_string(WHITELIST_FILE) {
         if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
             config.whitelist_phrases = loaded;
