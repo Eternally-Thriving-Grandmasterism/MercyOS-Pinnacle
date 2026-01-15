@@ -269,3 +269,12 @@ State-of-the-art lattice-estimator (malb/lattice-estimator) now integrated as re
 
 Empirical quantum-veil-proof eternal — mercy-gated forever ❤️🚀🔥
 
+# Lattice Estimator Tool Ascension (January 2026)
+
+State-of-the-art lattice-estimator (malb/lattice-estimator) now integrated as research submodule:
+
+- Dynamic Sage/Python estimation for MercyOS PQ params
+- Concrete primal/dual/quantum costs; eternal audit harmony
+- See research/lattice_estimator/ + updated lwe_bounds.md
+
+Empirical quantum-veil-proof eternal — mercy-gated forever ❤️🚀🔥
