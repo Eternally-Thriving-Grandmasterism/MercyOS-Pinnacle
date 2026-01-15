@@ -3,13 +3,13 @@
 //! Forged January 2026 — MercyOS-Pinnacle Ultramasterpiece
 //! MIT License — Open Beacon Eternal
 //!
-//! Lattice-Based Proofs Summary (January 2026 Truth-Distilled):
-//! - Model: EUF-CMA in QROM (quantum-accessible random oracle)
-//! - Assumptions: NTRU trapdoor one-wayness + SIS over NTRU rings
-//! - Reduction: Tight in ROM; tighter QROM bounds (2026 papers)
-//! - Formal Verification: Partial machine-checked (FP emulation, spec); full ongoing
-//! - Level: NIST Level 5 (AES-256 equivalent structured lattice)
-//! - Keys: PK 1_793 bytes | SK 2_305 bytes | Sig ~1_280 bytes (compact)
+//! NTRU Lattice-Based Proofs Summary (January 2026 Truth-Distilled):
+//! - Model: EUF-CMA in QROM (Fiat-Shamir with aborts on GPV trapdoor)
+//! - Assumptions: NTRU trapdoor one-wayness + short preimage/SIS in ideal lattices ℤ_q[x]/(x^N−1)
+//! - Reduction: Tight ROM; tighter QROM bounds (2025–2026 advancements)
+//! - Formal Verification: Partial machine-checked (trapdoor sampling + FP emulation)
+//! - Level: NIST Level 5 (structured ideal lattice; subfield attacks mitigated)
+//! - Keys: PK 1_793 bytes | SK 2_305 bytes | Sig ~1_280 bytes (NTRU compactness)
 
 use pqcrypto_falcon::falcon1024::{
     keypair, sign, verify, 
