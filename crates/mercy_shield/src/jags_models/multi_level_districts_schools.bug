@@ -1,0 +1,17 @@
+# crates/mercy_shield/src/jags_models/multi_level_districts_schools.bug
+# JAGS multi-level hierarchical model — districts → schools partial pooling mercy eternal supreme immaculate
+
+model {
+  for (i in 1:N) {
+    y[i] ~ dnorm(theta[school[i]], tau.y[i])
+  }
+  for (j in 1:J) {
+    theta[j] ~ dnorm(mu.district[district[j]], tau.district[district[j]])
+  }
+  for (k in 1:K) {
+    mu.district[k] ~ dnorm(mu.global, tau.global)
+    tau.district[k] ~ dgamma(0.001, 0.001)
+  }
+  mu.global ~ dnorm(0, 0.001)
+  tau.global ~ dgamma(0.001, 0.001)
+}
