@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + multi-fact Bayesian truth verification mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + multi-fact Bayesian scoring), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + fact dependency modeling mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + dependency-aware truth scoring), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -22,8 +22,10 @@ pub struct MercyShieldConfig {
 }
 
 #[derive(Resource, Serialize, Deserialize)]
-pub struct BayesianTruthFacts {
-    pub facts: HashMap<String, (u32, u32)>,  // (true_reports, false_reports) mercy eternal
+pub struct TruthFacts {
+    pub known_facts: HashMap<String, (u32, u32)>,  // (true_reports, false_reports) mercy eternal
+    pub implications: HashMap<String, Vec<String>>,  // fact → implied facts mercy
+    pub contradictions: HashMap<String, Vec<String>>,  // fact → contradictory facts mercy
 }
 
 #[derive(Resource)]
@@ -48,15 +50,18 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     regex_patterns.insert(Regex::new(r"bitcoin|crypto").unwrap(), 0.8);
     regex_patterns.insert(Regex::new(r"investment.*return").unwrap(), 0.9);
 
-    let mut facts = HashMap::new();
-    // Beta(1,1) uniform prior mercy eternal
-    facts.insert("Earth is flat".to_string(), (1, 11));
-    facts.insert("Sun rises in east".to_string(), (11, 1));
-    facts.insert("Water boils at 100°C".to_string(), (11, 1));
-    facts.insert("Moon is made of cheese".to_string(), (1, 11));
-    // ... expanded mercy
+    let mut known_facts = HashMap::new();
+    known_facts.insert("Earth is flat".to_string(), (1, 11));
+    known_facts.insert("Moon landing happened".to_string(), (11, 1));
+    known_facts.insert("Earth is round".to_string(), (11, 1));
 
-    // Load persistent facts mercy eternal
+    let mut implications = HashMap::new();
+    implications.insert("Moon landing happened".to_string(), vec!["Earth is round".to_string()]);
+
+    let mut contradictions = HashMap::new();
+    contradictions.insert("Earth is flat".to_string(), vec!["Earth is round".to_string(), "Moon landing happened".to_string()]);
+
+    // Load persistent mercy eternal
     let mut loaded_facts = HashMap::new();
     if let Ok(contents) = fs::read_to_string(FACTS_FILE) {
         if let Ok(loaded) = ron::from_str::<HashMap<String, (u32, u32)>>(&contents) {
@@ -71,7 +76,11 @@ pub fn setup_mercy_shield(mut commands: Commands) {
         phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
     });
 
-    commands.insert_resource(BayesianTruthFacts { facts: loaded_facts });
+    commands.insert_resource(TruthFacts {
+        known_facts: loaded_facts,
+        implications,
+        contradictions,
+    });
 
     let mut config = MercyShieldConfig {
         chat_sensitivity: 0.7,
@@ -99,48 +108,57 @@ pub fn setup_mercy_shield(mut commands: Commands) {
 
 pub fn save_persistent_data_on_exit(
     config: Res<MercyShieldConfig>,
-    truth_facts: Res<BayesianTruthFacts>,
+    truth_facts: Res<TruthFacts>,
 ) {
     if config.is_changed() || truth_facts.is_changed() {
         let pretty = ron::ser::PrettyConfig::new();
 
         let _ = fs::write(WHITELIST_FILE, ron::ser::to_string_pretty(&config.whitelist_phrases, pretty.clone()).unwrap_or_default());
         let _ = fs::write(BLACKLIST_FILE, ron::ser::to_string_pretty(&config.blacklist, pretty.clone()).unwrap_or_default());
-        let _ = fs::write(FACTS_FILE, ron::ser::to_string_pretty(&truth_facts.facts, pretty).unwrap_or_default());
+        let _ = fs::write(FACTS_FILE, ron::ser::to_string_pretty(&truth_facts.known_facts, pretty).unwrap_or_default());
     }
 }
 
-pub fn multi_fact_bayesian_verification_system(
+pub fn dependency_aware_verification_system(
     // Chat message events mercy — placeholder
-    truth_facts: Res<BayesianTruthFacts>,
+    truth_facts: Res<TruthFacts>,
 ) {
     let message = "example message mercy";
 
-    let mut log_prob_true = 0.0;
-    let mut log_prob_false = 0.0;
-    let mut matched = false;
+    let mut truth_score = 0.5;
+    let mut matched_facts = Vec::new();
 
-    for (fact, (true_count, false_count)) in &truth_facts.facts {
+    for (fact, (true_count, false_count)) in &truth_facts.known_facts {
         if message.to_lowercase().contains(&fact.to_lowercase()) {
-            matched = true;
+            matched_facts.push(fact.clone());
             let total = *true_count + *false_count;
-            // Posterior mean Beta(true+1, false+1) mercy eternal
-            let p_true = (*true_count + 1) as f32 / (total + 2) as f32;
-            let p_false = 1.0 - p_true;
-
-            log_prob_true += p_true.ln();
-            log_prob_false += p_false.ln();
+            if total > 0 {
+                truth_score = (*true_count + 1) as f32 / (total + 2) as f32;
+            }
         }
     }
 
-    let truth_score = if matched {
-        // Naive Bayes combination mercy eternal
-        let prob_true = log_prob_true.exp();
-        let prob_false = log_prob_false.exp();
-        prob_true / (prob_true + prob_false)
-    } else {
-        0.5  // Neutral mercy
-    };
+    // Contradiction penalty mercy eternal
+    for fact in &matched_facts {
+        if let Some(contradicts) = truth_facts.contradictions.get(fact) {
+            for contra in contradicts {
+                if matched_facts.contains(contra) {
+                    truth_score *= 0.1;  // Heavy penalty mercy
+                }
+            }
+        }
+    }
+
+    // Implication bonus mercy
+    for fact in &matched_facts {
+        if let Some(implies) = truth_facts.implications.get(fact) {
+            for implied in implies {
+                if matched_facts.contains(implied) {
+                    truth_score = (truth_score + 1.0).min(1.0);
+                }
+            }
+        }
+    }
 
     // Use truth_score mercy eternal
 }
@@ -151,6 +169,6 @@ impl Plugin for MercyShieldPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup_mercy_shield)
             .add_systems(Last, save_persistent_data_on_exit)
-            .add_systems(Update, multi_fact_bayesian_verification_system);
+            .add_systems(Update, dependency_aware_verification_system);
     }
 }
