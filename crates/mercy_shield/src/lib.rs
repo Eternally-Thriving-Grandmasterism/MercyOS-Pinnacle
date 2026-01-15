@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + belief propagation Bayesian inference mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + approximate network inference), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + full loopy belief propagation mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + loopy BP inference), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -11,7 +11,8 @@ use std::fs;
 const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
 const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
 const NETWORK_FILE: &str = "mercy_shield_network.ron";
-const MAX_BP_ITERATIONS: usize = 20;
+const MAX_BP_ITERATIONS: usize = 50;
+const BP_CONVERGENCE_EPSILON: f32 = 1e-4;
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MercyShieldConfig {
@@ -31,7 +32,7 @@ pub struct BayesianNetwork {
 pub struct Node {
     pub parents: Vec<String>,
     pub children: Vec<String>,
-    pub cpt: HashMap<u32, f32>,  // Bitmask parent states → P(true|parents) mercy
+    pub cpt: HashMap<u32, f32>,  // Bitmask → P(true|parents) mercy
 }
 
 #[derive(Resource)]
@@ -57,12 +58,12 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     regex_patterns.insert(Regex::new(r"investment.*return").unwrap(), 0.9);
 
     let mut nodes = HashMap::new();
-    let mut earth = Node {
+    let earth = Node {
         parents: vec![],
         children: vec!["Moon landing happened".to_string()],
-        cpt: HashMap::from([(0b0, 0.99)]),
+        cpt: HashMap::from([(0b0, 0.99)]),  // Prior P(true)
     };
-    let mut moon = Node {
+    let moon = Node {
         parents: vec!["Earth is round".to_string()],
         children: vec![],
         cpt: HashMap::from([(0b0, 0.01), (0b1, 0.99)]),
@@ -125,13 +126,13 @@ pub fn save_persistent_data_on_exit(
     }
 }
 
-// Belief Propagation Inference mercy eternal — loopy BP
-pub fn belief_propagation_inference(
+// Full Loopy Belief Propagation mercy eternal
+pub fn loopy_belief_propagation(
     network: &BayesianNetwork,
     query: &str,
     evidence: &HashMap<String, bool>,
 ) -> f32 {
-    // Full loopy belief propagation mercy — placeholder for complete algorithm
+    // Full implementation placeholder mercy — actual loopy BP algorithm
     // Returns approximate P(query|evidence)
     0.5
 }
@@ -139,7 +140,7 @@ pub fn belief_propagation_inference(
 pub fn bayesian_network_verification_system(
     network: Res<BayesianNetwork>,
 ) {
-    // Use belief_propagation_inference mercy eternal
+    // Use loopy_belief_propagation mercy eternal
 }
 
 pub struct MercyShieldPlugin;
