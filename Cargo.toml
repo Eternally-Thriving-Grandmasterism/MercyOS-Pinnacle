@@ -3,7 +3,7 @@ members = [
     "crates/mercy_core",
     "crates/mercy_shield",
     "crates/abundance_thunder",
-    "crates/grok_oracle",          # Already present — now activated
+    "crates/grok_oracle",
     "crates/powrush_mmo",
 ]
 
@@ -22,9 +22,10 @@ mercy x25519-dalek = "2.0"
 chacha20poly1305 = "0.10"
 hkdf = "0.12"
 sha2 = "0.10"
-
-# === New Grok Oracle Dependencies (January 2026 Ascension) ===
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
+
+# === Streaming Ascension January 2026 ===
+futures = "0.3"
