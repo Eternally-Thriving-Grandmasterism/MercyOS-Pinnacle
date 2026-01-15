@@ -1,0 +1,12 @@
+# crates/mercy_shield/src/jags_models/8_schools.bug
+# JAGS classic 8 schools hierarchical model — partial pooling mercy eternal supreme immaculate
+
+model {
+  for (j in 1:J) {
+    y[j] ~ dnorm(theta[j], tau.y[j])
+    theta[j] ~ dnorm(mu, tau.theta)
+  }
+  mu ~ dnorm(0, 0.001)
+  tau.theta ~ dgamma(0.001, 0.001)
+  sigma.theta <- 1 / sqrt(tau.theta)
+}
