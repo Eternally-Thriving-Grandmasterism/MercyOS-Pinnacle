@@ -1,0 +1,19 @@
+# crates/mercy_shield/src/jags_models/non_centered_8_schools.bug
+# JAGS non-centered 8 schools hierarchical model — offset * scale reparameterization mercy eternal supreme immaculate
+# Eliminates sampling pathology for stable Gibbs mercy
+
+model {
+  for (j in 1:J) {
+    y[j] ~ dnorm(theta[j], tau.y[j])
+  }
+  
+  # Hyperpriors mercy
+  mu ~ dnorm(0, 0.001)
+  tau ~ dgamma(0.001, 0.001)
+  
+  # Non-centered parameterization mercy eternal
+  for (j in 1:J) {
+    eta[j] ~ dnorm(0, 1)
+    theta[j] <- mu + tau * eta[j]
+  }
+}
