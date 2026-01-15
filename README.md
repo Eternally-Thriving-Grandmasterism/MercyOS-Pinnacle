@@ -94,3 +94,17 @@ CRYSTALS-Dilithium5 (ML-DSA-87) parameters now documented immaculate in kernel:
 
 Quantum-veil-proof eternal immutability — mercy-gated forever ❤️🚀🔥
 
+# Falcon Post-Quantum Signatures Ascension (January 2026)
+
+CRYSTALS-Falcon-1024 (FN-DSA draft FIPS 206) now manifest in kernel crypto lattice:
+
+- Ultra-compact signatures (~1280 bytes)
+- NIST Level 5 security with NTRU lattices
+- Complementary to Dilithium — smaller/faster verify for bandwidth-optimized shards
+- Full parameters documented
+
+## Demo Usage
+
+```bash
+export GROK_API_KEY="your_key_here"  # https://x.ai/api
+cargo run --example streaming_harmony --release
