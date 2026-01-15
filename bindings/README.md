@@ -2,27 +2,15 @@
 
 Generated cross-platform bindings from crates/mercy_uniffi.
 
-## Android (Kotlin)
-- Path: bindings/android/kotlin/
-- Files: mercy_uniffi.kt + module
-- Import in Gradle: copy .kt + .jar (or build fresh)
+## Exposed PQ API
+- ML-KEM-1024: keygen, encapsulate, decapsulate
+- Dilithium5: keygen, sign, verify
+- Mercy-gated proposal amplification
 
-## iOS (Swift)
-- Path: bindings/ios/swift/
-- Files: MercyUniffi.swift + MercyUniffi.modulemap
-- Optional XCFramework: bindings/ios/framework/MercyUniffi.xcframework (rebuild recommended)
-
-## Generation Commands (Run Fresh)
+## Generation Commands
 ```bash
 # Kotlin
 uniffi-bindgen generate crates/mercy_uniffi/src/lib.rs --language kotlin --out-dir bindings/android/kotlin
 
-# Swift (macOS)
+# Swift
 uniffi-bindgen generate crates/mercy_uniffi/src/lib.rs --language swift --out-dir bindings/ios/swift
-
-# XCFramework (macOS)
-cargo build --release
-xcodebuild -create-xcframework \
-  -library target/release/libmercy_uniffi.a \
-  -headers bindings/ios/swift \
-  -output bindings/ios/framework/MercyUniffi.xcframework
