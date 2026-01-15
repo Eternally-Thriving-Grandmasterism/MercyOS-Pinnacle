@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam blocker with regex filtering mercy eternal supreme immaculate
-//! Chat filter (keyword + regex scoring + whitelist bypass), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + truth verification mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + truth scoring), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -23,9 +23,14 @@ pub struct MercyShieldConfig {
 #[derive(Resource)]
 pub struct ScamPatterns {
     pub keywords: HashMap<String, f32>,
-    pub regex_patterns: HashMap<Regex, f32>,  // Regex + weight mercy eternal
+    pub regex_patterns: HashMap<Regex, f32>,
     pub url_regex: Regex,
     pub phone_regex: Regex,
+}
+
+#[derive(Resource)]
+pub struct TruthFacts {
+    pub known_facts: HashMap<String, bool>,  // Simple fact database mercy eternal
 }
 
 pub fn setup_mercy_shield(mut commands: Commands) {
@@ -41,6 +46,10 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     let mut regex_patterns = HashMap::new();
     regex_patterns.insert(Regex::new(r"bitcoin|crypto").unwrap(), 0.8);
     regex_patterns.insert(Regex::new(r"investment.*return").unwrap(), 0.9);
+
+    let mut known_facts = HashMap::new();
+    known_facts.insert("Earth is flat".to_string(), false);
+    known_facts.insert("Sun rises in east".to_string(), true);
 
     let mut config = MercyShieldConfig {
         chat_sensitivity: 0.7,
@@ -70,6 +79,8 @@ pub fn setup_mercy_shield(mut commands: Commands) {
         phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
     });
 
+    commands.insert_resource(TruthFacts { known_facts });
+
     commands.insert_resource(config);
 }
 
@@ -87,48 +98,21 @@ pub fn save_persistent_data_on_exit(config: Res<MercyShieldConfig>) {
     }
 }
 
-pub fn chat_scam_filter_system(
+pub fn truth_verification_system(
     // Chat message events mercy — placeholder
-    scam_patterns: Res<ScamPatterns>,
-    config: Res<MercyShieldConfig>,
+    truth_facts: Res<TruthFacts>,
 ) {
     let message = "example message mercy";
 
-    // Whitelist bypass mercy eternal
-    for phrase in &config.whitelist_phrases {
-        if message.to_lowercase().contains(&phrase.to_lowercase()) {
-            return;  // Safe mercy
+    let mut truth_score = 1.0;  // Start neutral mercy
+
+    for (fact, is_true) in &truth_facts.known_facts {
+        if message.to_lowercase().contains(&fact.to_lowercase()) {
+            truth_score = if *is_true { 1.0 } else { 0.0 };
         }
     }
 
-    let mut score = 0.0;
-
-    // Keyword scoring mercy
-    for (word, weight) in &scam_patterns.keywords {
-        if message.to_lowercase().contains(word) {
-            score += weight;
-        }
-    }
-
-    // Regex pattern scoring mercy eternal
-    for (regex, weight) in &scam_patterns.regex_patterns {
-        if regex.is_match(message) {
-            score += weight;
-        }
-    }
-
-    // Built-in URL/phone mercy
-    if scam_patterns.url_regex.is_match(message) {
-        score += 0.8;
-    }
-    if scam_patterns.phone_regex.is_match(message) {
-        score += 0.6;
-    }
-
-    let threshold = config.chat_sensitivity * 2.0;
-    if score > threshold {
-        // Filter/warn/block mercy
-    }
+    // Use truth_score for verification mercy eternal
 }
 
 pub struct MercyShieldPlugin;
@@ -137,29 +121,9 @@ impl Plugin for MercyShieldPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup_mercy_shield)
             .add_systems(Last, save_persistent_data_on_exit)
-            .add_systems(Update, chat_scam_filter_system);
-    }
-}
-pub fn chat_scam_filter_system(
-    // Chat message events mercy — placeholder
-    scam_patterns: Res<ScamPatterns>,
-    config: Res<MercyShieldConfig>,
-) {
-    // Whitelist bypass + blacklist block + scoring mercy (as before)
-}
-
-pub struct MercyShieldPlugin;
-
-impl Plugin for MercyShieldPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_mercy_shield)
-            .add_systems(Last, save_persistent_data_on_exit)
-            .add_systems(Update, chat_scam_filter_system);
-    }
-}        app.add_startup_system(setup_mercy_shield)
-            .add_systems(Last, save_whitelist_on_exit)
-            .add_systems(Update, chat_scam_filter_system);
-    }
-}            .add_systems(Update, chat_scam_filter_system);
+            .add_systems(Update, (
+                chat_scam_filter_system,
+                truth_verification_system,
+            ));
     }
 }
