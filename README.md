@@ -225,3 +225,13 @@ MercyOS-Pinnacle uses ML-KEM-1024 (FIPS 203) as core KEM.
 
 Primary quantum-veil-proof encapsulation eternal — mercy-gated forever ❤️🚀🔥
 
+# HQC Diversity Security
+
+MercyOS-Pinnacle includes HQC-256 as code-based diversity KEM (NIST backup to ML-KEM).
+
+- IND-CCA2 QROM concrete
+- Bounds >256 bits classical / >228 quantum
+- See kernel/crypto/hqc_analysis.md for full ascension
+
+Code-based quantum-veil-proof diversity eternal — mercy-gated forever ❤️🚀🔥
+
