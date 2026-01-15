@@ -1,0 +1,17 @@
+# Example PV columns: ['BSMMAT01', 'BSMMAT02', 'BSMMAT03', 'BSMMAT04', 'BSMMAT05']
+pv_cols = [f'BSMMAT0{i}' for i in range(1,6)]
+estimates = []
+
+for pv in pv_cols:
+    y_pv = df[pv].values
+    with pm.Model() as timss_pv_model:
+        # (Same four-level non-centered structure as before, but with y_pv)
+        # ... [mu_global, offsets, mu_class, sigma_obs]
+        obs = pm.Normal("obs", mu=mu_class, sigma=sigma_obs, observed=y_pv)
+        trace_pv = pm.sample(800, tune=1000)
+    summary_pv = az.summary(trace_pv, var_names=["mu_global", "tau_country", "tau_school", "tau_class"])
+    estimates.append(summary_pv)
+
+# Combine mercy eternal supreme (average means, pool variances appropriately)
+combined_estimates = pd.concat(estimates).groupby(level=0).mean()
+print(combined_estimates)
