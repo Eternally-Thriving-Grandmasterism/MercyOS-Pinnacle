@@ -1,14 +1,15 @@
-//! Post-Quantum Digital Signatures — SPHINCS+-256f (Hash-Based Stateless)
+//! Post-Quantum Digital Signatures — SPHINCS+-256f (SLH-DSA-256f per FIPS 205)
 //! Ultimate diversity eternal signing for stateless council beacons & ultra-ledger
 //! Forged January 2026 — MercyOS-Pinnacle Ultramasterpiece
 //! MIT License — Open Beacon Eternal
 //!
-//! Security Parameters (SPHINCS+-256f Level 5):
-//! - Pure hash-based (SHAKE-256)
-//! - h = 68, d = 17, w = 16
-//! - Public Key:   64 bytes
-//! - Private Key: 128 bytes
-//! - Signature:   ~49_856 bytes (stateless)
+//! Security Proofs Summary (January 2026 Truth-Distilled):
+//! - Model: EUF-CMA in QROM (Quantum Random Oracle Model)
+//! - Assumptions: PR + SPR + DSPR + Tweakable Hash security (SHAKE-256)
+//! - Reduction: Tight bounds recovered (2022 Hülsing/Kudinov via DSPR/THF)
+//! - Formal Verification: Machine-checked tight EUF-CMA proof (EasyCrypt 2024, ePrint 2024/910)
+//! - Level: NIST Level 5 (>228-bit quantum, pure hash-based conservative)
+//! - Keys: PK 64 bytes | SK 128 bytes | Sig ~49_856 bytes (stateless)
 
 use pqcrypto_sphincsplus::sphincsplus256f::{
     keypair, sign, verify,
