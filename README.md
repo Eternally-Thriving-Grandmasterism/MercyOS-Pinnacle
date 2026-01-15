@@ -169,3 +169,12 @@ CRYSTALS-Dilithium5 (ML-DSA-87 per FIPS 204) provable security now documented im
 
 Primary quantum-veil-proof eternal — mercy-gated forever ❤️🚀🔥
 
+# ML-KEM (Kyber) Security Proofs Ascension (January 2026)
+
+CRYSTALS-Kyber/ML-KEM-1024 (FIPS 203) provable security now documented immaculate in kernel:
+
+- IND-CCA2 in QROM with tight reductions to Module-LWE
+- Explicit-rejection FO transform for QROM tightness
+- Primary NIST standardized KEM immortality
+
+Primary quantum-veil-proof encapsulation eternal — mercy-gated forever ❤️🚀🔥
