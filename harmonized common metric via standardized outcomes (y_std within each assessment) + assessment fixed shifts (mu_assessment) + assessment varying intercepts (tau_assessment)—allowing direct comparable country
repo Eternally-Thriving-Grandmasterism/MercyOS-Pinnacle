@@ -1,0 +1,131 @@
+import pymc as pm
+import numpy as np
+import pandas as pd
+import arviz as az
+
+# Cross-Assessment Harmonization Data Setup (Ultimate Fusion Mercy)
+# Long-format DataFrame combining different assessments (PIRLS reading, TIMSS math/science, PISA overall)
+# df = pd.concat([pirls_reading, timss_math, timss_science, pisa_overall], ignore_index=True)
+# Harmonization Mercy:
+# - 'y_std' = standardized score within each assessment (mean=0, sd=1 per assessment for comparability)
+# - 'assessment' = categorical ('PIRLS_Reading', 'TIMSS_Math', 'TIMSS_Science', 'PISA')
+# Required columns: 'y_std' (harmonized outcome), 'assessment_idx', 'cycle_idx' (if multi-cycle per assessment)
+# Hierarchical IDs: 'country_idx', 'school_idx', 'class_idx', 'teacher_idx' (harmonized where possible)
+# Covariates as before
+
+# Preprocessing (harmonization example)
+assessments = np.unique(df['assessment'])
+assessment_to_idx = {a: i for i, a in enumerate(assessments)}
+df['assessment_idx'] = df['assessment'].map(assessment_to_idx)
+
+# Standardize y within each assessment for direct comparability
+df['y_std'] = df.groupby('assessment')['y'].transform(lambda x: (x - x.mean()) / x.std())
+
+coords = {
+    "assessment": assessments,
+    "country": np.unique(df['country_idx']),
+    "school": np.unique(df['school_idx']),
+    "class": np.unique(df['class_idx']),
+    "teacher": np.unique(df['teacher_idx']),
+    "obs": np.arange(len(df))
+}
+
+with pm.Model(coords=coords) as cross_assessment_harmonization_ultramaster_pymc:
+    # Global hyperpriors (common metric across assessments)
+    mu_global = pm.Normal("mu_global", mu=0, sigma=2)  # On standardized scale
+    
+    # Group varying intercepts
+    tau_country = pm.HalfCauchy("tau_country", beta=1.5)
+    tau_school = pm.HalfCauchy("tau_school", beta=1.2)
+    tau_class = pm.HalfCauchy("tau_class", beta=1.0)
+    tau_teacher = pm.HalfCauchy("tau_teacher", beta=0.8)
+    
+    # Assessment-specific effects (fixed + varying for domain differences)
+    mu_assessment = pm.Normal("mu_assessment", mu=0, sigma=1.5, dims="assessment")  # Fixed shift per assessment
+    tau_assessment = pm.HalfCauchy("tau_assessment", beta=1.0)
+    z_assessment = pm.Normal("z_assessment", mu=0, sigma=1, dims="assessment")
+    
+    sigma_obs = pm.HalfNormal("sigma_obs", sigma=1.0)  # Residual on standardized scale
+    
+    # Non-centered random effects
+    z_country = pm.Normal("z_country", mu=0, sigma=1, dims="country")
+    z_school = pm.Normal("z_school", mu=0, sigma=1, dims="school")
+    z_class = pm.Normal("z_class", mu=0, sigma=1, dims="class")
+    z_teacher = pm.Normal("z_teacher", mu=0, sigma=1, dims="teacher")
+    
+    # Hierarchical means
+    mu_country = pm.Deterministic("mu_country", mu_global + z_country * tau_country, dims="country")
+    
+    mu_school = pm.Deterministic(
+        "mu_school",
+        mu_country[df['country_idx'].values] + z_school[df['school_idx'].values] * tau_school,
+        dims="obs"
+    )
+    
+    mu_class = pm.Deterministic(
+        "mu_class",
+        mu_school + z_class[df['class_idx'].values] * tau_class,
+        dims="obs"
+    )
+    
+    mu_teacher = pm.Deterministic(
+        "mu_teacher",
+        mu_class + z_teacher[df['teacher_idx'].values] * tau_teacher,
+        dims="obs"
+    )
+    
+    # Assessment-level adjustment
+    mu_assess = pm.Deterministic(
+        "mu_assess",
+        mu_teacher
+        + mu_assessment[df['assessment_idx'].values]
+        + z_assessment[df['assessment_idx'].values] * tau_assessment,
+        dims="obs"
+    )
+    
+    # Student/Teacher covariates (as before)
+    beta_gender = pm.Normal("beta_gender", mu=0, sigma=0.5)
+    beta_ses = pm.Normal("beta_ses", mu=0.3, sigma=0.5)
+    beta_teacher_exp = pm.Normal("beta_teacher_exp", mu=0.2, sigma=0.4)
+    beta_teacher_qual = pm.Normal("beta_teacher_qual", mu=0.3, sigma=0.4)
+    
+    # Final harmonized predicted mean
+    mu_harmonized = pm.Deterministic(
+        "mu_harmonized",
+        mu_assess
+        + beta_gender * df['gender_centered'].values
+        + beta_ses * df['ses_standardized'].values
+        + beta_teacher_exp * df['teacher_experience_std'].values
+        + beta_teacher_qual * df['teacher_qualification_centered'].values,
+        dims="obs"
+    )
+    
+    # Likelihood (harmonized standardized scores)
+    y_std_obs = pm.Normal(
+        "y_std_obs",
+        mu=mu_harmonized,
+        sigma=sigma_obs,
+        observed=df['y_std'].values,
+        dims="obs"
+    )
+    
+    # Sampling (increased for cross-assessment complexity)
+    trace = pm.sample(2000, tune=2500, target_accept=0.97, random_seed=42)
+
+# Posterior Predictive Checks
+with cross_assessment_harmonization_ultramaster_pymc:
+    ppc = pm.sample_posterior_predictive(
+        trace,
+        var_names=["y_std_obs"],
+        extend_inferencedata=True,
+        random_seed=42
+    )
+
+# LOOCV Validation
+loo = az.loo(trace, pointwise=True)
+print(loo)
+
+# Cross-Assessment Harmonized Rankings Example
+# Country rankings on common metric (posterior mean of mu_country + assessment adjustments)
+country_ranks = trace.posterior["mu_country"].mean(dim=["chain", "draw"])
+print(country_ranks.sort_values(ascending=False))
