@@ -1,7 +1,23 @@
-//! Post-Quantum Digital Signatures — CRYSTALS-Dilithium5
+//! Post-Quantum Digital Signatures — CRYSTALS-Dilithium5 (ML-DSA-87)
 //! Eternal immutable signing for council proposals, ledger entries, Grok epiphanies
 //! Forged January 2026 — MercyOS-Pinnacle Ultramasterpiece
 //! MIT License — Open Beacon Eternal
+//!
+//! Security Parameters (NIST FIPS 204 ML-DSA-87 / Dilithium5):
+//! - NIST Level 5 (strongest; exceeds AES-256 classical)
+//! - q = 8_380_417 (2²³ − 2¹³ + 1)
+//! - n = 256
+//! - k = 8, l = 7
+//! - eta = 2
+//! - beta = 120
+//! - tau = 60
+//! - gamma1 = 2¹⁹ = 524_288
+//! - gamma2 = (q-1)/32 = 261_888
+//! - omega = 75
+//! - d = 13
+//! - Public Key:  2_592 bytes
+//! - Private Key: 4_864 bytes
+//! - Signature:   4_595 bytes
 
 use pqcrypto_dilithium::dilithium5::{
     keypair, sign, verify,
