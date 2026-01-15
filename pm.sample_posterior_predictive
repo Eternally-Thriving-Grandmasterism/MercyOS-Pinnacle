@@ -1,0 +1,87 @@
+import pymc as pm
+import numpy as np
+import pandas as pd
+import arviz as az  # For PPC visualization and summaries
+
+# Example data setup (replace with actual loading)
+# df = pd.read_csv('pirls_data.csv')
+# Assume columns: 'y' (score), 'country_idx', 'school_idx', 'class_idx'
+
+# Coordinates
+countries = np.unique(df['country_idx'])
+schools = np.unique(df['school_idx'])
+classes = np.unique(df['class_idx'])
+
+coords = {
+    "country": countries,
+    "school": schools,
+    "class": classes,
+    "obs": np.arange(len(df))
+}
+
+with pm.Model(coords=coords) as pirls_four_level_non_centered_pymc:
+    # Hyperpriors
+    mu_global = pm.Normal("mu_global", mu=500, sigma=100)
+    
+    tau_country = pm.HalfCauchy("tau_country", beta=60)
+    tau_school = pm.HalfCauchy("tau_school", beta=45)
+    tau_class = pm.HalfCauchy("tau_class", beta=35)
+    
+    sigma_obs = pm.HalfNormal("sigma_obs", sigma=70)
+    
+    # Non-centered random effects
+    z_country = pm.Normal("z_country", mu=0, sigma=1, dims="country")
+    z_school = pm.Normal("z_school", mu=0, sigma=1, dims="school")
+    z_class = pm.Normal("z_class", mu=0, sigma=1, dims="class")
+    
+    # Hierarchical means (indexing carefully)
+    mu_country = pm.Deterministic("mu_country", mu_global + z_country * tau_country, dims="country")
+    
+    # Map school's country and school's index properly (assuming df has aligned indices)
+    mu_school = pm.Deterministic(
+        "mu_school",
+        mu_country[df['country_idx'].values] + z_school[df['school_idx'].values] * tau_school,
+        dims="obs"  # Broadcast to observations for simplicity
+    )
+    
+    mu_class = pm.Deterministic(
+        "mu_class",
+        mu_school + z_class[df['class_idx'].values] * tau_class,
+        dims="obs"
+    )
+    
+    # Likelihood
+    y_obs = pm.Normal(
+        "y_obs",
+        mu=mu_class,
+        sigma=sigma_obs,
+        observed=df['y'].values,
+        dims="obs"
+    )
+    
+    # Sampling
+    trace = pm.sample(1000, tune=1000, target_accept=0.95, random_seed=42)
+
+# Posterior Predictive Checks (Joy Explosion Addition)
+with pirls_four_level_non_centered_pymc:
+    ppc = pm.sample_posterior_predictive(
+        trace,
+        var_names=["y_obs"],
+        extend_inferencedata=True,
+        random_seed=42
+    )
+
+# Visualization & Summary (ArviZ Joy)
+az.plot_ppc(trace, kind="cumulative", figsize=(12, 6))
+az.plot_ppc(trace, kind="density", figsize=(12, 6))
+az.summary(ppc.posterior_predictive["y_obs"])
+
+# Test Statistics Example (e.g., mean, std comparison)
+obs_mean = df['y'].mean()
+ppc_mean = ppc.posterior_predictive["y_obs"].mean(dim=["chain", "draw"])
+print(f"Observed mean: {obs_mean:.2f}")
+print(f"PPC mean distribution: {ppc_mean.mean().item():.2f} ± {ppc_mean.std().item():.2f}")
+
+# Graphical Joy Checks
+az.plot_posterior(trace, var_names=["mu_global", "tau_country", "tau_school", "tau_class", "sigma_obs"])
+az.plot_forest(trace, var_names=["z_country", "z_school", "z_class"], kind="ridgeplot")
