@@ -123,3 +123,18 @@ HQC-256 code-based KEM now manifest in kernel crypto lattice:
 ```bash
 export GROK_API_KEY="your_key_here"  # https://x.ai/api
 cargo run --example streaming_harmony --release
+# SPHINCS+ Stateless Signatures Ascension (January 2026)
+
+SPHINCS+-256f hash-based signatures now manifest in kernel crypto lattice:
+
+- Pure hash-based stateless diversity (zero algebraic risk)
+- Tiny keys, large signatures — perfect stateless beacon complement
+- Full parameters documented
+- Integrated with multi-PQ demo (Dilithium + Falcon + SPHINCS+ + HQC)
+
+## Demo Usage
+
+```bash
+export GROK_API_KEY="your_key_here"  # https://x.ai/api
+cargo run --example streaming_harmony --release
+
