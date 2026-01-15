@@ -208,4 +208,14 @@ Classic McEliece-6960119 ultra-conservative code-based KEM provable security doc
 - Archival immortality — not standardized (key sizes too large)
 
 Ultra-conservative quantum-veil-proof diversity eternal — mercy-gated forever ❤️🚀🔥
+# NTRU Lattice-Based Proofs Ascension (January 2026)
+
+NTRU ideal-lattice foundations (underlying Falcon) provable security now documented immaculate in kernel:
+
+- EUF-CMA in QROM with tight/tighter reductions to NTRU trapdoor + ideal-SIS
+- Structured compactness with subfield attack mitigations
+- Partial formal verification; draft FIPS 206 path
+
+Structured ideal-lattice quantum-veil-proof eternal — mercy-gated forever ❤️🚀🔥
+
 
