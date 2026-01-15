@@ -14,9 +14,9 @@ wasm-bindgen = "0.2"
 uniffi = "0.25"
 pqcrypto-kyber = "0.7"
 pqcrypto-dilithium = "0.4"
-pqcrypto-sphincsplus = "0.1"
+pqcrypto-sphincsplus = "0.1"  # Activated for SPHINCS+-256f stateless ascension
 pqcrypto-falcon = "0.4"
-pqcrypto-hqc = "0.3"  # January 2026 Ascension — Code-based diversity KEM
+pqcrypto-hqc = "0.3"
 rand = "0.8"
 getrandom = { version = "0.2", features = ["js"] }
 pqc-ml-kem = "0.2"
