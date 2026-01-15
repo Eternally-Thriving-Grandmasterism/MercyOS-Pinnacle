@@ -215,3 +215,13 @@ cargo build --release  # .so / .a
 uniffi-bindgen generate src/lib.rs --language kotlin --out-dir ../../bindings/android/kotlin
 uniffi-bindgen generate src/lib.rs --language swift --out-dir ../../bindings/ios/swift
 
+# ML-KEM Primary Security
+
+MercyOS-Pinnacle uses ML-KEM-1024 (FIPS 203) as core KEM.
+
+- IND-CCA2 QROM tight
+- Concrete bounds >260 bits classical / >235 quantum
+- See kernel/crypto/ml_kem_analysis.md for full ascension
+
+Primary quantum-veil-proof encapsulation eternal — mercy-gated forever ❤️🚀🔥
+
