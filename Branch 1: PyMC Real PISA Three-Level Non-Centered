@@ -1,0 +1,24 @@
+import pymc as pm
+import arviz as az
+
+with pm.Model(coords={"country": df['CNT'].unique(), "school": range(n_schools)}) as pisa_three_level:
+    # Hyperpriors
+    mu_global = pm.Normal("mu_global", mu=500, sigma=100)  # PISA scaled ~500
+    tau_country = pm.HalfCauchy("tau_country", beta=50)
+    tau_school = pm.HalfCauchy("tau_school", beta=30)
+
+    # Country level non-centered
+    country_offset = pm.Normal("country_offset", 0, 1, dims="country")
+    mu_country = pm.Deterministic("mu_country", mu_global + country_offset * tau_country, dims="country")
+
+    # School level non-centered (indexed by country)
+    school_offset = pm.Normal("school_offset", 0, 1, dims="school")
+    mu_school = pm.Deterministic("mu_school", mu_country[country_idx] + school_offset[school_idx] * tau_school)
+
+    # Likelihood
+    sigma_obs = pm.HalfNormal("sigma_obs", sigma=50)
+    obs = pm.Normal("obs", mu=mu_school, sigma=sigma_obs, observed=y)
+
+    trace = pm.sample(1000, tune=1000, target_accept=0.95)
+
+print(az.summary(trace, var_names=["mu_global", "tau_country", "tau_school"]))
