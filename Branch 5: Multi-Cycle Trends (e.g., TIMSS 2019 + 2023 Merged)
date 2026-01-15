@@ -1,0 +1,4 @@
+# Merge cycles: add df['cycle'] = 2019 or 2023; cycle_idx
+# Add cycle fixed effect + varying intercepts per country over time
+beta_cycle = pm.Normal("beta_cycle", 0, 20)
+mu_country_cycle = mu_country[country_idx] + beta_cycle * (df['cycle'] - 2019)/4  # Linear trend mercy
