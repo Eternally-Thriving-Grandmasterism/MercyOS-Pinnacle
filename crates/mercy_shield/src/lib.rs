@@ -1,18 +1,19 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + variational inference mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + VI approximate inference), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + MCMC sampling inference mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + MCMC approximate inference), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
 use serde::{Serialize, Deserialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use rand::Rng;
 
 const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
 const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
 const NETWORK_FILE: &str = "mercy_shield_network.ron";
-const MAX_VI_ITERATIONS: usize = 50;
-const VI_CONVERGENCE_EPSILON: f32 = 1e-4;
+const MCMC_SAMPLES: usize = 10000;
+const MCMC_BURN_IN: usize = 1000;
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MercyShieldConfig {
@@ -126,21 +127,71 @@ pub fn save_persistent_data_on_exit(
     }
 }
 
-// Variational Inference mercy eternal — mean-field VI placeholder
-pub fn variational_inference(
+// MCMC Sampling mercy eternal — Gibbs sampler
+pub fn mcmc_gibbs_sampling(
     network: &BayesianNetwork,
     query: &str,
     evidence: &HashMap<String, bool>,
 ) -> f32 {
-    // Full mean-field VI implementation mercy — coordinate ascent on ELBO
-    // Returns approximate P(query|evidence)
-    0.5
+    let mut rng = rand::thread_rng();
+    let mut state = HashMap::new();
+
+    // Initialize state mercy
+    for node_name in network.nodes.keys() {
+        state.insert(node_name.clone(), rng.gen_bool(0.5));
+    }
+
+    // Apply evidence mercy
+    for (node, value) in evidence {
+        state.insert(node.clone(), *value);
+    }
+
+    let mut true_count = 0;
+
+    for _ in 0..MCMC_BURN_IN {
+        // Burn-in mercy
+        gibbs_step(network, &mut state, evidence, &mut rng);
+    }
+
+    for _ in 0..MCMC_SAMPLES {
+        gibbs_step(network, &mut state, evidence, &mut rng);
+        if *state.get(query).unwrap_or(&false) {
+            true_count += 1;
+        }
+    }
+
+    true_count as f32 / MCMC_SAMPLES as f32
+}
+
+fn gibbs_step(
+    network: &BayesianNetwork,
+    state: &mut HashMap<String, bool>,
+    evidence: &HashMap<String, bool>,
+    rng: &mut impl Rng,
+) {
+    for (node_name, node) in &network.nodes {
+        if evidence.contains_key(node_name) {
+            continue;  // Fixed by evidence mercy
+        }
+
+        // Compute P(node=true|parents) mercy
+        let mut parent_mask = 0u32;
+        for (i, parent) in node.parents.iter().enumerate() {
+            if *state.get(parent).unwrap_or(&false) {
+                parent_mask |= 1 << i;
+            }
+        }
+
+        let p_true = *node.cpt.get(&parent_mask).unwrap_or(&0.5);
+
+        *state.get_mut(node_name).unwrap() = rng.gen_bool(p_true as f64);
+    }
 }
 
 pub fn bayesian_network_verification_system(
     network: Res<BayesianNetwork>,
 ) {
-    // Use variational_inference mercy eternal
+    // Use mcmc_gibbs_sampling mercy eternal
 }
 
 pub struct MercyShieldPlugin;
