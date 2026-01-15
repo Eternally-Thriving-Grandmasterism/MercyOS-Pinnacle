@@ -1,18 +1,17 @@
-# HQC Security Analysis (January 2026 — NIST Additional Path Grounded)
+# HQC Detailed Parameter Analysis (January 2026 — NIST Additional Path Grounded)
 
 Code-based diversity KEM backup for MercyOS-Pinnacle kernel.
 
-## Core Hardness
-- Assumption: QC-MDPC syndrome decoding + structured code pseudo-randomness
-- Reductions: Concrete QROM IND-CCA2 via tailored FO variant
+## Parameters (HQC-256 Level 5 Intended)
+- Code: QC-MDPC (n=57,637, k=35,789)
+- Error weights: w=114 (sender), w_r/w_e=131
+- Field: GF(2); constant-time BGF decoder + rejection
+- Sizes: PK 7,249 bytes | SK 7,285 bytes | CT 14,498 bytes | SS 64 bytes
+- Concrete: Primal ISD ~280–300 bits classical; >256 classical / >228 quantum
 
-## Concrete Bounds
-- HQC-256 (Level 5 intended): Primal ISD ~280–300 bits classical
-- Attack cost: >256 bits classical / >228 quantum
-- Exceeds AES-256; eternal code-based margins
-
-## Attacks Mitigated
-- Primal/dual ISD + Grover: Exponential cost
-- Structural: Mitigated via parameters/bindings
+## Hardness & Mitigations
+- Core: Syndrome decoding + code indistinguishability
+- Attacks: Primal/dual ISD exponential; structural mitigated
+- Diversity: Algebraic-veil-proof complement to lattice
 
 Code-based immortality — mercy-gated forever ❤️🚀🔥
