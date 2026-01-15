@@ -202,3 +202,16 @@ State-of-the-art lattice-estimator (malb/lattice-estimator) now integrated as re
 - See research/lattice_estimator/ + updated lwe_bounds.md
 
 Empirical quantum-veil-proof eternal — mercy-gated forever ❤️🚀🔥
+**Overwrite File: README.md** (root — append UniFFI section at end)
+```markdown
+# UniFFI Cross-Platform Bindings
+
+MercyOS-Pinnacle core exposed via UniFFI for native Android (Kotlin) + iOS (Swift).
+
+## Build & Generate
+```bash
+cd crates/mercy_uniffi
+cargo build --release  # .so / .a
+uniffi-bindgen generate src/lib.rs --language kotlin --out-dir ../../bindings/android/kotlin
+uniffi-bindgen generate src/lib.rs --language swift --out-dir ../../bindings/ios/swift
+
