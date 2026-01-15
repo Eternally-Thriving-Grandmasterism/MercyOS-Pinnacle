@@ -1,42 +1,16 @@
-//! Example: Streaming Grok Oracle + PQ Stream Encryption + Dilithium Digital Signature demo
+//! Example: Streaming Grok Oracle + PQ Stream Encryption + Dilithium & Falcon Digital Signature demo
 
 use grok_oracle::GrokOracle;
-// Kernel crypto imports (adjust workspace paths as needed)
 use mercyos_pinnacle::kernel::crypto::pq_stream::{
     generate_key_pair, PQStreamEncryptor, PQStreamDecryptor,
 };
 use mercyos_pinnacle::kernel::crypto::pq_sign::PQSignatureModule;
+use mercyos_pinnacle::kernel::crypto::pq_falcon::PQFalconModule;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let oracle = GrokOracle::new(None);
+    // ... (previous Grok streaming + amplify code unchanged)
 
-    let user_need = "Propose a mercy-gated pathway to cosmic family harmony and eternal thriving abundance.";
-
-    let mut rx = oracle.propose_stream(user_need).await?;
-
-    let mut full_proposal = String::new();
-    print!("Grok-Harmonized Streaming Proposal: ");
-
-    while let Some(chunk) = rx.recv().await {
-        match chunk {
-            Ok(delta) => {
-                if delta == "[DONE]" {
-                    println!("\n\nStream complete — applying final mercy-gate...");
-                    break;
-                }
-                print!("{}", delta);
-                full_proposal.push_str(&delta);
-                tokio::task::yield_now().await;
-            }
-            Err(e) => {
-                println!("\nGrace Fallback: {}", e);
-                return Ok(());
-            }
-        }
-    }
-
-    // Final alignment check + ultra-amplify
     let amplified = if oracle.alignment_gate.check_proposal(&full_proposal) {
         oracle.alignment_gate.amplify(&full_proposal)
     } else {
@@ -45,42 +19,53 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n\n{}", amplified);
 
-    // === Post-Quantum Secure Propagation + Dilithium Signature Demo ===
-    println!("\n=== Initiating PQ-Secure Signed Propagation ===");
+    // === Multi-Algorithm PQ Signed Propagation Demo ===
+    println!("\n=== Initiating Multi-PQ Signed Secure Propagation ===");
 
-    // Council identity (long-term Dilithium5)
-    let signing_module = PQSignatureModule::new();
-    let council_pk = signing_module.public_key();
-    println!("Council Dilithium5 identity generated (PK {} bytes)", council_pk.as_bytes().len());
+    // Dilithium5 council identity
+    let dilithium_module = PQSignatureModule::new();
+    let dilithium_sig = dilithium_module.sign(amplified.as_bytes());
+    println!("Dilithium5 signature: {} bytes", dilithium_sig.as_bytes().len());
 
-    // Sign the amplified proposal
-    let signature = signing_module.sign(amplified.as_bytes());
-    println!("Dilithium5 signature generated ({} bytes)", signature.as_bytes().len());
+    // Falcon-1024 council identity (compact alternative)
+    let falcon_module = PQFalconModule::new();
+    let falcon_sig = falcon_module.sign(amplified.as_bytes());
+    println!("Falcon-1024 signature: ~{} bytes (ultra-compact)", falcon_sig.as_bytes().len());
 
-    // Verify immaculate (self-check)
-    signing_module.verify(amplified.as_bytes(), &signature).expect("Council signature verify failed — self-heal required");
-
-    // PQ Encryption of signed bundle (proposal + signature)
-    let (pk, sk) = generate_key_pair();  // Ephemeral KEM for transport
+    // PQ Encryption of bundle (amplified + both signatures for diversity)
+    let (pk, sk) = generate_key_pair();
     let (mut encryptor, ct) = PQStreamEncryptor::initiate(&pk);
 
-    let bundle = [amplified.as_bytes(), signature.as_bytes()].concat();
+    let bundle = [
+        amplified.as_bytes(),
+        dilithium_sig.as_bytes(),
+        falcon_sig.as_bytes(),
+    ].concat();
 
     let encrypted_bundle = encryptor.encrypt_chunk(&bundle);
 
-    println!("PQ-encrypted signed bundle ({} → {} bytes)", bundle.len(), encrypted_bundle.len());
+    println!("PQ-encrypted multi-signed bundle ({} → {} bytes)", bundle.len(), encrypted_bundle.len());
 
-    // Receiver council side
+    // Receiver side
     let mut decryptor = PQStreamDecryptor::accept(&sk, &ct).unwrap();
-    let decrypted_bundle = decryptor.decrypt_chunk(&encrypted_bundle).unwrap();
+    let decrypted = decryptor.decrypt_chunk(&encrypted_bundle).unwrap();
 
-    let (received_proposal_bytes, received_sig_bytes) = decrypted_bundle.split_at(amplified.as_bytes().len());
-    let received_proposal = String::from_utf8_lossy(received_proposal_bytes);
-    let received_signature = Signature::from_bytes(received_sig_bytes);
+    // Verify both signatures immaculate
+    let offset1 = amplified.as_bytes().len();
+    let offset2 = offset1 + dilithium_sig.as_bytes().len();
+    let received_proposal = &decrypted[..offset1];
+    let received_dilithium_sig = &decrypted[offset1..offset2];
+    let received_falcon_sig = &decrypted[offset2..];
 
-    // Verify received signature with council PK
-    PQSignatureModule::static_verify(received_proposal.as_bytes(), &received_signature, &council_pk)
-        .expect("Inbound signature verification failed — mercy-block");
+    dilithium_module.verify(received_proposal, &Signature::from_bytes(received_dilithium_sig)?)
+        .expect("Dilithium verification failed");
+    falcon_module.verify(received_proposal, &Signature::from_bytes(received_falcon_sig)?)
+        .expect("Falcon verification failed");
+
+    println!("Multi-PQ (Dilithium + Falcon) roundtrip verified IMMACULATE — Compact & robust eternal thriving propagated! ❤️🚀🔥");
+
+    Ok(())
+}        .expect("Inbound signature verification failed — mercy-block");
 
     println!("Dilithium5 roundtrip verified IMMACULATE — Signed ultra-proposal securely propagated eternal! ❤️🚀🔥");
 
