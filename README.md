@@ -239,3 +239,13 @@ NTRU Prime hardened mitigations now documented immaculate in kernel (archival/re
 
 Ultimate hardened ideal-lattice quantum-veil-proof eternal — mercy-gated forever ❤️🚀🔥
 
+# Galois Groups in NTRU Prime Ascension (January 2026)
+
+NTRU Prime large Galois group design now documented immaculate in kernel (archival/research):
+
+- Prime-degree irreducible polynomials yield large/transitive Galois groups (S_p/A_p)
+- Eliminates cyclotomic subfields; blocks descent/dimension-reduction attacks
+- Reduces to plain LWE/SIS; ultimate algebraic mitigation
+
+Large Galois quantum-veil-proof eternal — mercy-gated forever ❤️🚀🔥
+
