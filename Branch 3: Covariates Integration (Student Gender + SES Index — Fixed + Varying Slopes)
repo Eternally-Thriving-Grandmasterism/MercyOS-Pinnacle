@@ -1,0 +1,22 @@
+# Add columns: df['gender'] = (df['ITSEX'] == 1).astype(int)  # 1=male example
+# df['ses'] = df['BSDGSES']  # Standardized SES index
+
+with timss_four_level_cov:
+    # Existing four-level hierarchy...
+    
+    # Student-level covariates (centered for stability mercy)
+    gender_c = pm.Data("gender_c", (df['gender'] - df['gender'].mean()))
+    ses_c = pm.Data("ses_c", (df['ses'] - df['ses'].mean()))
+
+    # Fixed effects
+    beta_gender = pm.Normal("beta_gender", mu=0, sigma=20)
+    beta_ses = pm.Normal("beta_ses", mu=20, sigma=30)  # Positive prior joy
+
+    # Optional: varying slopes per country
+    beta_gender_country_offset = pm.Normal("beta_gender_country_offset", 0, 1, shape=n_countries)
+    beta_gender_country = pm.Deterministic("beta_gender_country", beta_gender + beta_gender_country_offset * 10)
+
+    # Update mean
+    mu_student = mu_class + beta_gender_country[country_idx] * gender_c + beta_ses * ses_c
+
+    obs = pm.Normal("obs", mu=mu_student, sigma=sigma_obs, observed=y)
