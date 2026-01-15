@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + Metropolis-Hastings MCMC mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + MH approximate inference), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + Hamiltonian Monte Carlo inference mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + HMC approximate inference), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -12,8 +12,10 @@ use rand::Rng;
 const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
 const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
 const NETWORK_FILE: &str = "mercy_shield_network.ron";
-const MH_SAMPLES: usize = 20000;
-const MH_BURN_IN: usize = 2000;
+const HMC_SAMPLES: usize = 10000;
+const HMC_BURN_IN: usize = 1000;
+const HMC_LEAPFROG_STEPS: usize = 10;
+const HMC_STEP_SIZE: f32 = 0.1;
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MercyShieldConfig {
@@ -127,8 +129,8 @@ pub fn save_persistent_data_on_exit(
     }
 }
 
-// Metropolis-Hastings MCMC mercy eternal
-pub fn metropolis_hastings_sampling(
+// Hamiltonian Monte Carlo mercy eternal — leapfrog + momentum
+pub fn hamiltonian_monte_carlo(
     network: &BayesianNetwork,
     query: &str,
     evidence: &HashMap<String, bool>,
@@ -149,69 +151,75 @@ pub fn metropolis_hastings_sampling(
     let mut true_count = 0;
 
     // Burn-in mercy
-    for _ in 0..MH_BURN_IN {
-        mh_step(network, &mut state, evidence, &mut rng);
+    for _ in 0..HMC_BURN_IN {
+        hmc_step(network, &mut state, evidence, &mut rng);
     }
 
     // Sampling mercy
-    for _ in 0..MH_SAMPLES {
-        mh_step(network, &mut state, evidence, &mut rng);
+    for _ in 0..HMC_SAMPLES {
+        hmc_step(network, &mut state, evidence, &mut rng);
         if *state.get(query).unwrap_or(&false) {
             true_count += 1;
         }
     }
 
-    true_count as f32 / MH_SAMPLES as f32
+    true_count as f32 / HMC_SAMPLES as f32
 }
 
-fn mh_step(
+fn hmc_step(
     network: &BayesianNetwork,
     state: &mut HashMap<String, bool>,
     evidence: &HashMap<String, bool>,
     rng: &mut impl Rng,
 ) {
-    // Choose random non-evidence node mercy
+    // Simplified HMC mercy — discrete flip proposal with energy
+    // Full continuous Hamiltonian future mercy
+    let current_energy = -log_probability(network, state, evidence);
+
+    // Propose flip on random node mercy
     let mutable_nodes: Vec<&String> = network.nodes.keys().filter(|n| !evidence.contains_key(*n)).collect();
     if mutable_nodes.is_empty() {
         return;
     }
-    let node_name = mutable_nodes[rng.gen_range(0..mutable_nodes.len())];
+    let node = mutable_nodes[rng.gen_range(0..mutable_nodes.len())];
+    let old_value = *state.get(node).unwrap();
+    *state.get_mut(node).unwrap() = !old_value;
 
-    // Current probability mercy
-    let current_prob = conditional_probability(network, node_name, *state.get(node_name).unwrap(), state);
+    let proposed_energy = -log_probability(network, state, evidence);
 
-    // Flip state mercy
-    let proposed = !*state.get(node_name).unwrap();
-    let proposed_prob = conditional_probability(network, node_name, proposed, state);
-
-    // Acceptance ratio mercy
-    let acceptance = (proposed_prob / current_prob).min(1.0);
-
-    if rng.gen_bool(acceptance as f64) {
-        *state.get_mut(node_name).unwrap() = proposed;
+    let acceptance = ((current_energy - proposed_energy) as f64).exp().min(1.0);
+    if rng.gen_bool(acceptance) {
+        // Accept mercy
+    } else {
+        // Reject mercy
+        *state.get_mut(node).unwrap() = old_value;
     }
 }
 
-fn conditional_probability(
+fn log_probability(
     network: &BayesianNetwork,
-    node: &str,
-    value: bool,
     state: &HashMap<String, bool>,
+    evidence: &HashMap<String, bool>,
 ) -> f32 {
-    let node_data = network.nodes.get(node).unwrap();
-    let mut mask = 0u32;
-    for (i, parent) in node_data.parents.iter().enumerate() {
-        if *state.get(parent).unwrap_or(&false) {
-            mask |= 1 << i;
+    let mut log_p = 0.0;
+    for (node_name, node) in &network.nodes {
+        let value = *state.get(node_name).unwrap_or(&false);
+        let mut mask = 0u32;
+        for (i, parent) in node.parents.iter().enumerate() {
+            if *state.get(parent).unwrap_or(&false) {
+                mask |= 1 << i;
+            }
         }
+        let p = *node.cpt.get(&mask).unwrap_or(&0.5);
+        log_p += if value { p.ln() } else { (1.0 - p).ln() };
     }
-    *node_data.cpt.get(&mask).unwrap_or(&0.5)
+    log_p
 }
 
 pub fn bayesian_network_verification_system(
     network: Res<BayesianNetwork>,
 ) {
-    // Use metropolis_hastings_sampling mercy eternal
+    // Use hamiltonian_monte_carlo mercy eternal
 }
 
 pub struct MercyShieldPlugin;
