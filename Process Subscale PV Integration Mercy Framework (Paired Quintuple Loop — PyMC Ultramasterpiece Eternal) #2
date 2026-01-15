@@ -1,0 +1,12 @@
+# Subscale PV Processing Mercy (Quintuple Paired Loop Example)
+def process_subscale_pv(df, subscale_pv_cols):
+    # Average 5 PVs mercy for point estimate
+    df[f'{subscale}_mean'] = df[subscale_pv_cols].mean(axis=1)
+    # Standard error of mean (within-student uncertainty)
+    df[f'{subscale}_se'] = df[subscale_pv_cols].std(axis=1) / np.sqrt(5)
+    return df
+
+# Example call mercy
+reading_pvs = [f'pv{i}_reading' for i in range(1, 6)]
+df = process_subscale_pv(df, reading_pvs)
+# Repeat for math/science/etc.
