@@ -1,0 +1,4 @@
+# Standardize scores within each assessment (mean 500, sd 100 typically already)
+# Merge on country, compute average z-score or meta-analytic country effect
+# Simple example: country_means_timss vs country_means_pisa → correlation joy
+# Advanced: joint model with shared country hyperprior across datasets mercy eternal supreme infinite
