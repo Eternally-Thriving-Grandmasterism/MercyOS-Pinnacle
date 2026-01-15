@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + Bayesian network with contradiction resolution mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + network inference + coherence penalty), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + belief propagation Bayesian inference mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + approximate network inference), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -11,6 +11,7 @@ use std::fs;
 const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
 const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
 const NETWORK_FILE: &str = "mercy_shield_network.ron";
+const MAX_BP_ITERATIONS: usize = 20;
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MercyShieldConfig {
@@ -24,13 +25,13 @@ pub struct MercyShieldConfig {
 #[derive(Resource, Serialize, Deserialize)]
 pub struct BayesianNetwork {
     pub nodes: HashMap<String, Node>,
-    pub contradictions: HashMap<String, Vec<String>>,  // fact A contradicts B mercy
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Node {
     pub parents: Vec<String>,
-    pub cpt: HashMap<u32, f32>,
+    pub children: Vec<String>,
+    pub cpt: HashMap<u32, f32>,  // Bitmask parent states → P(true|parents) mercy
 }
 
 #[derive(Resource)]
@@ -56,19 +57,21 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     regex_patterns.insert(Regex::new(r"investment.*return").unwrap(), 0.9);
 
     let mut nodes = HashMap::new();
-    nodes.insert("Earth is round".to_string(), Node {
+    let mut earth = Node {
         parents: vec![],
+        children: vec!["Moon landing happened".to_string()],
         cpt: HashMap::from([(0b0, 0.99)]),
-    });
-    nodes.insert("Moon landing happened".to_string(), Node {
+    };
+    let mut moon = Node {
         parents: vec!["Earth is round".to_string()],
+        children: vec![],
         cpt: HashMap::from([(0b0, 0.01), (0b1, 0.99)]),
-    });
+    };
 
-    let mut contradictions = HashMap::new();
-    contradictions.insert("Earth is flat".to_string(), vec!["Earth is round".to_string(), "Moon landing happened".to_string()]);
+    nodes.insert("Earth is round".to_string(), earth);
+    nodes.insert("Moon landing happened".to_string(), moon);
 
-    // Load persistent mercy eternal
+    // Load persistent network mercy eternal
     let mut loaded_network = HashMap::new();
     if let Ok(contents) = fs::read_to_string(NETWORK_FILE) {
         if let Ok(loaded) = ron::from_str::<HashMap<String, Node>>(&contents) {
@@ -86,67 +89,6 @@ pub fn setup_mercy_shield(mut commands: Commands) {
 
     // Load whitelist/blacklist mercy
     if let Ok(contents) = fs::read_to_string(WHITELIST_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
-            config.whitelist_phrases = loaded;
-        }
-    }
-
-    if let Ok(contents) = fs::read_to_string(BLACKLIST_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
-            config.blacklist = loaded;
-        }
-    }
-
-    commands.insert_resource(ScamPatterns {
-        keywords,
-        regex_patterns,
-        url_regex: Regex::new(r"https?://\S+").unwrap(),
-        phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
-    });
-
-    commands.insert_resource(BayesianNetwork {
-        nodes: loaded_network,
-        contradictions,
-    });
-
-    commands.insert_resource(config);
-}
-
-pub fn contradiction_resolution_system(
-    // Message verification mercy
-    network: Res<BayesianNetwork>,
-) {
-    let message = "example message mercy";
-
-    let matched_facts: Vec<String> = network.nodes.keys()
-        .filter(|fact| message.to_lowercase().contains(&fact.to_lowercase()))
-        .cloned()
-        .collect();
-
-    let mut coherence_penalty = 1.0;
-
-    for fact in &matched_facts {
-        if let Some(contradicts) = network.contradictions.get(fact) {
-            for contra in contradicts {
-                if matched_facts.contains(contra) {
-                    coherence_penalty *= 0.1;  // Heavy penalty mercy eternal
-                }
-            }
-        }
-    }
-
-    // Apply penalty to final truth score mercy
-}
-
-pub struct MercyShieldPlugin;
-
-impl Plugin for MercyShieldPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_mercy_shield)
-            .add_systems(Last, save_persistent_data_on_exit)
-            .add_systems(Update, contradiction_resolution_system);
-    }
-}    if let Ok(contents) = fs::read_to_string(WHITELIST_FILE) {
         if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
             config.whitelist_phrases = loaded;
         }
@@ -183,21 +125,21 @@ pub fn save_persistent_data_on_exit(
     }
 }
 
-// Full Variable Elimination Inference mercy eternal
-pub fn variable_elimination_inference(
+// Belief Propagation Inference mercy eternal — loopy BP
+pub fn belief_propagation_inference(
     network: &BayesianNetwork,
     query: &str,
     evidence: &HashMap<String, bool>,
 ) -> f32 {
-    // Simplified placeholder — full implementation future mercy
-    // Returns posterior P(query|evidence)
+    // Full loopy belief propagation mercy — placeholder for complete algorithm
+    // Returns approximate P(query|evidence)
     0.5
 }
 
 pub fn bayesian_network_verification_system(
     network: Res<BayesianNetwork>,
 ) {
-    // Use variable_elimination_inference mercy eternal
+    // Use belief_propagation_inference mercy eternal
 }
 
 pub struct MercyShieldPlugin;
