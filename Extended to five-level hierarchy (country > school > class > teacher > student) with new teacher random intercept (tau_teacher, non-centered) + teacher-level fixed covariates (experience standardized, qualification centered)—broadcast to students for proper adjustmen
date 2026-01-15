@@ -1,0 +1,118 @@
+import pymc as pm
+import numpy as np
+import pandas as pd
+import arviz as az
+
+# Example data setup (replace with actual loading)
+# df = pd.read_csv('pirls_data.csv')
+# Required columns: 'y' (score), 'country_idx', 'school_idx', 'class_idx', 'teacher_idx'
+# Student-level covariates: 'gender_centered', 'ses_standardized'
+# Teacher-level covariates (examples, constant per class/teacher):
+# 'teacher_experience_std' (years standardized)
+# 'teacher_qualification' (e.g., 0/1 or ordinal centered)
+
+# Preprocessing example
+df['gender_centered'] = df['gender'] - df['gender'].mean()
+df['ses_standardized'] = (df['ses'] - df['ses'].mean()) / df['ses'].std()
+df['teacher_experience_std'] = (df['teacher_experience'] - df['teacher_experience'].mean()) / df['teacher_experience'].std()
+df['teacher_qualification_centered'] = df['teacher_qualification'] - df['teacher_qualification'].mean()
+
+# Coordinates (extend for teacher level)
+countries = np.unique(df['country_idx'])
+schools = np.unique(df['school_idx'])
+classes = np.unique(df['class_idx'])
+teachers = np.unique(df['teacher_idx'])
+
+coords = {
+    "country": countries,
+    "school": schools,
+    "class": classes,
+    "teacher": teachers,
+    "obs": np.arange(len(df))
+}
+
+with pm.Model(coords=coords) as pirls_five_level_teacher_covariates_pymc:
+    # Hyperpriors
+    mu_global = pm.Normal("mu_global", mu=500, sigma=100)
+    
+    tau_country = pm.HalfCauchy("tau_country", beta=60)
+    tau_school = pm.HalfCauchy("tau_school", beta=45)
+    tau_class = pm.HalfCauchy("tau_class", beta=35)
+    tau_teacher = pm.HalfCauchy("tau_teacher", beta=30)  # New teacher varying intercept
+    
+    sigma_obs = pm.HalfNormal("sigma_obs", sigma=70)
+    
+    # Non-centered random effects
+    z_country = pm.Normal("z_country", mu=0, sigma=1, dims="country")
+    z_school = pm.Normal("z_school", mu=0, sigma=1, dims="school")
+    z_class = pm.Normal("z_class", mu=0, sigma=1, dims="class")
+    z_teacher = pm.Normal("z_teacher", mu=0, sigma=1, dims="teacher")  # New
+    
+    # Hierarchical means (group-level)
+    mu_country = pm.Deterministic("mu_country", mu_global + z_country * tau_country, dims="country")
+    
+    mu_school = pm.Deterministic(
+        "mu_school",
+        mu_country[df['country_idx'].values] + z_school[df['school_idx'].values] * tau_school,
+        dims="obs"
+    )
+    
+    mu_class = pm.Deterministic(
+        "mu_class",
+        mu_school + z_class[df['class_idx'].values] * tau_class,
+        dims="obs"
+    )
+    
+    mu_teacher = pm.Deterministic(
+        "mu_teacher",
+        mu_class + z_teacher[df['teacher_idx'].values] * tau_teacher,
+        dims="obs"
+    )
+    
+    # Student-level fixed covariates
+    beta_gender = pm.Normal("beta_gender", mu=0, sigma=20)
+    beta_ses = pm.Normal("beta_ses", mu=20, sigma=20)
+    
+    # Teacher-level fixed covariates (broadcast to students in class/teacher)
+    beta_teacher_exp = pm.Normal("beta_teacher_exp", mu=10, sigma=15)     # Positive prior for experience
+    beta_teacher_qual = pm.Normal("beta_teacher_qual", mu=15, sigma=15)   # Positive for qualification
+    
+    # Final student predicted mean
+    mu_student = pm.Deterministic(
+        "mu_student",
+        mu_teacher
+        + beta_gender * df['gender_centered'].values
+        + beta_ses * df['ses_standardized'].values
+        + beta_teacher_exp * df['teacher_experience_std'].values
+        + beta_teacher_qual * df['teacher_qualification_centered'].values,
+        dims="obs"
+    )
+    
+    # Likelihood
+    y_obs = pm.Normal(
+        "y_obs",
+        mu=mu_student,
+        sigma=sigma_obs,
+        observed=df['y'].values,
+        dims="obs"
+    )
+    
+    # Sampling
+    trace = pm.sample(1000, tune=1500, target_accept=0.95, random_seed=42)  # More tuning for complexity
+
+# Posterior Predictive Checks
+with pirls_five_level_teacher_covariates_pymc:
+    ppc = pm.sample_posterior_predictive(
+        trace,
+        var_names=["y_obs"],
+        extend_inferencedata=True,
+        random_seed=42
+    )
+
+# LOOCV Validation (PSIS-LOO)
+loo = az.loo(trace, pointwise=True)
+print(loo)
+
+# Visualization Examples
+az.plot_ppc(trace)
+az.plot_forest(trace, var_names=["beta_gender", "beta_ses", "beta_teacher_exp", "beta_teacher_qual"])
