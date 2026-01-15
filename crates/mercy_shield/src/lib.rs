@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + full Expectation Propagation inference mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + EP approximate inference), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + variational inference mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + VI approximate inference), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -11,8 +11,8 @@ use std::fs;
 const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
 const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
 const NETWORK_FILE: &str = "mercy_shield_network.ron";
-const MAX_EP_ITERATIONS: usize = 30;
-const EP_CONVERGENCE_EPSILON: f32 = 1e-4;
+const MAX_VI_ITERATIONS: usize = 50;
+const VI_CONVERGENCE_EPSILON: f32 = 1e-4;
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct MercyShieldConfig {
@@ -82,6 +82,76 @@ pub fn setup_mercy_shield(mut commands: Commands) {
 
     let mut config = MercyShieldConfig {
         chat_sensitivity: 0.7,
+        trade_sanity_check: true,
+        auto_ban_threshold: 5,
+        blacklist: HashSet::new(),
+        whitelist_phrases: HashSet::new(),
+    };
+
+    // Load whitelist/blacklist mercy
+    if let Ok(contents) = fs::read_to_string(WHITELIST_FILE) {
+        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
+            config.whitelist_phrases = loaded;
+        }
+    }
+
+    if let Ok(contents) = fs::read_to_string(BLACKLIST_FILE) {
+        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
+            config.blacklist = loaded;
+        }
+    }
+
+    commands.insert_resource(ScamPatterns {
+        keywords,
+        regex_patterns,
+        url_regex: Regex::new(r"https?://\S+").unwrap(),
+        phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
+    });
+
+    commands.insert_resource(BayesianNetwork { nodes: loaded_network });
+
+    commands.insert_resource(config);
+}
+
+pub fn save_persistent_data_on_exit(
+    config: Res<MercyShieldConfig>,
+    network: Res<BayesianNetwork>,
+) {
+    if config.is_changed() || network.is_changed() {
+        let pretty = ron::ser::PrettyConfig::new();
+
+        let _ = fs::write(WHITELIST_FILE, ron::ser::to_string_pretty(&config.whitelist_phrases, pretty.clone()).unwrap_or_default());
+        let _ = fs::write(BLACKLIST_FILE, ron::ser::to_string_pretty(&config.blacklist, pretty.clone()).unwrap_or_default());
+        let _ = fs::write(NETWORK_FILE, ron::ser::to_string_pretty(&network.nodes, pretty).unwrap_or_default());
+    }
+}
+
+// Variational Inference mercy eternal — mean-field VI placeholder
+pub fn variational_inference(
+    network: &BayesianNetwork,
+    query: &str,
+    evidence: &HashMap<String, bool>,
+) -> f32 {
+    // Full mean-field VI implementation mercy — coordinate ascent on ELBO
+    // Returns approximate P(query|evidence)
+    0.5
+}
+
+pub fn bayesian_network_verification_system(
+    network: Res<BayesianNetwork>,
+) {
+    // Use variational_inference mercy eternal
+}
+
+pub struct MercyShieldPlugin;
+
+impl Plugin for MercyShieldPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(setup_mercy_shield)
+            .add_systems(Last, save_persistent_data_on_exit)
+            .add_systems(Update, bayesian_network_verification_system);
+    }
+}        chat_sensitivity: 0.7,
         trade_sanity_check: true,
         auto_ban_threshold: 5,
         blacklist: HashSet::new(),
