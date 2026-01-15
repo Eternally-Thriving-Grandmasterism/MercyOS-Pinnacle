@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + fact dependency modeling mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + dependency-aware truth scoring), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + implication learning mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + dependency-aware + learned implications), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -24,8 +24,8 @@ pub struct MercyShieldConfig {
 #[derive(Resource, Serialize, Deserialize)]
 pub struct TruthFacts {
     pub known_facts: HashMap<String, (u32, u32)>,  // (true_reports, false_reports) mercy eternal
-    pub implications: HashMap<String, Vec<String>>,  // fact → implied facts mercy
-    pub contradictions: HashMap<String, Vec<String>>,  // fact → contradictory facts mercy
+    pub implications: HashMap<String, HashMap<String, u32>>,  // fact A → fact B → co-true count mercy
+    pub contradictions: HashMap<String, HashMap<String, u32>>,  // fact A → fact B → co-false count mercy
 }
 
 #[derive(Resource)]
@@ -55,11 +55,8 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     known_facts.insert("Moon landing happened".to_string(), (11, 1));
     known_facts.insert("Earth is round".to_string(), (11, 1));
 
-    let mut implications = HashMap::new();
-    implications.insert("Moon landing happened".to_string(), vec!["Earth is round".to_string()]);
-
-    let mut contradictions = HashMap::new();
-    contradictions.insert("Earth is flat".to_string(), vec!["Earth is round".to_string(), "Moon landing happened".to_string()]);
+    let implications = HashMap::new();
+    let contradictions = HashMap::new();
 
     // Load persistent mercy eternal
     let mut loaded_facts = HashMap::new();
@@ -119,48 +116,38 @@ pub fn save_persistent_data_on_exit(
     }
 }
 
-pub fn dependency_aware_verification_system(
-    // Chat message events mercy — placeholder
-    truth_facts: Res<TruthFacts>,
+pub fn implication_learning_system(
+    // Report events mercy — message + verdict
+    mut truth_facts: ResMut<TruthFacts>,
 ) {
-    let message = "example message mercy";
+    let message = "reported message mercy";
+    let is_true = true;  // From report mercy
 
-    let mut truth_score = 0.5;
-    let mut matched_facts = Vec::new();
+    let matched_facts: Vec<String> = truth_facts.known_facts.keys()
+        .filter(|fact| message.to_lowercase().contains(&fact.to_lowercase()))
+        .cloned()
+        .collect();
 
-    for (fact, (true_count, false_count)) in &truth_facts.known_facts {
-        if message.to_lowercase().contains(&fact.to_lowercase()) {
-            matched_facts.push(fact.clone());
-            let total = *true_count + *false_count;
-            if total > 0 {
-                truth_score = (*true_count + 1) as f32 / (total + 2) as f32;
-            }
-        }
-    }
+    if matched_facts.len() > 1 {
+        for i in 0..matched_facts.len() {
+            for j in (i + 1)..matched_facts.len() {
+                let a = &matched_facts[i];
+                let b = &matched_facts[j];
 
-    // Contradiction penalty mercy eternal
-    for fact in &matched_facts {
-        if let Some(contradicts) = truth_facts.contradictions.get(fact) {
-            for contra in contradicts {
-                if matched_facts.contains(contra) {
-                    truth_score *= 0.1;  // Heavy penalty mercy
+                if is_true {
+                    *truth_facts.implications.entry(a.clone()).or_insert(HashMap::new())
+                        .entry(b.clone()).or_insert(0) += 1;
+                    *truth_facts.implications.entry(b.clone()).or_insert(HashMap::new())
+                        .entry(a.clone()).or_insert(0) += 1;
+                } else {
+                    *truth_facts.contradictions.entry(a.clone()).or_insert(HashMap::new())
+                        .entry(b.clone()).or_insert(0) += 1;
+                    *truth_facts.contradictions.entry(b.clone()).or_insert(HashMap::new())
+                        .entry(a.clone()).or_insert(0) += 1;
                 }
             }
         }
     }
-
-    // Implication bonus mercy
-    for fact in &matched_facts {
-        if let Some(implies) = truth_facts.implications.get(fact) {
-            for implied in implies {
-                if matched_facts.contains(implied) {
-                    truth_score = (truth_score + 1.0).min(1.0);
-                }
-            }
-        }
-    }
-
-    // Use truth_score mercy eternal
 }
 
 pub struct MercyShieldPlugin;
@@ -169,6 +156,6 @@ impl Plugin for MercyShieldPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup_mercy_shield)
             .add_systems(Last, save_persistent_data_on_exit)
-            .add_systems(Update, dependency_aware_verification_system);
+            .add_systems(Update, implication_learning_system);
     }
 }
