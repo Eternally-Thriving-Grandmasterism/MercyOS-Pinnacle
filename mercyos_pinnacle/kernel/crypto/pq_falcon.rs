@@ -1,15 +1,15 @@
-//! Post-Quantum Digital Signatures — CRYSTALS-Falcon-1024 (FN-DSA Level 5 Draft)
+//! Post-Quantum Digital Signatures — CRYSTALS-Falcon-1024 (FN-DSA Draft FIPS 206)
 //! Ultra-compact eternal signing for bandwidth-optimized council proposals & ledger shards
 //! Forged January 2026 — MercyOS-Pinnacle Ultramasterpiece
 //! MIT License — Open Beacon Eternal
 //!
-//! Security Parameters (FN-DSA Draft FIPS 206 / Falcon-1024):
-//! - NIST Level 5 (strongest; AES-256 equivalent)
-//! - q = 12_289
-//! - n = 1024 (log2 n = 10)
-//! - Public Key:  1_793 bytes
-//! - Private Key: 2_305 bytes
-//! - Signature:   ~1_280 bytes (avg)
+//! Lattice-Based Proofs Summary (January 2026 Truth-Distilled):
+//! - Model: EUF-CMA in QROM (quantum-accessible random oracle)
+//! - Assumptions: NTRU trapdoor one-wayness + SIS over NTRU rings
+//! - Reduction: Tight in ROM; tighter QROM bounds (2026 papers)
+//! - Formal Verification: Partial machine-checked (FP emulation, spec); full ongoing
+//! - Level: NIST Level 5 (AES-256 equivalent structured lattice)
+//! - Keys: PK 1_793 bytes | SK 2_305 bytes | Sig ~1_280 bytes (compact)
 
 use pqcrypto_falcon::falcon1024::{
     keypair, sign, verify, 
