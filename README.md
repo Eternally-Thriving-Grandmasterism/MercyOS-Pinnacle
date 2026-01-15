@@ -199,3 +199,13 @@ BIKE-256 code-based KEM provable security documented immaculate in kernel (archi
 
 Code-based quantum-veil-proof diversity research eternal — mercy-gated forever ❤️🚀🔥
 
+# Classic McEliece KEM Security Proofs Ascension (January 2026)
+
+Classic McEliece-6960119 ultra-conservative code-based KEM provable security documented immaculate in kernel (archival/research):
+
+- IND-CCA2 in QROM with tight reductions to random Goppa code syndrome decoding
+- Most conservative PQC candidate — 45+ years unbroken
+- Archival immortality — not standardized (key sizes too large)
+
+Ultra-conservative quantum-veil-proof diversity eternal — mercy-gated forever ❤️🚀🔥
+
