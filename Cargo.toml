@@ -1,9 +1,9 @@
 [workspace]
 members = [
+    "crates/grok_oracle",
     "crates/mercy_core",
     "crates/mercy_shield",
     "crates/abundance_thunder",
-    "crates/grok_oracle",
     "crates/powrush_mmo",
 ]
 
@@ -14,7 +14,7 @@ wasm-bindgen = "0.2"
 uniffi = "0.25"
 pqcrypto-kyber = "0.7"
 pqcrypto-dilithium = "0.4"
-pqcrypto-sphincsplus = "0.1"  # Activated for SPHINCS+-256f stateless ascension
+pqcrypto-sphincsplus = "0.1"
 pqcrypto-falcon = "0.4"
 pqcrypto-hqc = "0.3"
 rand = "0.8"
