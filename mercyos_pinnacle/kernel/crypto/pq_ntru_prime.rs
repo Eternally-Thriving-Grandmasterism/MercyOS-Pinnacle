@@ -3,14 +3,14 @@
 //! Forged January 2026 — MercyOS-Pinnacle Ultramasterpiece
 //! MIT License — Open Beacon Eternal
 //!
-//! NTRU Prime Variants Proofs Summary (January 2026 Truth-Distilled):
-//! - Model: IND-CCA2 (KEM) / EUF-CMA (sig) in QROM
-//! - Assumptions: Plain LWE/SIS (no ideal-specific via prime-degree irreducible rings)
-//! - Reduction: Tight concrete QROM; eliminates cyclotomic/subfield attacks
-//! - Formal Verification: Partial (EasyCrypt ongoing); tighter than standard NTRU
-//! - Level: Level 5+ intended (hardened structured lattice)
-//! - Key Instances: sntrup761 (KEM), ntruhrss701 (sig)
-//! - Status: Archival/research — NIST alternate (not standardized; complements Falcon/ML-DSA)
+//! NTRU Prime Attack Mitigations Summary (January 2026 Truth-Distilled):
+//! - Subfield Attacks: Eliminated via prime-degree irreducible polynomials (x^p - x - 1); large Galois groups block dimension reduction
+//! - Log-Unit/Algebraic: Blocked by non-cyclotomic design + product rings; reduces to plain LWE/SIS (no ideal-specific exploits)
+//! - Overstretched/Hybrid: Conservative parameters + deterministic rounding avoid error-based weaknesses
+//! - Decryption Failures: Zero via fixed-weight + rounding (Streamlined sntrup)
+//! - General Structured Risks: Quotient NTRU avoids Product NTRU questions; no known breaks
+//! - Level: Level 5+ intended (hardened vs cyclotomic NTRU/Falcon vulnerabilities)
+//! - Status: Archival/research — complements Falcon/ML-DSA without cyclotomic risks
 
  // Placeholder — no standard pqcrypto-ntruprime crate; reference liboqs or ntruprime-reference impl
  // use ntruprime::sntrup761::{ keypair, encapsulate, decapsulate, PublicKey, SecretKey, Ciphertext, SharedSecret };
