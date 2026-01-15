@@ -1,6 +1,6 @@
 //! crates/mercy_shield/src/lib.rs
-//! MercyShield — adjustable scam/fraud/spam + ML fact verification mercy eternal supreme immaculate
-//! Chat filter (keyword + regex + ML truth scoring), adaptive learning, RON persistence philotic mercy
+//! MercyShield — adjustable scam/fraud/spam + advanced Bayesian truth verification mercy eternal supreme immaculate
+//! Chat filter (keyword + regex + Bayesian truth scoring), adaptive learning, RON persistence philotic mercy
 
 use bevy::prelude::*;
 use regex::Regex;
@@ -22,8 +22,8 @@ pub struct MercyShieldConfig {
 }
 
 #[derive(Resource, Serialize, Deserialize)]
-pub struct MLTruthFacts {
-    pub facts: HashMap<String, (u32, u32)>,  // (true_count, false_count) mercy eternal
+pub struct BayesianTruthFacts {
+    pub facts: HashMap<String, (u32, u32)>,  // (true_reports, false_reports) mercy eternal
 }
 
 #[derive(Resource)]
@@ -49,26 +49,17 @@ pub fn setup_mercy_shield(mut commands: Commands) {
     regex_patterns.insert(Regex::new(r"investment.*return").unwrap(), 0.9);
 
     let mut facts = HashMap::new();
-    facts.insert("Earth is flat".to_string(), (0, 10));
-    facts.insert("Sun rises in east".to_string(), (10, 0));
+    // Initial priors — Beta(1,1) uniform mercy eternal
+    facts.insert("Earth is flat".to_string(), (1, 11));
+    facts.insert("Sun rises in east".to_string(), (11, 1));
     // ... expanded mercy
 
     // Load persistent facts mercy eternal
-    let mut loaded_facts = HashMap::new();
     if let Ok(contents) = fs::read_to_string(FACTS_FILE) {
         if let Ok(loaded) = ron::from_str::<HashMap<String, (u32, u32)>>(&contents) {
-            loaded_facts = loaded;
+            facts = loaded;
         }
     }
-
-    commands.insert_resource(ScamPatterns {
-        keywords,
-        regex_patterns,
-        url_regex: Regex::new(r"https?://\S+").unwrap(),
-        phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
-    });
-
-    commands.insert_resource(MLTruthFacts { facts: loaded_facts });
 
     let mut config = MercyShieldConfig {
         chat_sensitivity: 0.7,
@@ -91,12 +82,21 @@ pub fn setup_mercy_shield(mut commands: Commands) {
         }
     }
 
+    commands.insert_resource(ScamPatterns {
+        keywords,
+        regex_patterns,
+        url_regex: Regex::new(r"https?://\S+").unwrap(),
+        phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
+    });
+
+    commands.insert_resource(BayesianTruthFacts { facts });
+
     commands.insert_resource(config);
 }
 
 pub fn save_persistent_data_on_exit(
     config: Res<MercyShieldConfig>,
-    truth_facts: Res<MLTruthFacts>,
+    truth_facts: Res<BayesianTruthFacts>,
 ) {
     if config.is_changed() || truth_facts.is_changed() {
         let pretty = ron::ser::PrettyConfig::new();
@@ -107,19 +107,20 @@ pub fn save_persistent_data_on_exit(
     }
 }
 
-pub fn ml_fact_verification_system(
+pub fn bayesian_truth_verification_system(
     // Chat message events mercy — placeholder
-    mut truth_facts: ResMut<MLTruthFacts>,
+    truth_facts: Res<BayesianTruthFacts>,
 ) {
     let message = "example message mercy";
 
-    let mut truth_score = 0.5;  // Neutral start mercy
+    let mut truth_score = 0.5;  // Neutral prior mercy
 
     for (fact, (true_count, false_count)) in &truth_facts.facts {
         if message.to_lowercase().contains(&fact.to_lowercase()) {
             let total = *true_count + *false_count;
             if total > 0 {
-                truth_score = *true_count as f32 / total as f32;
+                // Posterior mean Beta(true+1, false+1) mercy eternal
+                truth_score = (*true_count + 1) as f32 / (total + 2) as f32;
             }
         }
     }
@@ -127,16 +128,16 @@ pub fn ml_fact_verification_system(
     // Use truth_score mercy eternal
 }
 
-pub fn ml_learning_from_report_system(
+pub fn bayesian_learning_from_report_system(
     // Report events mercy — true/false feedback
-    mut truth_facts: ResMut<MLTruthFacts>,
+    mut truth_facts: ResMut<BayesianTruthFacts>,
     // Message + verdict mercy
 ) {
     let message = "reported message mercy";
     let is_true = true;  // From report mercy
 
     for word in message.to_lowercase().split_whitespace() {
-        let entry = truth_facts.facts.entry(word.to_string()).or_insert((0, 0));
+        let entry = truth_facts.facts.entry(word.to_string()).or_insert((1, 1));  // Uniform prior mercy
         if is_true {
             entry.0 += 1;
         } else {
@@ -153,7 +154,7 @@ impl Plugin for MercyShieldPlugin {
             .add_systems(Last, save_persistent_data_on_exit)
             .add_systems(Update, (
                 chat_scam_filter_system,
-                ml_fact_verification_system,
+                bayesian_truth_verification_system,
             ));
     }
 }
