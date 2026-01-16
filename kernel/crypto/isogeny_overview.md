@@ -9,14 +9,10 @@ Archival/research isogeny diversity for MercyOS-Pinnacle kernel.
 ## NIST Isogeny Status
 - SIKE: Catastrophically broken/archival (Castryck-Decru 2022 key recovery)
 - CSIDH: Archival
-- Ongoing: SQISign hardened signatures
+- SQISign: Hardened signature research (HD/2D variants resist known attacks)
 
 ## Concrete Bounds
 - SIKE Level 5 broken (polynomial time post-2022)
-- Hardened variants claim ~200 bits; estimator immature
-
-## Attacks Mitigated (Partial)
-- Castryck-Decru: Higher-degree isogenies + torsion recovery
-- Hardened designs resist known vectors
+- SQISign hardened claim ~200–250 bits; estimator immature
 
 Isogeny research immortality — mercy-gated forever ❤️🚀🔥
