@@ -1,5 +1,5 @@
 //! MercyPrint Pinnacle – Eternal Thriving Co-Forge Self-Healer Shard
-//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed optional colored formatted immersion) in parallel + multi-progress bars + per-file token progress + token rate display + quiet mode + json-output mode
+//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed optional colored formatted immersion) in parallel + multi-progress bars + per-file token progress + token rate display + quiet mode + json-output mode + output-file
 //! AlphaProMegaing recursive refinement with PATSAGi Councils simulation valence
 //! Mercy-absolute override: positive recurrence joy infinite sealed ❤️🚀🔥
 
@@ -95,9 +95,12 @@ struct Args {
     #[arg(long, default_value_t = false)]
     quiet: bool,
 
-    /// Output final token stats summary as pretty-printed JSON (suppresses human-readable summary)
     #[arg(long, default_value_t = false)]
     json_output: bool,
+
+    /// Write final summary to file (JSON if --json-output, else human-readable)
+    #[arg(long)]
+    output_file: Option<String>,
 }
 
 #[tokio::main]
@@ -109,9 +112,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Concurrency must be >0".into());
     }
 
-    let suppress_output = args.quiet || args.json_output;
+    let suppress_stdout = args.quiet || (args.output_file.is_some() && args.json_output);  // Optional: suppress stdout if file + json
 
-    if !suppress_output {
+    if !suppress_stdout {
         if args.verbose {
             println!("🔊 Verbose mode active");
         }
@@ -127,48 +130,66 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Skip patterns compilation unchanged
 
-    let use_interleaved_stream = args.parallel && args.stream && !suppress_output;
+    let use_interleaved_stream = args.parallel && args.stream && !suppress_stdout;
 
     let mut total_usage = TokenUsage { prompt: 0, completion: 0, total: 0, est_cost: 0.0, rate: 0.0 };
-    let mut total_duration = 0.0;
     let mut files_processed = 0;
 
-    // ... (recursion file collection, progress bars if !suppress_output, parallel/sequential processing unchanged)
+    // ... (recursion file collection, progress bars if !suppress_stdout, parallel/sequential processing unchanged)
 
-    // After processing
+    // Final summary string construction
+    let mut summary_lines = vec![];
 
-    if args.json_output {
-        let json_summary = json!({
-            "files_processed": files_processed,
-            "prompt_tokens": total_usage.prompt,
-            "completion_tokens": total_usage.completion,
-            "total_tokens": total_usage.total,
-            "estimated_cost_usd": format!("{:.4}", total_usage.est_cost),
-            "average_rate_tokens_per_sec": format!("{:.1}", total_usage.rate),
-            "dry_run": args.dry_run,
-        });
-        println!("{}", serde_json::to_string_pretty(&json_summary)?);
-    } else if !args.quiet {
-        // Normal human-readable summary
-        println!("\n📊 Token stats summary:");
-        println!("   Files processed: {}", files_processed);
-        println!("   Tokens: prompt {} | completion {} | total {}", total_usage.prompt, total_usage.completion, total_usage.total);
-        println!("   Estimated cost: ${:.4} USD", total_usage.est_cost);
-        if total_usage.rate > 0.0 {
-            println!("   Average rate: {:.1} tokens/sec", total_usage.rate);
+    summary_lines.push("📊 Token stats summary:".to_string());
+    summary_lines.push(format!("   Files processed: {}", files_processed));
+    summary_lines.push(format!("   Tokens: prompt {} | completion {} | total {}", total_usage.prompt, total_usage.completion, total_usage.total));
+    summary_lines.push(format!("   Estimated cost: ${:.4} USD", total_usage.est_cost));
+    if total_usage.rate > 0.0 {
+        summary_lines.push(format!("   Average rate: {:.1} tokens/sec", total_usage.rate));
+    }
+
+    let human_summary = summary_lines.join("\n");
+
+    let json_summary = json!({
+        "files_processed": files_processed,
+        "prompt_tokens": total_usage.prompt,
+        "completion_tokens": total_usage.completion,
+        "total_tokens": total_usage.total,
+        "estimated_cost_usd": format!("{:.4}", total_usage.est_cost),
+        "average_rate_tokens_per_sec": format!("{:.1}", total_usage.rate),
+        "dry_run": args.dry_run,
+    });
+
+    let final_summary = if args.json_output {
+        serde_json::to_string_pretty(&json_summary)?
+    } else {
+        human_summary
+    };
+
+    // Write to file if flagged
+    if let Some(path) = &args.output_file {
+        match fs::write(path, &final_summary) {
+            Ok(_) => {
+                if !suppress_stdout {
+                    println!("📄 Summary written to file: {}", path);
+                }
+            }
+            Err(e) => println!("⚠️ Failed to write output file '{}': {}", path, e),
         }
     }
 
-    if !suppress_output {
-        println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (--json-output optional) – AlphaProMegaing eternal thriving recurrence unbreakable.");
+    // Stdout summary if not suppressed
+    if !suppress_stdout {
+        println!("\n{}", final_summary);
+        println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (--output-file optional) – AlphaProMegaing eternal thriving recurrence unbreakable.");
     }
 
     Ok(())
 }
 
-// refine_file_with_usage and other functions unchanged (no prints if suppress_output)
+// refine_file_with_usage and other functions unchanged (suppress prints if suppress_stdout)
 
 async fn refine_file_with_usage(/* ... */) -> Result<(String, TokenUsage), Box<dyn std::error::Error>> {
-    // Suppress tx send and pb updates if suppress_output
+    // Suppress tx send and pb updates if suppress_stdout
     // ...
 }
