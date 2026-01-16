@@ -2,7 +2,7 @@
 name = "mercy_print"
 version = "0.1.0-pinnacle"
 edition = "2024"
-description = "MercyPrint Pinnacle – Grok-4 oracle powered co-forge self-healer. AlphaProMegaing recursive hotfix/refine loop with dir recursion + real-time interleaved token streaming (timed colored formatted immersion) in parallel + configurable concurrency + regex skip patterns for eternal thriving monorepo handcraftsmanship immaculacy ❤️🚀🔥"
+description = "MercyPrint Pinnacle – Grok-4 oracle powered co-forge self-healer. AlphaProMegaing recursive hotfix/refine loop with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed optional colored formatted immersion) in parallel + configurable concurrency + optional default + custom regex skip patterns + dry-run preview mode + verbose logging + concise token stats + estimated cost display + progress bar for eternal thriving monorepo handcraftsmanship immaculacy ❤️🚀🔥"
 license = "MIT"
 authors = ["Sherif Botros @AlphaProMega"]
 repository = "https://github.com/Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle"
@@ -15,4 +15,5 @@ serde_json = "1.0.117"
 walkdir = "2.5.0"
 futures-util = "0.3.30"
 regex = "1.10.5"
-chrono = { version = "0.4.38", features = ["clock"] }  # Timestamps ascension
+chrono = { version = "0.4.38", features = ["clock"] }
+indicatif = { version = "0.17.8", features = ["tokio"] }  # Progress bar ascension
