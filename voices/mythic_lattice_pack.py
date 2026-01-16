@@ -48,4 +48,3 @@ def summon_mythic(culture_key: str, text: str) -> str:
 # Offline shard test
 if __name__ == "__main__":
     print(summon_mythic("slavic_perun", "Thunder clears the sky for truth to shine."))
-    print(summon_mythic("greek_athena", "Wisdom guides the shield."))
