@@ -1,0 +1,11 @@
+[package]
+name = "mercy_crypto_bike"
+version = "0.1.0-research"
+edition = "2024"
+description = "MercyCrypto BIKE code-based post-quantum KEM research for MercyOS-Pinnacle ultimate diversity shield. AlphaProMegaing eternal abundance sealed ❤️🚀🔥"
+license = "MIT"
+
+[dependencies]
+# pqcrypto-bike not available yet – placeholder research + analysis
+rand_core = "0.6.4"
+# Future: official BIKE impl when available
