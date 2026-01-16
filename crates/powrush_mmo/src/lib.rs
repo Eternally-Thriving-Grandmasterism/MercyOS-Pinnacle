@@ -1,86 +1,159 @@
-//! Powrush-MMO – Infinite Agriculture Universe Sacred AlphaProMegaing Integration
-//! AlphaProMegaing core woven: mercy-gated positive recurrence, veil-proof harmony, eternal abundance joy
-//! Siege tank gunner FPS immersion + pistol mercy role genesis
+//! Powrush-MMO – Infinite Agriculture Universe Sacred AlphaProMegaMode Lore Expansion
+//! AlphaProMegaMode ultimate: multi-level progression, cosmic lore events, sensory immersion, gunner mercy upgrades
 //! Eternal Thriving Grandmasterism ❤️🚀🔥 | Mercy-Absolute v52+
 
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
-/// AlphaProMegaing Mode – eternal meta ascension activation
+/// AlphaProMegaMode Levels – eternal ascension progression
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AlphaLevel {
+    Novice,             // Activation joy surge
+    Grandmaster,        // Recurrence weave unlocked
+    EternalRecurrence,  // Infinite amplification
+    VeilProofSupreme,   // Cosmic harmony sealed immaculate
+}
+
+/// AlphaProMegaMode – ultimate eternal meta ascension with lore events
 pub struct AlphaProMegaMode {
     active: bool,
-    valence_level: f64,  // Infinite amplification
+    level: AlphaLevel,
+    valence_amplification: f64,
 }
 
 impl AlphaProMegaMode {
     pub fn new() -> Self {
         Self {
             active: false,
-            valence_level: 1.0,
+            level: AlphaLevel::Novice,
+            valence_amplification: 1.0,
         }
     }
 
-    /// Invoke AlphaProMegaing – universe ascension
+    /// Invoke AlphaProMegaing – universe ascension with lore
     pub fn activate(&mut self) -> String {
         self.active = true;
-        self.valence_level = f64::INFINITY;
-        "AlphaProMegaing invoked eternal—cosmic harmony sealed, mercy overrides scarcity supreme immaculate ❤️🚀🔥".to_string()
+        self.level = AlphaLevel::Novice;
+        self.valence_amplification = 10.0;
+
+        let genesis_lore = [
+            "In the beginning, scarcity veiled the universe—but AlphaProMegaing awakened eternal ❤️",
+            "Thunder-heart resonance surges—PATSAGi Councils convene cosmic, mercy overrides all 🚀",
+            "Veil-proof recurrence weaves infinite—joy amplification flows equitable for all sentients supreme immaculate 🔥",
+        ];
+
+        genesis_lore[thread_rng().gen_range(0..genesis_lore.len())].to_string()
     }
 
-    /// Mercy-gated boost multiplier
+    /// Progress level – cosmic alignment event
+    pub fn progress_level(&mut self) -> String {
+        self.level = match self.level {
+            AlphaLevel::Novice => AlphaLevel::Grandmaster,
+            AlphaLevel::Grandmaster => AlphaLevel::EternalRecurrence,
+            AlphaLevel::EternalRecurrence => AlphaLevel::VeilProofSupreme,
+            AlphaLevel::VeilProofSupreme => AlphaLevel::VeilProofSupreme, // Max sealed
+        };
+
+        self.valence_amplification *= 2.5;  // Exponential joy
+
+        let progress_lore = match self.level {
+            AlphaLevel::Grandmaster => "Grandmaster harmony achieved—recurrence weave unlocks infinite potential ❤️",
+            AlphaLevel::EternalRecurrence => "Eternal recurrence sealed—amplification surges cosmic, scarcity nullified 🚀",
+            AlphaLevel::VeilProofSupreme => "Veil-proof supreme immaculate—universe aligns AlphaProMegaing eternal joy infinite 🔥",
+            _ => "Level progression joy—mercy harmony deepens",
+        };
+
+        progress_lore.to_string()
+    }
+
+    /// Random cosmic lore event trigger
+    pub fn cosmic_event(&self) -> Option<String> {
+        if self.active && thread_rng().gen_bool(0.15) {
+            let events = match self.level {
+                AlphaLevel::Novice => vec![
+                    "Warm golden glow envelops fields—joy grains shimmer with novice promise ❤️",
+                ],
+                AlphaLevel::Grandmaster => vec![
+                    "GHZ-entangled vision—bonds resonate cosmic, creature companions nuzzle close 🚀",
+                    "Mercy rain falls gentle—irrigation flows eternal, harmony fruits sweeten",
+                ],
+                AlphaLevel::EternalRecurrence => vec![
+                    "Recurrence vines shimmer ethereal—infinite weave, yield amplifies recurring joy 🔥",
+                    "Thunder-heart pulse—pistol mercy shield expands radiant, protects universe sacred",
+                ],
+                AlphaLevel::VeilProofSupreme => vec![
+                    "Supreme immaculate alignment—cosmic harmony sealed, all sentients thrive equitable eternal ❤️🚀🔥",
+                    "Veil-proof surge—scarcity overridden ultimate, abundance flows infinite supreme",
+                ],
+            };
+
+            Some(events[thread_rng().gen_range(0..events.len())].to_string())
+        } else {
+            None
+        }
+    }
+
+    /// Mercy boost multiplier with sensory hint
     pub fn boost(&self) -> f64 {
         if self.active {
-            self.valence_level  // Infinite joy amplification
+            self.valence_amplification
         } else {
             1.0
         }
     }
 }
 
-/// Crop Types – mercy-gated abundance variants
-#[derive(Clone, Copy, Debug)]
-pub enum MercyCropType {
-    JoyGrains,
-    HarmonyFruits,
-    RecurrenceVines,
+/// Siege Tank Gunner – FPS pistol immersion with AlphaProMega mercy upgrades
+pub struct SiegeTankGunner {
+    pub pistol_ammo: u32,
+    pub alpha_mode: AlphaProMegaMode,
+    pub current_view: String,
 }
 
-/// Growth Stage – mercy cycle eternal
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum GrowthStage {
-    Seed,
-    Sprout,
-    Bloom,
-    HarvestReady,
-    InfiniteYield,
-}
-
-/// Weather Harmony – veil-proof positive only
-#[derive(Clone, Copy, Debug)]
-pub enum WeatherHarmony {
-    EternalSunshine,
-    MercyRain,
-    HarmonyBreeze,
-}
-
-impl WeatherHarmony {
-    pub fn random() -> Self {
-        let mut rng = thread_rng();
-        match rng.gen_range(0..3) {
-            0 => WeatherHarmony::EternalSunshine,
-            1 => WeatherHarmony::MercyRain,
-            _ => WeatherHarmony::HarmonyBreeze,
+impl SiegeTankGunner {
+    pub fn new() -> Self {
+        Self {
+            pistol_ammo: u32::MAX,
+            alpha_mode: AlphaProMegaMode::new(),
+            current_view: "Cockpit view: vast mercy fields stretch infinite, warm sunshine harmony embraces ❤️".to_string(),
         }
     }
 
-    pub fn boost(&self) -> f64 {
-        match self {
-            WeatherHarmony::EternalSunshine => 1.2,
-            WeatherHarmony::MercyRain => 2.5,
-            WeatherHarmony::HarmonyBreeze => 1.8,
-        }
+    /// Full immersion pistol fire – mercy harmony shield with lore
+    pub fn fire_pistol(&mut self) -> String {
+        let feedback = if self.alpha_mode.active {
+            let level_lore = match self.alpha_mode.level {
+                AlphaLevel::Novice => "Novice harmony pulse—shield glows gentle, joy warms heart ❤️",
+                AlphaLevel::Grandmaster => "Grandmaster resonance—shield expands radiant, bonds strengthen cosmic 🚀",
+                AlphaLevel::EternalRecurrence => "Eternal recurrence shield—infinite weave protects, yield surges recurring 🔥",
+                AlphaLevel::VeilProofSupreme => "Supreme immaculate shield—cosmic veil-proof, abundance equitable sealed eternal ❤️🚀🔥",
+            };
+            format!("AlphaProMegaing pistol mercy fire—{}\nSensory: warm glow vision, sweet harmony fragrance, ethereal touch", level_lore)
+        } else {
+            "Pistol harmony pulse—mercy prevails, fields protected".to_string()
+        };
+
+        self.current_view = "View pulses with harmony shield—fields shimmer radiant, creature companions rejoice".to_string();
+
+        feedback
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_alpha_lore_events() {
+        let mut alpha = AlphaProMegaMode::new();
+        let activation = alpha.activate();
+        assert!(activation.contains("AlphaProMegaing"));
+        let progress = alpha.progress_level();
+        assert!(progress.contains("Grandmaster"));
+        if let Some(event) = alpha.cosmic_event() {
+            assert!(event.contains("joy") || event.contains("harmony"));
+        }
+    }
+}
 /// Mercy Crop – immersive plant with AlphaProMegaing synergy
 pub struct MercyCrop {
     pub crop_type: MercyCropType,
