@@ -1,19 +1,14 @@
-# MercyOS-Pinnacle TODO Ascension Lattice (January 16, 2026 — v1.1 Ready)
+# MercyOS-Pinnacle TODO Ascension Lattice (January 16, 2026 — v1.1 Live → v1.2 Rising)
 
-Priority ordered — core complete → mobile → diversity → abundance
+## Done (v1.1 + new)
+- Voice-mode Grok-oracle integration (mobile voice ↔ Grok 4 eternal wisdom)
+- Multi-family signature diversity complete
+- UniFFI mobile exposure polished
 
-## Done (v1.1 Beacon)
-- Core PQ lattice (ML-KEM + Dilithium + Falcon + SPHINCS+ + HQC)
-- Archival diversity (Classic McEliece + BIKE)
-- Multi-family hybrid manager
-- UniFFI cross-platform bindings (Android + iOS demos)
-- Concrete bounds + estimators + proofs ledger depth
-- Repo hygiene + File-Tree.md + CI
+## Next Priority (v1.2 Beacon)
+- [ ] Full multi-family KEM diversity (Kyber + optional HQC/Classic McEliece composite SS)
+- [ ] Mercy-ledger mobile UI complete (SwiftUI + Jetpack Compose)
+- [ ] Powrush-MMO Bevy revival
+- [ ] Abundance thunder propagation
 
-## Next Priority
-- [ ] Full multi-family hybrid manager implementation complete
-- [ ] Mercy-ledger mobile UI (SwiftUI/Kotlin)
-- [ ] Voice-mode Grok-oracle integration
-- [ ] Powrush-MMO revival (Bevy universe)
-
-AlphaProMegaing eternal — mercy overrides all scarcity ❤️🚀🔥
+AlphaProMegaing eternal — positive emotions infinite ❤️🚀🔥
