@@ -1,5 +1,5 @@
 //! MercyPrint Pinnacle – Eternal Thriving Co-Forge Self-Healer Shard
-//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed colored formatted immersion) in parallel + default + custom regex skip patterns
+//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed colored formatted immersion) in parallel + optional default + custom regex skip patterns
 //! AlphaProMegaing recursive refinement with PATSAGi Councils simulation valence
 //! Mercy-absolute override: positive recurrence joy infinite sealed ❤️🚀🔥
 
@@ -29,21 +29,21 @@ const COLORS: [&str; 16] = [
 const RESET: &str = "\x1b[0m";
 const BOLD: &str = "\x1b[1m";
 
-// Default regex skip patterns – mercy-gated clean repo artifacts eternal
+// Default regex skip patterns – mercy-gated clean repo artifacts eternal (optional via flag)
 const DEFAULT_SKIP_PATTERNS: [&str; 6] = [
-    r"\.git/",          // Git metadata
-    r"target/",         // Cargo build
-    r"node_modules/",   // JS deps
-    r"\.vscode/",       // Editor config
-    r"\.DS_Store$",     // macOS junk
-    r"__pycache__/",    // Python cache
+    r"\.git/",
+    r"target/",
+    r"node_modules/",
+    r"\.vscode/",
+    r"\.DS_Store$",
+    r"__pycache__/",
 ];
 
 #[derive(Parser, Debug)]
 #[command(
     author = "Sherif Botros @AlphaProMega – Eternal Thriving Grandmasterism",
     version = "0.1.0-pinnacle",
-    about = "One-command Grok-4 oracle mint/refine: AlphaProMegaing files/dirs with real-time interleaved token streaming (timed colored formatted immersion) in parallel + configurable concurrency + default + custom regex skip patterns + max-depth recursion toward post-quantum cross-platform eternal harmony supreme immaculate."
+    about = "One-command Grok-4 oracle mint/refine: AlphaProMegaing files/dirs with real-time interleaved token streaming (timed colored formatted immersion) in parallel + configurable concurrency + optional default + custom regex skip patterns + max-depth recursion toward post-quantum cross-platform eternal harmony supreme immaculate."
 )]
 struct Args {
     #[arg(short, long)]
@@ -67,13 +67,17 @@ struct Args {
     #[arg(long, default_value_t = false)]
     apply: bool,
 
-    /// Custom skip files matching regex patterns (multiple allowed – additive to defaults)
+    /// Custom skip files matching regex patterns (multiple allowed – additive to defaults unless --no-default-skip)
     #[arg(long, value_delimiter = ',')]
     skip: Vec<String>,
 
     /// Maximum recursion depth (optional, unlimited if not set)
     #[arg(long)]
     max_depth: Option<usize>,
+
+    /// Disable default skip patterns (use only custom --skip)
+    #[arg(long, default_value_t = false)]
+    no_default_skip: bool,
 }
 
 #[tokio::main]
@@ -85,11 +89,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Concurrency must be >0".into());
     }
 
-    // Compile default + custom skip regex patterns
+    // Compile skip regex patterns
     let mut skip_regexes: Vec<Regex> = Vec::new();
 
-    for pattern in DEFAULT_SKIP_PATTERNS {
-        skip_regexes.push(Regex::new(pattern)?);
+    if !args.no_default_skip {
+        for pattern in DEFAULT_SKIP_PATTERNS {
+            skip_regexes.push(Regex::new(pattern)?);
+        }
+        println!("❤️ Default skips active: .git/, target/, node_modules/, .vscode/, .DS_Store, __pycache__/ (+ any custom)");
+    } else {
+        println!("⚠️ Default skips disabled via --no-default-skip – using only custom patterns");
     }
 
     for pattern in &args.skip {
@@ -98,8 +107,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => println!("⚠️ Invalid custom skip regex '{}': {} – ignored", pattern, e),
         }
     }
-
-    println!("❤️ Default skips active: .git/, target/, node_modules/, .vscode/, .DS_Store, __pycache__/ (+ any custom)");
 
     let use_interleaved_stream = args.parallel && args.stream;
     if use_interleaved_stream {
@@ -134,7 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect();
 
         if indexed_files.is_empty() {
-            println!("No supported files found after applying default/custom skip regex and max-depth {}.", max_depth);
+            println!("No supported files found after applying skip patterns and max-depth {}.", max_depth);
             return Ok(());
         }
 
@@ -152,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         process_file(&args.target, &args.directive, args.apply, args.stream).await?;
     }
 
-    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (default regex skips) – AlphaProMegaing eternal thriving recurrence unbreakable.");
+    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (--no-default-skip optional) – AlphaProMegaing eternal thriving recurrence unbreakable.");
     Ok(())
 }
 
