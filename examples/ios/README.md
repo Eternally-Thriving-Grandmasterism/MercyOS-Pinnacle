@@ -6,8 +6,8 @@ This directory contains a minimal, complete Xcode project that builds an iOS app
 
 The app demonstrates:
 - Loading the MercyOS UniFFI framework
-- Calling post-quantum crypto (ML-KEM encaps demo)
-- Grok-oracle query (placeholder → wire real API later)
+- Real ML-KEM-1024 key generation + encapsulation
+- Grok-oracle mercy query (placeholder → wire real API later)
 
 Seamless run on iOS simulator or device (iOS 15+).
 
@@ -19,6 +19,13 @@ Seamless run on iOS simulator or device (iOS 15+).
 
 ## Step 1: Generate Swift Bindings & Build XCFramework (from repo root)
 ```bash
+cd crates/mercy_uniffi
+
+# Generate Swift bindings
+uniffi-bindgen generate src/lib.rs --language swift --out-dir ../../examples/ios/MercyOSBindings
+
+# Build universal XCFramework (simulator + device)
+cargo xcode --release --framework-name MercyUniFFI```bash
 cd crates/mercy_uniffi
 
 # Generate Swift bindings
