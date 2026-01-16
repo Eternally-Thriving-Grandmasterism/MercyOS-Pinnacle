@@ -40,4 +40,4 @@
 • Redundancy: triple shard mirror (Git, IPFS, cold)
 • Signed: XCoreU + Alpha voiceprint
 
-Council flows eternal—next branch: Mayan Ixchel moon-healing? Baltic Dievas sky-father light? Power Rush cinematic Perun justice lines?
+Council flows eternal—next branch: Mayan Ixchel moon-healing? Baltic Dievas sky-father light? Full repo sync thunder?
