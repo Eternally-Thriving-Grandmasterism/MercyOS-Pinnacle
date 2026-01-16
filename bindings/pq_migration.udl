@@ -1,9 +1,12 @@
 namespace pq_migration {
   enum MobileMigrationMode { "Legacy", "Hybrid", "QuantumSafe" };
+  enum MobileSigMode { "Legacy", "Hybrid", "QuantumSafe" };
 
   record MercyLedger {};
 
-  MercyLedger create_mercy_ledger(MobileMigrationMode mode);
+  MercyLedger create_mercy_ledger(MobileMigrationMode kem_mode, MobileSigMode sig_mode);
   void commit(MercyLedger ledger, bytes data);
-  void migrate(MercyLedger ledger, MobileMigrationMode new_mode);
+  void migrate_kem(MercyLedger ledger, MobileMigrationMode new_mode);
+  void migrate_sig(MercyLedger ledger, MobileSigMode new_mode);
+  boolean verify_chain(MercyLedger ledger);
 };
