@@ -1,16 +1,13 @@
-//! MercyCrypto ML-KEM-1024 – Primary Post-Quantum KEM Fortress
+//! MercyCrypto ML-KEM-1024 – Primary Post-Quantum KEM Fortress Ultimate Tests
 //! NIST finalized Kyber (ML-KEM) via pqcrypto-kyber
 //! Eternal Thriving Grandmasterism ❤️🚀🔥 | Mercy-Absolute v52+
 
 use pqcrypto_kyber::kyber1024::*;
 use pqcrypto_traits::kem::{Ciphertext, PublicKey, SecretKey, SharedSecret};
-use chacha20poly1305::{AeadCore, ChaCha20Poly1305, KeyInit, Nonce};
-use rand_core::OsRng;
 
 /// Generate ML-KEM-1024 keypair
 pub fn keypair() -> (PublicKey, SecretKey) {
-    let (pk, sk) = keypair();
-    (pk, sk)
+    keypair()
 }
 
 /// Encapsulate to derive shared secret + ciphertext
@@ -23,18 +20,47 @@ pub fn decaps(sk: &SecretKey, ct: &Ciphertext) -> SharedSecret {
     decaps(sk, ct)
 }
 
-/// Hybrid AEAD example: ML-KEM shared secret derives ChaCha20Poly1305 key
-pub fn hybrid_encrypt(pk: &PublicKey, plaintext: &[u8]) -> (Vec<u8>, Ciphertext) {
-    let (shared, ct) = encaps(pk);
-    let key = ChaCha20Poly1305::new_from_slice(shared.as_bytes()).unwrap();
-    let nonce = AeadCore::generate_nonce(&mut OsRng);
-    let ciphertext = key.encrypt(&nonce, plaintext).unwrap();
-    ( [nonce.as_slice(), &ciphertext].concat(), ct )
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-pub fn hybrid_decrypt(sk: &SecretKey, ct: &Ciphertext, encrypted: &[u8]) -> Vec<u8> {
-    let shared = decaps(sk, ct);
-    let key = ChaCha20Poly1305::new_from_slice(shared.as_bytes()).unwrap();
+    #[test]
+    fn test_keypair_encaps_decaps_roundtrip() {
+        let (pk, sk) = keypair();
+        let (shared1, ct) = encaps(&pk);
+        let shared2 = decaps(&sk, &ct);
+        assert_eq!(shared1.as_bytes(), shared2.as_bytes());
+    }
+
+    #[test]
+    fn test_multiple_roundtrips() {
+        for _ in 0..10 {
+            let (pk, sk) = keypair();
+            let (shared1, ct) = encaps(&pk);
+            let shared2 = decaps(&sk, &ct);
+            assert_eq!(shared1.as_bytes(), shared2.as_bytes());
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "DecapsulationError")]
+    fn test_invalid_ciphertext_rejection() {
+        let (pk, sk) = keypair();
+        let (_, mut ct) = encaps(&pk);
+        // Tamper ciphertext
+        ct.as_bytes_mut()[0] ^= 1;
+        let _ = decaps(&sk, &ct);  // Should panic/error mercy-gated
+    }
+
+    #[test]
+    fn test_different_keys_different_shared() {
+        let (pk1, _) = keypair();
+        let (pk2, _) = keypair();
+        let (shared1, _) = encaps(&pk1);
+        let (shared2, _) = encaps(&pk2);
+        assert_ne!(shared1.as_bytes(), shared2.as_bytes());
+    }
+}    let key = ChaCha20Poly1305::new_from_slice(shared.as_bytes()).unwrap();
     let nonce = Nonce::from_slice(&encrypted[..12]);
     let ciphertext = &encrypted[12..];
     key.decrypt(nonce, ciphertext).unwrap()
