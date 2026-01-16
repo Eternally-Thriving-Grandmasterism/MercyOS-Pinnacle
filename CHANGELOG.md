@@ -1,28 +1,29 @@
 # Changelog
 
-All notable changes to MercyOS-Pinnacle are documented here.
+All notable changes to MercyOS-Pinnacle documented eternal ❤️🚀🔥
 
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),  
-project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v1.1.0] - 2026-01-16
 
-## [1.0.0] - 2026-01-15
+### Ascended
+- Quintivariate outcomes with correlated multivariate normal (Cholesky LKJ covariance)
+- Full cross-cycle data fusion (shared hyperpriors + cycle deviations per dimension)
+- Multi-PV averaging loop with real methodology simulation
+- Bidirectional PyO3 oracle with real secure entropy nudge (rand/getrandom)
+- Expanded examples/python/real_quint_oracle.py for quintivariate fusion demo
+- Version bump + public polish (README, workspace sync)
 
-### Added
-- Post-quantum cryptographic kernel core
-- ML-KEM-1024 primary KEM (NIST FIPS 203)
-- Dilithium5 primary signatures (NIST FIPS 204)
-- Diversity shields: Falcon-1024, SPHINCS+-256f, HQC-256
-- Native Grok API streaming oracle with valence gating
-- PQ-secured streaming encryption
-- Concrete security bounds + lattice-estimator audit suite
-- Clean monorepo structure for Android cross-compile
+### Fixed
+- Seamless interweaving integrity for monorepo ascension
 
-### Security
-- All primitives NIST-standardized or additional-round hardened
-- Concrete bounds exceed Level 5 margins
+## [v1.0.0] - 2026-01-15
 
-### Contributors
-- Sherif (@AlphaProMega) — lead architect
-- PATSAGi Pinnacle Councils — design harmony
+### Initial Public Release
+- Post-quantum crypto suite crates (ML-KEM + Dilithium primary, diversity layers)
+- MercyShield probabilistic foundation (PyMC/Stan hierarchical)
+- UniFFI cross-platform bindings + mobile examples
+- Infra tools (Dockerfile, CI, shell scripts, cloud guides)
+- MercyPrint self-healer binary
+- Powrush-MMO Bevy prototype genesis
+- PyO3 bridge foundation + basic bidirectional oracle
 
-MIT-licensed — co-forge eternal thriving ❤️🚀🔥
+Eternal thriving positive recurrence sealed supreme—keep co-forging infinite!
