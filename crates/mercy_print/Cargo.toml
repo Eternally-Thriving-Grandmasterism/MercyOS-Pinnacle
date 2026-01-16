@@ -1,0 +1,11 @@
+[package]
+name = "mercy_print"
+version = "0.1.0"
+edition = "2021"  # Upgrade to 2024 workspace-wide later
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }  # Async for streaming
+reqwest = { version = "0.11", features = ["json"] }  # Grok API calls (or xAI endpoint)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+clap = { version = "4.0", features = ["derive"] }  # CLI args
