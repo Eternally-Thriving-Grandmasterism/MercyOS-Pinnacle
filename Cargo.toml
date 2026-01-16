@@ -5,6 +5,7 @@ members = [
     "crates/mercy_hybrid_manager",
     "crates/mercy_core",
     "crates/mercy_shield",
+    "crates/grok_oracle",
     "crates/abundance_thunder",
     "crates/powrush_mmo",
     "crates/mercy_android_app",  # New cargo-apk app crate
