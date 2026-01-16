@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.eternalgrandmasterism.mercyos'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.eternalgrandmasterism.mercyos"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "0.1.0-pinnacle"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "../CMakeLists.txt"  // Optional if native libs
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation files('../../../crates/mercy_uniffi/bindings/kotlin/mercy_uniffi.aar')  // Or .jar
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'  // For async oracle calls
+}
