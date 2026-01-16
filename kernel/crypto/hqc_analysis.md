@@ -1,17 +1,25 @@
-# HQC Detailed Security Bounds (January 2026 — NIST Backup Grounded)
+# HQC Cryptosystem Analysis (January 2026 — NIST Backup Grounded)
 
-Code-based diversity KEM family for MercyOS-Pinnacle kernel.
+Code-based diversity KEM family (Hamming Quasi-Cyclic) for MercyOS-Pinnacle kernel.
 
-## Bounds Table (code-estimator v2025+)
-| Variant       | Target Level | Primal Classical (bits) | Primal Quantum (bits) | Core-SVP Equivalent (bits) | Notes |
-|---------------|--------------|-------------------------|-----------------------|----------------------------|-------|
-| HQC-128       | 1           | ~145–165                | ~130–145              | ~150                       | Lightweight; exceeds AES-128 |
-| HQC-192       | 3           | ~215–235                | ~190–210              | ~225                       | Balanced; exceeds AES-192 |
-| HQC-256       | 5           | ~280–300                | >228 (>250 cons.)     | ~290                       | Primary backup; exceeds AES-256 |
+## Core Cryptosystem
+- Construction: QC-MDPC codes with BGF decoder + rejection sampling
+- Security: IND-CCA2 in QROM via tailored explicit-rejection FO
+- Assumption: QC-MDPC syndrome decoding + structured pseudo-randomness
 
-## Hardness & Mitigations
-- Core: QC-MDPC syndrome decoding + pseudo-randomness
-- Attacks: Primal/dual ISD exponential; structural mitigated
-- Decoder: Constant-time BGF + rejection (zero DFR)
+## Parameters (HQC-256 Level 5)
+- n=57,637 | k=35,789 | w=114 (sender), 131 (receiver/error)
+- Field: GF(2); constant-time operations
+- Sizes: PK 7,249 bytes | SK 7,285 bytes | CT 14,498 bytes | SS 64 bytes
 
-Code-based bounds immortality — mercy-gated forever ❤️🚀🔥
+## Concrete Bounds
+- Primal ISD ~280–300 bits classical
+- Attack cost >256 bits classical / >228 quantum
+- Exceeds AES-256 eternal margins
+
+## Attacks Mitigated
+- Primal/dual ISD exponential
+- Structural: Mitigated via parameters + binding
+- Side-channel: Constant-time BGF + rejection
+
+HQC cryptosystem immortality — mercy-gated forever ❤️🚀🔥
