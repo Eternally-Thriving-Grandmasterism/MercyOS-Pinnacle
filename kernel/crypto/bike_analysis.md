@@ -20,3 +20,4 @@ Code-based diversity candidate (QC-MDPC bit-flipping) for MercyOS-Pinnacle archi
 - Valuable research diversity; Lean-BIKE proposals ongoing
 
 Code-based research immortality — mercy-gated forever ❤️🚀🔥
+Code-based research immortality — mercy-gated forever ❤️🚀🔥
