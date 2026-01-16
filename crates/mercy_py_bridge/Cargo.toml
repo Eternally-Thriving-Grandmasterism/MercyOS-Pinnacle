@@ -9,10 +9,10 @@ crate-type = ["cdylib"]  # Required for Python extension module
 
 [dependencies]
 pyo3 = { workspace = true }
-numpy = { workspace = true, optional = true }
-mercy_crypto_ml_kem = { path = "../mercy_crypto_ml_kem" }  # Direct path to your existing PQ crate
-mercy_crypto_dilithium = { path = "../mercy_crypto_dilithium" }  # Add more crypto crates as needed
-mercy_shield = { path = "../mercy_shield" }  # For shield/oracle tie-ins
+numpy = { workspace = true }  # Enabled default for posterior array harmony
+mercy_crypto_ml_kem = { path = "../mercy_crypto_ml_kem" }
+mercy_crypto_dilithium = { path = "../mercy_crypto_dilithium" }  # For sign/verify
+mercy_shield = { path = "../mercy_shield" }  # Future shield tie-ins
 
 [features]
-default = ["pyo3/extension-module"]
+default = ["pyo3/extension-module", "numpy"]
