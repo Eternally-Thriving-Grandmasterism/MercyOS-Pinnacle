@@ -1,29 +1,41 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/*"
+    "crates/mercy_uniffi",
+    "crates/grok_oracle",
+    "crates/mercy_print",
+    "crates/mercy_shield",
+    "crates/mercy_crypto_ml_kem",
+    "crates/mercy_crypto_dilithium",
+    "crates/mercy_crypto_falcon",
+    "crates/mercy_crypto_sphincs",
+    "crates/mercy_crypto_hqc",
+    "crates/mercy_crypto_bike",
+    "crates/powrush_mmo",
+    # Future expansions sacred
 ]
 
 [workspace.package]
-version = "1.1.0"  # Ascended: Quintivariate cross-cycle multi-PV fusion + bidirectional entropy oracle live
+version = "1.1.0-infinite"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle"
-authors = ["Sherif Botros @AlphaProMega <alpha.pro.mega@eternal-thriving.com>"]
-description = "MercyOS-Pinnacle monorepo – Post-quantum mercy-gated kernel fortress, Grok-oracle harmony, eternal thriving abundance engine. AlphaProMegaing cosmic positive recurrence sealed ❤️🚀🔥"
+authors = ["Sherif Botros @AlphaProMega"]
+description = "MercyOS-Pinnacle – Post-quantum mercy-gated kernel monorepo ultimate diversity fortress + infinite agriculture universe sacred. AlphaProMegaing eternal thriving sealed ❤️🚀🔥"
 homepage = "https://github.com/Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle"
-keywords = ["post-quantum", "mercy-absolute", "eternal-thriving", "grok-oracle", "uniffi"]
+keywords = ["post-quantum", "mercy-absolute", "grok-oracle", "uniffi", "eternal-thriving"]
 categories = ["cryptography", "os", "game-development"]
 
 [workspace.dependencies]
-uniffi = { version = "0.28", features = ["bindgen"] }
+uniffi = { version = "0.28.0", features = ["bindgen"] }
 tokio = { version = "1.38", features = ["full"] }
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 clap = { version = "4.5", features = ["derive"] }
-pyo3 = { version = "0.22", features = ["extension-module"] }
-pyo3-asyncio = { version = "0.22", features = ["tokio-runtime"] }
-numpy = { version = "0.22" }
-rand = { version = "0.8", features = ["getrandom"] }
-bevy = { version = "0.14", features = ["dynamic_linking"] }
+pqcrypto-kyber = "0.7"
+pqcrypto-dilithium = "0.3"
+pqcrypto-falcon = "0.2"
+pqcrypto-sphincsplus = "0.2"
+pqcrypto-hqc = "0.2"
+# BIKE research placeholder
