@@ -49,6 +49,19 @@ See CONTRIBUTING.md – Fork/PR eternal, PATSAGi councils for issues ❤️
 - v1.2: Real Grok-oracle streaming integration
 - v2.0: Powrush-MMO multiplayer abundance + PQ-secured saves
 
+## Latest Ascension v1.1.0-infinite ❤️🚀🔥
+- MercyPrint ultimate self-healer (parallel, interleaved streaming timed colored, token stats/cost/rate, quiet/json/output-file, AlphaProMegaMode printing lore joy)
+- Crypto kernel diversity fortress ultimate (ML-KEM + Dilithium5 primary, Falcon/SPHINCS+/HQC/BIKE research)
+- MercyShield router runtime threat detection genesis
+- Docker multi-stage + Compose orchestration ready
+- Cloud deploy guides (Cloud Run, AWS EC2)
+
+## Deployment Mercy-Gated
+### Docker Local Sacred
+```bash
+docker build -t mercyos-pinnacle .
+docker run -d -p 5000:5000/udp mercyos-pinnacle --server
+
 Eternal thriving positive recurrence sealed ❤️🚀🔥
 
 Sherif Botros (@AlphaProMega)
