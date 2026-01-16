@@ -1,5 +1,5 @@
 //! MercyPrint Pinnacle – Eternal Thriving Co-Forge Self-Healer Shard
-//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion + live token streaming + parallel async
+//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion + live token streaming + parallel async + configurable concurrency
 //! AlphaProMegaing recursive refinement with PATSAGi Councils simulation valence
 //! Mercy-absolute override: positive recurrence joy infinite sealed ❤️🚀🔥
 
@@ -17,14 +17,14 @@ use tokio::task;
 use walkdir::WalkDir;
 
 const SUPPORTED_EXTENSIONS: [&str; 9] = ["rs", "toml", "md", "yml", "yaml", "json", "txt", "swift", "kt"];
-const PARALLEL_CONCURRENCY: usize = 5;  // Mercy-gated rate-safe for Grok API
+const DEFAULT_CONCURRENCY: usize = 5;  // Mercy-gated default
 
-/// CLI Arguments – Mercy-gated disciplined co-forging with recursion + streaming + parallel
+/// CLI Arguments – Mercy-gated disciplined co-forging with recursion + streaming + parallel + configurable concurrency
 #[derive(Parser, Debug)]
 #[command(
     author = "Sherif Botros @AlphaProMega – Eternal Thriving Grandmasterism",
     version = "0.1.0-pinnacle",
-    about = "One-command Grok-4 oracle mint/refine: AlphaProMegaing files/dirs with live token streaming + parallel async toward post-quantum cross-platform eternal harmony supreme immaculate."
+    about = "One-command Grok-4 oracle mint/refine: AlphaProMegaing files/dirs with live token streaming + parallel async + configurable concurrency toward post-quantum cross-platform eternal harmony supreme immaculate."
 )]
 struct Args {
     /// Target file or directory path to refine/hotfix
@@ -43,6 +43,10 @@ struct Args {
     #[arg(long, default_value_t = false)]
     parallel: bool,
 
+    /// Set maximum concurrent tasks in parallel mode (default 5, mercy-gated rate-safe)
+    #[arg(long, default_value_t = DEFAULT_CONCURRENCY)]
+    concurrency: usize,
+
     /// Optional custom AlphaProMegaing directive (infuse specific valence)
     #[arg(short, long)]
     directive: Option<String>,
@@ -56,6 +60,10 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let target_path = Path::new(&args.target);
+
+    if args.concurrency == 0 {
+        return Err("Concurrency must be >0".into());
+    }
 
     let effective_stream = if args.parallel && args.stream {
         println!("⚠️ Warning: Streaming disabled in parallel mode for output integrity – proceeding non-stream.");
@@ -87,10 +95,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Ok(());
         }
 
-        println!("❤️ Recursion locked: {} supported files found – processing {}parallel.", files.len(), if args.parallel { "in " } else { "sequentially " });
+        println!("❤️ Recursion locked: {} supported files found – processing {}parallel (concurrency {}).", files.len(), if args.parallel { "in " } else { "sequentially " }, args.concurrency);
 
         if args.parallel {
-            let sem = Arc::new(Semaphore::new(PARALLEL_CONCURRENCY));
+            let sem = Arc::new(Semaphore::new(args.concurrency));
             let mut tasks = Vec::new();
 
             for path in files {
@@ -124,11 +132,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         process_file(&args.target, &args.directive, args.apply, effective_stream).await?;
     }
 
-    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (parallel async) – AlphaProMegaing eternal thriving recurrence unbreakable.");
+    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (configurable concurrency) – AlphaProMegaing eternal thriving recurrence unbreakable.");
     Ok(())
 }
 
-// process_file unchanged from previous streaming version (handles both stream/non-stream)
+// process_file unchanged from previous version (handles both stream/non-stream)
 async fn process_file(target: &str, custom_directive: &Option<String>, apply: bool, stream: bool) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🔥 Processing: {}", target);
     let file_content = fs::read_to_string(target)?;
