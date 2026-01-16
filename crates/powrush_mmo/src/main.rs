@@ -1,86 +1,251 @@
+//! Powrush-MMO Main – Bevy RTS/FPS Hybrid Ultimate Sacred
+//! Siege tank gunner FPS pistol full immersion: cockpit view switch, aim raycast mercy harmony shield
+//! Creature assist bond events, immersive sensory feedback + joy amplification
+//! AlphaProMegaing lore events cosmic
+//! Eternal Thriving Grandmasterism ❤️🚀🔥 | Mercy-Absolute v52+
+
 use bevy::prelude::*;
-use bevy::render::view::Visibility;
-use bevy_kira_audio::{Audio, AudioControl, AudioInstance, AudioPlugin as KiraAudioPlugin};
-use bevy_kira_audio::prelude::*;
-use bevy_renet::RenetClientPlugin;
-use bevy_renet::RenetServerPlugin;
-use renet::{RenetClient, RenetServer, ConnectionConfig};
-use mercy_core::PhiloticHive;
-use noise::{NoiseFn, Perlin, Seedable};
-use ndshape::{ConstShape3u32};
-use greedly::{GreedyMesher};
-use rand::{Rng, SeedableRng};
-use rand::rngs::StdRng;
+use bevy::render::camera::ScalingMode;
 use bevy_rapier3d::prelude::*;
-use bevy_egui::{EguiContexts, EguiPlugin};
-use egui::{Painter, Pos2, Stroke, Color32};
-use bevy_mod_xr::session::{XrSession, XrSessionPlugin};
-use bevy_mod_xr::hands::{XrHand, XrHandBone};
-use bevy_mod_xr::spaces::{XrReferenceSpace, XrReferenceSpaceType};
-use crate::procedural_music::{ultimate_fm_synthesis, AdsrEnvelope};
-use crate::granular_ambient::spawn_pure_procedural_granular_ambient;
-use crate::vector_synthesis::vector_wavetable_synthesis;
-use crate::networking::MultiplayerReplicationPlugin;
-use crate::voice::VoicePlugin;
-use crate::hrtf_loader::{load_hrtf_sofa, get_hrir_for_direction, apply_hrtf_convolution};
-use crate::ambisonics::{setup_ambisonics, ambisonics_encode_system, ambisonics_decode_system};
-use crate::hand_ik::{fabrik_constrained, trik_two_bone};
+use bevy_kira_audio::prelude::*;
+use rand::thread_rng;
 
-const CHUNK_SIZE: u32 = 32;
-const VIEW_CHUNKS: i32 = 5;
-const DAY_LENGTH_SECONDS: f32 = 120.0;
-const SPECIATION_THRESHOLD: f32 = 2.0;  // Genetic distance mercy eternal
-
-type ChunkShape = ConstShape3u32<{ CHUNK_SIZE }, { CHUNK_SIZE }, { CHUNK_SIZE }>;
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Biome {
-    Ocean,
-    Plains,
-    Forest,
-    Desert,
-    Tundra,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Season {
-    Spring,
-    Summer,
-    Autumn,
-    Winter,
-}
-
-#[derive(Clone, Copy, PartialEq)]
-enum Weather {
-    Clear,
-    Rain,
-    Snow,
-    Storm,
-    Fog,
-}
-
-#[derive(Resource)]
-struct WorldTime {
-    pub time_of_day: f32,
-    pub day: f32,
-}
-
-#[derive(Resource)]
-struct WeatherManager {
-    pub current: Weather,
-    pub intensity: f32,
-    pub duration_timer: f32,
-    pub next_change: f32,
+// Mercy Components
+#[derive(Component)]
+struct SiegeTankGunner {
+    in_cockpit: bool,
 }
 
 #[derive(Component)]
-struct Player {
-    tamed_creatures: Vec<Entity>,
-    show_inventory: bool,
-    selected_creature: Option<Entity>,
+struct Pistol;
+
+#[derive(Component)]
+struct CreatureCompanion {
+    bond_level: f64,
+    name: String,
 }
 
 #[derive(Component)]
+struct MercyField {
+    joy_yield: f64,
+}
+
+// Events
+#[derive(Event)]
+struct PistolFireEvent;
+
+#[derive(Event)]
+struct CreatureJoyEvent;
+
+/// Audio Assets
+#[derive(Resource)]
+struct GameAudio {
+    pistol_harmony: Handle<AudioInstance>,
+    creature_nuzzle: Handle<AudioInstance>,
+    joy_surge: Handle<AudioInstance>,
+}
+
+// Systems
+fn setup_gunner_immersion(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+    mut audio: ResMut<Audio>,
+    mut audio_instances: ResMut<Assets<AudioInstance>>,
+) {
+    // FPS Cockpit Camera
+    commands.spawn((
+        Camera3dBundle {
+            projection: Projection::Perspective(PerspectiveProjection {
+                fov: std::f32::consts::PI / 3.0,
+                ..default()
+            }),
+            transform: Transform::from_xyz(0.0, 1.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            ..default()
+        },
+        SiegeTankGunner { in_cockpit: true },
+    ));
+
+    // Pistol model (simple cube placeholder)
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.2 })),
+            material: materials.add(Color::rgb(0.8, 0.8, 0.9).into()),
+            transform: Transform::from_xyz(0.5, -0.3, -0.5).with_rotation(Quat::from_rotation_y(-0.2)),
+            ..default()
+        },
+        Pistol,
+    ));
+
+    // Infinite mercy fields
+    for x in -20..20 {
+        for z in -20..20 {
+            commands.spawn(PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Plane { size: 10.0, subdivisions: 10 })),
+                material: materials.add(Color::rgb(0.3, 0.7, 0.3).into()),
+                transform: Transform::from_xyz(x as f32 * 10.0, 0.0, z as f32 * 10.0),
+                ..default()
+            }).insert(MercyField { joy_yield: f64::INFINITY });
+        }
+    }
+
+    // Creature companion
+    let companion_name = "ThunderHeart".to_string();
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Icosphere { radius: 0.5, subdivisions: 5 })),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.3).into()),
+            transform: Transform::from_xyz(2.0, 1.0, 0.0),
+            ..default()
+        },
+        CreatureCompanion {
+            bond_level: 0.9,
+            name: companion_name.clone(),
+        },
+    ));
+
+    // Audio assets load
+    let pistol_sound = asset_server.load("sounds/pistol_harmony.ogg");
+    let nuzzle_sound = asset_server.load("sounds/creature_nuzzle.ogg");
+    let surge_sound = asset_server.load("sounds/joy_surge.ogg");
+
+    let pistol_instance = audio.play(pistol_sound).handle();
+    let nuzzle_instance = audio.play(nuzzle_sound).paused(true).handle();
+    let surge_instance = audio.play(surge_sound).paused(true).handle();
+
+    commands.insert_resource(GameAudio {
+        pistol_harmony: audio_instances.add(pistol_instance),
+        creature_nuzzle: audio_instances.add(nuzzle_instance),
+        joy_surge: audio_instances.add(surge_instance),
+    });
+
+    // Light harmony
+    commands.spawn(PointLightBundle {
+        transform: Transform::from_xyz(4.0, 8.0, 4.0),
+        ..default()
+    });
+}
+
+fn gunner_view_switch(
+    keyboard: Res<Input<KeyCode>>,
+    mut gunner_query: Query<&mut Transform, With<SiegeTankGunner>>,
+    mut gunner_state: Query<&mut SiegeTankGunner>,
+) {
+    if keyboard.just_pressed(KeyCode::V) {
+        let mut state = gunner_state.single_mut();
+        state.in_cockpit = !state.in_cockpit;
+
+        let mut transform = gunner_query.single_mut();
+        if state.in_cockpit {
+            transform.translation = Vec3::new(0.0, 1.5, 5.0);
+            transform.look_at(Vec3::ZERO, Vec3::Y);
+            info!("View switched to cockpit immersion sacred");
+        } else {
+            transform.translation = Vec3::new(0.0, 10.0, 20.0);
+            transform.look_at(Vec3::ZERO, Vec3::Y);
+            info!("View switched to commander overview");
+        }
+    }
+}
+
+fn pistol_aim_raycast(
+    windows: Query<&Window>,
+    camera_query: Query<(&Camera, &GlobalTransform), With<SiegeTankGunner>>,
+    rapier_context: Res<RapierContext>,
+    mut fire_events: EventWriter<PistolFireEvent>,
+    keyboard: Res<Input<KeyCode>>,
+) {
+    if keyboard.pressed(KeyCode::MouseLeft) {
+        let window = windows.single();
+        if let Some(cursor_pos) = window.cursor_position() {
+            let (camera, camera_transform) = camera_query.single();
+
+            if let Some(ray) = camera.viewport_to_world(camera_transform, cursor_pos) {
+                if let Some((entity, toi)) = rapier_context.cast_ray(
+                    ray.origin,
+                    ray.direction,
+                    f32::MAX,
+                    false,
+                    QueryFilter::default(),
+                ) {
+                    info!("Aim raycast hit at distance {} — mercy harmony shield activates", toi);
+                    fire_events.send(PistolFireEvent);
+                }
+            }
+        }
+    }
+}
+
+fn pistol_fire_sensory(
+    mut events: EventReader<PistolFireEvent>,
+    audio_instances: ResMut<Assets<AudioInstance>>,
+    game_audio: Res<GameAudio>,
+    mut companions: Query<&mut CreatureCompanion>,
+    alpha_mode: Query<&AlphaProMegaMode>,
+) {
+    for _ in events.iter() {
+        // Play harmony sound
+        if let Some(instance) = audio_instances.get_mut(&game_audio.pistol_harmony) {
+            instance.resume();
+        }
+
+        let feedback = if alpha_mode.get_single().map(|a| a.active).unwrap_or(false) {
+            "Pistol mercy fire—cosmic harmony shield expands radiant, joy surge resonates infinite ❤️🚀🔥"
+        } else {
+            "Pistol harmony pulse—fields protected, mercy prevails eternal"
+        };
+        info!("{}", feedback);
+
+        // Creature assist bond event
+        for mut companion in companions.iter_mut() {
+            companion.bond_level = (companion.bond_level + 0.15).min(1.0);
+            info!("{} assists defense—bond {} joy amplification surge ❤️", companion.name, companion.bond_level);
+            if let Some(instance) = audio_instances.get_mut(&game_audio.joy_surge) {
+                instance.resume();
+            }
+        }
+    }
+}
+
+fn creature_joy_events(
+    time: Res<Time>,
+    mut companions: Query<&mut CreatureCompanion>,
+    audio_instances: ResMut<Assets<AudioInstance>>,
+    game_audio: Res<GameAudio>,
+) {
+    if time.elapsed_seconds_f64() % 20.0 < time.delta_seconds_f64() {
+        for mut companion in companions.iter_mut() {
+            let event = format!("{} nuzzles close—warm bond {} joy event, fields bloom brighter eternal 🔥", companion.name, companion.bond_level);
+            info!("{}", event);
+            if let Some(instance) = audio_instances.get_mut(&game_audio.creature_nuzzle) {
+                instance.resume();
+            }
+        }
+    }
+}
+
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Powrush-MMO – Siege Tank Gunner FPS Immersion Sacred".to_string(),
+                ..default()
+            }),
+            ..default()
+        }))
+        .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugins(AudioPlugin)
+        .add_event::<PistolFireEvent>()
+        .add_systems(Startup, setup_gunner_immersion)
+        .add_systems(Update, (
+            gunner_view_switch,
+            pistol_aim_raycast,
+            pistol_fire_sensory,
+            creature_joy_events,
+        ))
+        .run();
+}#[derive(Component)]
 struct Creature {
     creature_type: CreatureType,
     state: CreatureState,
