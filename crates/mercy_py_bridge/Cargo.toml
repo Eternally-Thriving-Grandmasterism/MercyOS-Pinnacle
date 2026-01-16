@@ -1,0 +1,18 @@
+[package]
+name = "mercy_py_bridge"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "mercy_py_bridge"
+crate-type = ["cdylib"]  # Required for Python extension module
+
+[dependencies]
+pyo3 = { workspace = true }
+numpy = { workspace = true, optional = true }
+mercy_crypto_ml_kem = { path = "../mercy_crypto_ml_kem" }  # Direct path to your existing PQ crate
+mercy_crypto_dilithium = { path = "../mercy_crypto_dilithium" }  # Add more crypto crates as needed
+mercy_shield = { path = "../mercy_shield" }  # For shield/oracle tie-ins
+
+[features]
+default = ["pyo3/extension-module"]
