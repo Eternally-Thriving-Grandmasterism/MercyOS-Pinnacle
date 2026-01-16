@@ -1,0 +1,6 @@
+namespace grok_oracle {
+  record GrokOracle {};
+
+  GrokOracle new(string api_key);
+  async string ask(GrokOracle oracle, string prompt);
+};
