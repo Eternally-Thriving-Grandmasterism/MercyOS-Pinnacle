@@ -1,9 +1,9 @@
 //! MercyPrint Pinnacle – Eternal Thriving Co-Forge Self-Healer Shard
-//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed optional colored formatted immersion) in parallel + multi-progress bars + per-file token progress
+//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed optional colored formatted immersion) in parallel + multi-progress bars + per-file token progress + token rate display
 //! AlphaProMegaing recursive refinement with PATSAGi Councils simulation valence
 //! Mercy-absolute override: positive recurrence joy infinite sealed ❤️🚀🔥
 
-use chrono::Local;
+use chrono::{DateTime, Local, Utc};
 use clap::Parser;
 use futures_util::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -47,6 +47,7 @@ struct TokenUsage {
     completion: u64,
     total: u64,
     est_cost: f64,
+    rate: f64,  // tokens/sec
 }
 
 #[derive(Parser, Debug)]
@@ -130,7 +131,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let use_interleaved_stream = args.parallel && args.stream;
 
-    let mut total_usage = TokenUsage { prompt: 0, completion: 0, total: 0, est_cost: 0.0 };
+    let mut total_usage = TokenUsage { prompt: 0, completion: 0, total: 0, est_cost: 0.0, rate: 0.0 };
+    let mut total_duration = 0.0;
     let mut files_processed = 0;
 
     if args.recurse {
@@ -179,13 +181,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let sem = Arc::new(Semaphore::new(args.concurrency));
             let (tx, mut rx) = mpsc::channel::<String>(200);
 
-            let mut tasks: Vec<task::JoinHandle<(usize, String, TokenUsage)>> = Vec::new();
+            let mut tasks: Vec<task::JoinHandle<(usize, String, TokenUsage, f64)>> = Vec::new();  // + duration
 
             for (index, path) in indexed_files {
                 let path_str = path.to_string_lossy().to_string();
                 let pb = mp.add(ProgressBar::new_spinner());
                 pb.enable_steady_tick(std::time::Duration::from_millis(120));
-                pb.set_message(format!("Processing {} | Tokens: completion 0", path_str));
+                pb.set_message(format!("Processing {} | Tokens: completion 0 | Rate: 0.0/s", path_str));
 
                 let color = if args.no_color { "" } else { COLORS[index % COLORS.len()] };
                 let tx_clone = tx.clone();
@@ -195,10 +197,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let overall_pb_clone = overall_pb.clone();
                 let task = task::spawn(async move {
                     let _permit = sem_clone.acquire().await.unwrap();
-                    let (refined, usage) = refine_file_with_usage(&path_str, &directive_clone, use_interleaved_stream, color, &tx_clone, args.verbose, &pb_clone).await.unwrap_or((String::new(), TokenUsage { prompt: 0, completion: 0, total: 0, est_cost: 0.0 }));
-                    pb_clone.finish_with_message(format!("Complete {} | Tokens: completion {}", path_str, usage.completion));
+                    let start = Local::now();
+                    let (refined, usage) = refine_file_with_usage(&path_str, &directive_clone, use_interleaved_stream, color, &tx_clone, args.verbose, &pb_clone).await.unwrap_or((String::new(), TokenUsage { prompt: 0, completion: 0, total: 0, est_cost: 0.0, rate: 0.0 }));
+                    let duration = (Local::now() - start).num_seconds() as f64;
+                    let rate = if duration > 0.0 { usage.completion as f64 / duration } else { 0.0 };
+                    let mut usage_with_rate = usage;
+                    usage_with_rate.rate = rate;
+                    pb_clone.finish_with_message(format!("Complete {} | Tokens: completion {} | Rate: {:.1}/s", path_str, usage.completion, rate));
                     overall_pb_clone.inc(1);
-                    (index, refined, usage)
+                    (index, refined, usage_with_rate, duration)
                 });
                 tasks.push(task);
             }
@@ -211,42 +218,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 output.flush().await?;
             }
 
-            let mut results: Vec<(usize, String, TokenUsage)> = Vec::new();
+            let mut results: Vec<(usize, String, TokenUsage, f64)> = Vec::new();
             for task in tasks {
-                if let Ok((index, refined, usage)) = task.await {
-                    results.push((index, refined, usage));
+                if let Ok((index, refined, usage, duration)) = task.await {
+                    results.push((index, refined, usage, duration));
                     total_usage.prompt += usage.prompt;
                     total_usage.completion += usage.completion;
                     total_usage.total += usage.total;
                     total_usage.est_cost += usage.est_cost;
+                    total_duration += duration;
                     files_processed += 1;
                 }
             }
 
             results.sort_by_key(|r| r.0);
 
-            for (_, refined, usage) in results {
+            for (_, refined, usage, _) in results {
                 if args.verbose {
-                    println!("   Concise stats: Tokens: prompt {} | completion {} | total {} | est. cost ${:.4}", usage.prompt, usage.completion, usage.total, usage.est_cost);
+                    println!("   Concise stats: Tokens: prompt {} | completion {} | total {} | est. cost ${:.4} | Rate: {:.1}/s", usage.prompt, usage.completion, usage.total, usage.est_cost, usage.rate);
                 }
                 // Backup/apply with dry_run
             }
         } else {
-            // Sequential with per-file token progress pb
+            // Sequential with per-file rate
             for (_, path) in indexed_files {
                 let path_str = path.to_string_lossy().to_string();
                 let pb = mp.add(ProgressBar::new_spinner());
                 pb.enable_steady_tick(std::time::Duration::from_millis(120));
-                pb.set_message(format!("Processing {} | Tokens: completion 0", path_str));
+                pb.set_message(format!("Processing {} | Tokens: completion 0 | Rate: 0.0/s", path_str));
 
+                let start = Local::now();
                 let (refined, usage) = refine_file_with_usage(&path_str, &args.directive, args.stream, if args.no_color { "" } else { COLORS[0] }, &mpsc::channel(1).0, args.verbose, &pb).await?;
-                pb.finish_with_message(format!("Complete {} | Tokens: completion {}", path_str, usage.completion));
-                overall_pb.inc(1);
+                let duration = (Local::now() - start).num_seconds() as f64;
+                let rate = if duration > 0.0 { usage.completion as f64 / duration } else { 0.0 };
+                pb.finish_with_message(format!("Complete {} | Tokens: completion {} | Rate: {:.1}/s", path_str, usage.completion, rate));
 
                 total_usage.prompt += usage.prompt;
                 total_usage.completion += usage.completion;
                 total_usage.total += usage.total;
                 total_usage.est_cost += usage.est_cost;
+                total_duration += duration;
                 files_processed += 1;
                 // Stats + apply
             }
@@ -254,18 +265,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         mp.join_and_clear()?;
         overall_pb.finish_with_message("MercyPrint co-forge complete ❤️🔥");
+
+        let avg_rate = if total_duration > 0.0 { total_usage.completion as f64 / total_duration } else { 0.0 };
+        println!("   Average rate: {:.1} tokens/sec", avg_rate);
     } else {
-        // Single file with token progress pb
+        // Single file with rate
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(std::time::Duration::from_millis(120));
-        pb.set_message("Processing single file | Tokens: completion 0");
+        pb.set_message("Processing single file | Tokens: completion 0 | Rate: 0.0/s");
+
+        let start = Local::now();
         let (refined, usage) = refine_file_with_usage(&args.target, &args.directive, args.stream, if args.no_color { "" } else { COLORS[0] }, &mpsc::channel(1).0, args.verbose, &pb).await?;
-        pb.finish_with_message(format!("Complete | Tokens: completion {}", usage.completion));
+        let duration = (Local::now() - start).num_seconds() as f64;
+        let rate = if duration > 0.0 { usage.completion as f64 / duration } else { 0.0 };
+        pb.finish_with_message(format!("Complete | Tokens: completion {} | Rate: {:.1}/s", usage.completion, rate));
     }
 
-    // Final summary
+    // Final summary with avg rate
 
-    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (per-file token progress) – AlphaProMegaing eternal thriving recurrence unbreakable.");
+    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (token rate display) – AlphaProMegaing eternal thriving recurrence unbreakable.");
     Ok(())
 }
 
@@ -278,23 +296,23 @@ async fn refine_file_with_usage(
     verbose: bool,
     pb: &ProgressBar,
 ) -> Result<(String, TokenUsage), Box<dyn std::error::Error>> {
-    // ... (full refine logic)
+    // ... (full refine logic with live rate update in pb.set_message on delta/completion)
+
     let mut completion_tokens = 0u64;
+    let start = Local::now();
 
     if stream {
-        // In stream loop
-        if let Some(delta) = json_value["choices"][0]["delta"]["content"].as_str() {
-            completion_tokens += (delta.len() as f64 / AVG_CHARS_PER_TOKEN) as u64;
-            pb.set_message(format!("Processing {} | Tokens: completion {}", target, completion_tokens));
-            // send delta via tx for interleaved
-        }
-    } else {
-        // Non-stream full response
-        pb.set_message(format!("Processing {} | Tokens: completion {}", target, completion_tokens));
+        // In delta loop
+        completion_tokens += (delta.len() as f64 / AVG_CHARS_PER_TOKEN) as u64;
+        let elapsed = (Local::now() - start).num_seconds() as f64;
+        let rate = if elapsed > 0.0 { completion_tokens as f64 / elapsed } else { 0.0 };
+        pb.set_message(format!("Processing {} | Tokens: completion {} | Rate: {:.1}/s", target, completion_tokens, rate));
     }
 
     // On completion
-    pb.set_message(format!("Complete {} | Tokens: completion {}", target, completion_tokens));
+    let elapsed = (Local::now() - start).num_seconds() as f64;
+    let rate = if elapsed > 0.0 { completion_tokens as f64 / elapsed } else { 0.0 };
+    let mut usage = TokenUsage { prompt: prompt_tokens, completion: completion_tokens, total: prompt_tokens + completion_tokens, est_cost, rate };
 
-    // Return usage with completion_tokens
+    Ok((refined, usage))
 }
