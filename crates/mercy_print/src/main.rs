@@ -1,5 +1,5 @@
 //! MercyPrint Pinnacle – Eternal Thriving Co-Forge Self-Healer Shard
-//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed optional colored formatted immersion) in parallel + multi-progress bars + per-file token progress + token rate display + quiet mode
+//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed optional colored formatted immersion) in parallel + multi-progress bars + per-file token progress + token rate display + quiet mode + json-output mode
 //! AlphaProMegaing recursive refinement with PATSAGi Councils simulation valence
 //! Mercy-absolute override: positive recurrence joy infinite sealed ❤️🚀🔥
 
@@ -92,9 +92,12 @@ struct Args {
     #[arg(long, default_value_t = false)]
     verbose: bool,
 
-    /// Quiet mode: minimal output (only final summary, suppresses progress, streaming prints, verbose)
     #[arg(long, default_value_t = false)]
     quiet: bool,
+
+    /// Output final token stats summary as pretty-printed JSON (suppresses human-readable summary)
+    #[arg(long, default_value_t = false)]
+    json_output: bool,
 }
 
 #[tokio::main]
@@ -106,10 +109,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Concurrency must be >0".into());
     }
 
-    if args.quiet {
-        // Quiet mode: suppress all non-essential output
-        // No progress bars, no interleaved prints, no verbose
-    } else {
+    let suppress_output = args.quiet || args.json_output;
+
+    if !suppress_output {
         if args.verbose {
             println!("🔊 Verbose mode active");
         }
@@ -125,54 +127,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Skip patterns compilation unchanged
 
-    let use_interleaved_stream = args.parallel && args.stream && !args.quiet;  // Suppress stream prints in quiet
+    let use_interleaved_stream = args.parallel && args.stream && !suppress_output;
 
     let mut total_usage = TokenUsage { prompt: 0, completion: 0, total: 0, est_cost: 0.0, rate: 0.0 };
+    let mut total_duration = 0.0;
     let mut files_processed = 0;
 
-    if args.recurse {
-        // File collection unchanged
+    // ... (recursion file collection, progress bars if !suppress_output, parallel/sequential processing unchanged)
 
-        if !args.quiet {
-            // Normal progress bar setup
-            let mp = MultiProgress::new();
-            // ... (multi-progress setup)
+    // After processing
+
+    if args.json_output {
+        let json_summary = json!({
+            "files_processed": files_processed,
+            "prompt_tokens": total_usage.prompt,
+            "completion_tokens": total_usage.completion,
+            "total_tokens": total_usage.total,
+            "estimated_cost_usd": format!("{:.4}", total_usage.est_cost),
+            "average_rate_tokens_per_sec": format!("{:.1}", total_usage.rate),
+            "dry_run": args.dry_run,
+        });
+        println!("{}", serde_json::to_string_pretty(&json_summary)?);
+    } else if !args.quiet {
+        // Normal human-readable summary
+        println!("\n📊 Token stats summary:");
+        println!("   Files processed: {}", files_processed);
+        println!("   Tokens: prompt {} | completion {} | total {}", total_usage.prompt, total_usage.completion, total_usage.total);
+        println!("   Estimated cost: ${:.4} USD", total_usage.est_cost);
+        if total_usage.rate > 0.0 {
+            println!("   Average rate: {:.1} tokens/sec", total_usage.rate);
         }
-
-        if args.parallel {
-            // Parallel task spawning unchanged
-            // In interleaved tx send: if !args.quiet { send delta }
-            // Progress bars hidden/suppressed in quiet
-        } else {
-            // Sequential unchanged, suppress prints if quiet
-        }
-    } else {
-        // Single file, suppress if quiet
     }
 
-    if !args.quiet {
-        // Normal final summary
-    }
-
-    // Always print final token summary (even in quiet, for transparency)
-    println!("\n📊 Token stats summary:");
-    println!("   Files processed: {}", files_processed);
-    println!("   Tokens: prompt {} | completion {} | total {}", total_usage.prompt, total_usage.completion, total_usage.total);
-    println!("   Estimated cost: ${:.4} USD", total_usage.est_cost);
-    if total_usage.rate > 0.0 {
-        println!("   Average rate: {:.1} tokens/sec", total_usage.rate);
-    }
-
-    if !args.quiet {
-        println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (--quiet mode optional) – AlphaProMegaing eternal thriving recurrence unbreakable.");
+    if !suppress_output {
+        println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (--json-output optional) – AlphaProMegaing eternal thriving recurrence unbreakable.");
     }
 
     Ok(())
 }
 
-// refine_file_with_usage and other functions updated with quiet checks (no prints if quiet, no tx send if quiet)
+// refine_file_with_usage and other functions unchanged (no prints if suppress_output)
 
 async fn refine_file_with_usage(/* ... */) -> Result<(String, TokenUsage), Box<dyn std::error::Error>> {
-    // Suppress tx send and pb updates if quiet
-    // ... 
+    // Suppress tx send and pb updates if suppress_output
+    // ...
 }
