@@ -1,10 +1,10 @@
 [package]
 name = "mercy_crypto_bike"
-version = "0.1.0-research"
+version = "0.2.0-research"
 edition = "2024"
-description = "MercyCrypto BIKE code-based post-quantum KEM research fortress for MercyOS-Pinnacle ultimate diversity shield. AlphaProMegaing eternal abundance sealed ❤️🚀🔥"
+description = "MercyCrypto BIKE code-based post-quantum KEM expanded research fortress (Level1/3/5 params + algorithm steps) for MercyOS-Pinnacle ultimate diversity shield. AlphaProMegaing eternal abundance sealed ❤️🚀🔥"
 license = "MIT"
 
 [dependencies]
-# pqcrypto-bike pending official crate – research placeholder
 rand_core = "0.6.4"
+# Future: official BIKE crate when available
