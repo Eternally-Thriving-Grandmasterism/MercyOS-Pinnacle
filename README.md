@@ -1,41 +1,35 @@
-# MercyOS-Pinnacle v1.1.0 – Post-Quantum Mercy-Gated Kernel Fortress
+# MercyOS-Pinnacle
 
-Eternal Thriving Grandmasterism ❤️🚀🔥 | AlphaProMegaing Cosmic Harmony Sealed Supreme Immaculate
+Eternal Thriving Grandmasterism Ultramasterpiece Monorepo  
+PATSAGi Pinnacle Iteration | Mercy-Absolute v1.1.0 | January 16, 2026 thunder-heart ascension ❤️🚀🔥
 
-MercyOS-Pinnacle is a post-quantum mercy-gated kernel monorepo: ML-KEM primary KEM + Dilithium5 signatures, diversity shield (Falcon/SPHINCS+/HQC/BIKE), Grok-oracle with entropy nudge, UniFFI bindings, advanced hierarchical modeling (quintivariate cross-cycle multi-PV fusion), Powrush-MMO infinite agriculture prototype.
+Post-quantum hardened kernel + Grok-oracle councils + mercy-gated abundance layers.
 
-**Status**: Early Alpha – Active co-forging (contributions welcome supreme!)
+## Core Features
+- ML-KEM-1024 primary KEM (FIPS 203)
+- Dilithium5 primary signatures (FIPS 204)
+- Multi-diversity: Falcon, SPHINCS+, HQC
+- Grok API native streaming oracle (grok_oracle crate)
+- Multi-family hybrid manager (lattice + code + hash)
+- Concrete security bounds + lattice-estimator audit tool
 
-## Key Features (v1.1.0)
+## Mobile Demos
+- Android: examples/android/ — cargo-apk proper APK
+- iOS: examples/ios/ — Xcode Swift demo
 
-- Post-quantum crypto fortress (NIST primary + diversity)
-- MercyShield probabilistic mastery (PyMC quintivariate cross-cycle multi-PV fusion)
-- Bidirectional PyO3 Python-Rust bridge with real entropy oracle
-- Cross-platform: UniFFI (Android/iOS)
-- Infra: Dockerfile, CI, cloud guides, scripts
-- Tools: MercyPrint self-healer, Bevy MMO prototype (harvest/abundance)
+## cargo-apk Android APK Build
 
-## Installation (Zero-Friction)
+MercyOS-Pinnacle proper APK via cargo-apk (desktop host cross-compile):
 
-Prerequisites: Rust toolchain (`rustup`), git clone repo.
+- New crate: crates/mercy_android_app
+- Build: `cargo apk build --release`
+- APK: target/android-artifacts/release/MercyOS-Pinnacle.apk
+- Sideload on Pixel 10 Pro GrapheneOS
 
-Python bridge + PyMC: `pip install maturin pymc arviz numpy pandas`
+## Signing APK
+See examples/android/signing_guide.md for professional apksigner signing.
 
-Platform specifics: See root scripts + examples/.
-
-Common: `./install_mercyos.sh` → `cargo build --release`
-
-## Usage Examples
-
-- MercyPrint: `cargo run --bin mercy_print`
-- PQ Tests: `cargo test`
-- Powrush-MMO: `cargo run --package powrush_mmo` (harvest clicks, abundance eternal)
-- Python-Rust Bridge (PyO3): Build with maturin develop --release
-
-Basic: examples/python/test_py_bridge.py
-
-**Quintivariate Cross-Cycle Fusion**: examples/python/real_quint_oracle.py (five-level non-centered, covariates, multi-PV, cross-cycle, quintivariate correlated outcomes with Cholesky covariance—synthetic + real placeholder, entropy-gated)
-
+cargo-apk APK immortality — mercy-gated forever ❤️🚀🔥
 ## Changelog
 
 See CHANGELOG.md for version history.
