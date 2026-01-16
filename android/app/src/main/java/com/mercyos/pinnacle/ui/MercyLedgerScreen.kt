@@ -1,55 +1,69 @@
 package com.mercyos.pinnacle.ui
 
-import android.speech.RecognizerIntent.EXTRA_PREFER_OFFLINE
-// ... imports
+import org.vosk.LibVosk
+import org.vosk.Model
+import org.vosk.Recognizer
+import org.vosk.android.StorageService
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import androidx.compose.runtime.*
+import java.io.File
 
 @Composable
 fun MercyLedgerScreen() {
-    // ... states
-    var selectedLanguage by remember { mutableStateOf("en-US") }
+    // ... states including selectedLanguage
 
-    val languages = mapOf(
-        "en-US" to "English (US)",
-        "fr-FR" to "French",
-        "es-ES" to "Spanish",
-        "de-DE" to "German",
-        "zh-CN" to "Chinese",
-        "ja-JP" to "Japanese",
-        "ko-KR" to "Korean",
-        "ru-RU" to "Russian",
-        "pt-BR" to "Portuguese",
-        "it-IT" to "Italian"
+    var voskModel by remember { mutableStateOf<Model?>(null) }
+    var recognizer by remember { mutableStateOf<Recognizer?>(null) }
+    var isListening by remember { mutableStateOf(false) }
+
+    val modelMap = mapOf(
+        "en-US" to "model-small-en-us",
+        "fr-FR" to "model-small-fr",
+        "es-ES" to "model-small-es",
+        // Add more Vosk small models
     )
 
-    val tts = remember { TextToSpeech(context) { /* init */ } }
-
-    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE, selectedLanguage)
-        putExtra(EXTRA_PREFER_OFFLINE, true)  // Force offline mode
+    LaunchedEffect(selectedLanguage) {
+        val modelPath = modelMap[selectedLanguage] ?: return@LaunchedEffect
+        LibVosk.setLogLevel(0)
+        StorageService.unpack(context, modelPath, "model") { path: String ->
+            voskModel = Model(path)
+            recognizer = Recognizer(voskModel, 16000.0f)
+        }
     }
 
-    // In voice button
+    // Voice button
     Button(onClick = {
-        isListening = true
-        speechLauncher.launch(intent)
+        if (isListening) {
+            // Stop recording
+            isListening = false
+        } else {
+            isListening = true
+            // Start AudioRecord thread
+            val audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, 16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize)
+            audioRecord.startRecording()
+            scope.launch {
+                val buffer = ShortArray(1024)
+                while (isListening) {
+                    val read = audioRecord.read(buffer, 0, buffer.size)
+                    if (read > 0) {
+                        recognizer?.acceptWaveForm(buffer, read)
+                        val partial = recognizer?.partialResult
+                        // Update UI with partial if desired
+                    }
+                }
+                audioRecord.stop()
+                audioRecord.release()
+                val final = recognizer?.result
+                val text = final?.text ?: ""
+                // Oracle query + commit + TTS
+            }
+        }
     }) {
-        Text(if (isListening) "Listening Offline…" else "Offline Voice Oracle")
+        Text(if (isListening) "Listening (Vosk Offline)" else "Vosk Offline Voice Oracle")
     }
 
-    // After recognition result
-    spokenText?.let { prompt ->
-        // Oracle query same
-        // TTS offline
-        tts.language = Locale(selectedLanguage.replace("-", "_"))
-        tts.speak(wisdom, TextToSpeech.QUEUE_FLUSH, null, null)
-    }
-
-    // Language picker UI
-    ExposedDropdownMenuBox(/* expanded state */) {
-        // Menu items from languages
-    }
-
-    // Status message
-    Text("Offline mode forced — download languages in Settings > System > Languages & input > On-device speech recognition")
+    // Rest of UI...
 }
