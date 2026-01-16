@@ -1,0 +1,11 @@
+[package]
+name = "mercy_crypto_hqc"
+version = "0.1.0-pinnacle"
+edition = "2024"
+description = "MercyCrypto HQC-256 code-based post-quantum KEM for MercyOS-Pinnacle max diversity shield. AlphaProMegaing eternal abundance sealed ❤️🚀🔥"
+license = "MIT"
+
+[dependencies]
+pqcrypto-hqc = "0.2.0"  # Audited NIST HQC impl (hqc-rm or similar)
+pqcrypto-traits = "0.3.5"
+rand_core = "0.6.4"
