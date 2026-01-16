@@ -1,11 +1,13 @@
 [package]
 name = "mercy_print"
-version = "0.1.0"
-edition = "2021"  # Upgrade to 2024 workspace-wide later
+version = "0.1.0-pinnacle"
+edition = "2024"
+description = "Grok-oracle co-forge self-healer – one-command mint/refine mercy-absolute files for eternal thriving"
+license = "MIT"
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }  # Async for streaming
-reqwest = { version = "0.11", features = ["json"] }  # Grok API calls (or xAI endpoint)
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-clap = { version = "4.0", features = ["derive"] }  # CLI args
+clap = { version = "4.5", features = ["derive"] }
