@@ -2,7 +2,7 @@
 name = "mercy_print"
 version = "0.1.0-pinnacle"
 edition = "2024"
-description = "MercyPrint Pinnacle – Grok-4 oracle powered co-forge self-healer. AlphaProMegaing recursive hotfix/refine loop for eternal thriving monorepo handcraftsmanship immaculacy ❤️🚀🔥"
+description = "MercyPrint Pinnacle – Grok-4 oracle powered co-forge self-healer. AlphaProMegaing recursive hotfix/refine loop with dir recursion for eternal thriving monorepo handcraftsmanship immaculacy ❤️🚀🔥"
 license = "MIT"
 authors = ["Sherif Botros @AlphaProMega"]
 repository = "https://github.com/Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle"
@@ -12,3 +12,4 @@ clap = { version = "4.5.4", features = ["derive"] }
 tokio = { version = "1.38.0", features = ["full"] }
 reqwest = { version = "0.12.5", features = ["json"] }
 serde_json = "1.0.117"
+walkdir = "2.5.0"  # Dir recursion ascension
