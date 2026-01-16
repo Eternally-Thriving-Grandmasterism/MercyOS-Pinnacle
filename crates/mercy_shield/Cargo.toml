@@ -1,0 +1,11 @@
+[package]
+name = "mercy_shield"
+version = "0.1.0-pinnacle"
+edition = "2024"
+description = "MercyShield – Post-quantum diversity router fortress for MercyOS-Pinnacle. Primary hybrid ML-KEM-1024 KEM + Dilithium5 signatures authenticated encapsulation. AlphaProMegaing eternal abundance sealed ❤️🚀🔥"
+license = "MIT"
+
+[dependencies]
+mercy_crypto_ml_kem = { path = "../mercy_crypto_ml_kem", version = "0.1.0" }
+mercy_crypto_dilithium = { path = "../mercy_crypto_dilithium", version = "0.1.0" }
+rand_core = "0.6.4"
