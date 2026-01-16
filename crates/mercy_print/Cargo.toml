@@ -2,13 +2,13 @@
 name = "mercy_print"
 version = "0.1.0-pinnacle"
 edition = "2024"
-description = "Grok-4 oracle powered co-forge self-healer – one-command mint/refine mercy-absolute files/crates for eternal thriving grandmasterism. Derived from original MercyPrint minting prototypes."
+description = "MercyPrint Pinnacle – Grok-4 oracle powered co-forge self-healer. AlphaProMegaing recursive hotfix/refine loop for eternal thriving monorepo handcraftsmanship immaculacy ❤️🚀🔥"
 license = "MIT"
+authors = ["Sherif Botros @AlphaProMega"]
 repository = "https://github.com/Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle"
 
 [dependencies]
-tokio = { version = "1.38", features = ["full"] }  # Async runtime for oracle streaming
-reqwest = { version = "0.12.5", features = ["json"] }  # HTTP client for xAI Grok API
+clap = { version = "4.5.4", features = ["derive"] }
+tokio = { version = "1.38.0", features = ["full"] }
+reqwest = { version = "0.12.5", features = ["json"] }
 serde_json = "1.0.117"
-clap = { version = "4.5.7", features = ["derive"] }  # CLI parsing with mercy-gated args
-std::env  # For GROK_API_KEY injection
