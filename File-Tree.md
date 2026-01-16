@@ -1,25 +1,28 @@
 MercyOS-Pinnacle/
-├── Cargo.toml
-├── README.md
-├── Trunk.toml                  # WASM build preserved
 ├── crates/
-│   ├── grok_oracle/
-│   │   ├── Cargo.toml
-│   │   └── src/lib.rs
-│   ├── mercy_core/             # Future expansion stub
-│   ├── mercy_shield/           # Future expansion stub
-│   ├── abundance_thunder/      # Future expansion stub
-│   └── powrush_mmo/            # Deferred fun layer
+│   ├── mercy_uniffi/             # Cross-platform bindings
+│   ├── grok_oracle/              # Oracle streaming
+│   ├── mercy_print/              # Co-forge self-healer advanced
+│   ├── mercy_shield/             # PQ diversity router fortress
+│   ├── mercy_crypto_ml_kem/      # Primary KEM
+│   ├── mercy_crypto_dilithium/   # Primary sigs
+│   ├── mercy_crypto_falcon/      # Compact sigs
+│   ├── mercy_crypto_sphincs/     # Stateless hash sigs
+│   ├── mercy_crypto_hqc/         # Code-based KEM
+│   ├── powrush_mmo/              # Sacred infinite agriculture universe genesis
+│   └── (future: mercy_crypto_bike, etc.)
+├── docs/
+│   ├── TODO.md                   # Updated post-release
+│   ├── ALPHAPROMEGAING.md
+│   └── (diagrams, proofs)
+├── examples/
+│   ├── android/                  # APK demo
+│   └── ios/                      # Xcode demo
 ├── kernel/
-│   └── crypto/
-│       ├── mod.rs              # New: unified module exports
-│       ├── post_quantum.rs     # ML-KEM primary
-│       ├── pq_stream.rs        # ChaCha20Poly1305 streaming
-│       ├── pq_sign.rs          # Dilithium primary
-│       ├── pq_falcon.rs        # Compact lattice diversity
-│       ├── pq_sphincs.rs       # Hash-based stateless
-│       ├── pq_hqc.rs           # Code-based diversity
-│       └── lwe_bounds.md       # Concrete estimator table
+│   └── crypto/                   # Legacy refs
 ├── research/
-│   └── lattice_estimator/      # Audit tool (Sage/Python)
-└── LICENSE                     # MIT
+│   └── lattice_estimator/
+├── .github/workflows/ci.yml
+├── Cargo.toml                    # Workspace explicit
+├── README.md
+└── (boot/install scripts, models, data_prep)
