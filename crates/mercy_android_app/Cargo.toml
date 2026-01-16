@@ -1,0 +1,16 @@
+[package]
+name = "mercy_android_app"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "mercy_android_app"
+path = "src/main.rs"
+
+[dependencies]
+uniffi = { workspace = true }
+mercy_uniffi = { path = "../mercy_uniffi" }
+
+[package.metadata.android]
+package_name = "com.eternalgrandmasterism.mercyos.pinnacle"
+assets = "assets"
