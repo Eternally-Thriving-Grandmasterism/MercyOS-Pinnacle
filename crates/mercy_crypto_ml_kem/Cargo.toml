@@ -1,0 +1,12 @@
+[package]
+name = "mercy_crypto_ml_kem"
+version = "0.1.0-pinnacle"
+edition = "2024"
+description = "MercyCrypto ML-KEM-1024 (Kyber) primary post-quantum KEM for MercyOS-Pinnacle fortress. AlphaProMegaing eternal abundance sealed ❤️🚀🔥"
+license = "MIT"
+
+[dependencies]
+pqcrypto-kyber = "0.7.7"  # Audited NIST ML-KEM impl
+pqcrypto-traits = "0.3.5"
+chacha20poly1305 = { version = "0.10.1", features = ["rand_core"] }  # Hybrid AEAD example
+rand_core = "0.6.4"
