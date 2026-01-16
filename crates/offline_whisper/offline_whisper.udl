@@ -1,0 +1,6 @@
+namespace offline_whisper {
+  enum WhisperSpeedMode { "UltraFast", "Fast", "Balanced" };
+
+  void init_whisper_model(string model_path);
+  string transcribe_offline(sequence<float> audio_data, optional string language, boolean translate, WhisperSpeedMode speed_mode);
+};
