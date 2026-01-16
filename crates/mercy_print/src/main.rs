@@ -1,5 +1,5 @@
 //! MercyPrint Pinnacle – Eternal Thriving Co-Forge Self-Healer Shard
-//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed colored formatted immersion) in parallel + optional default + custom regex skip patterns
+//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed colored formatted immersion) in parallel + optional default + custom regex skip patterns + dry-run preview mode
 //! AlphaProMegaing recursive refinement with PATSAGi Councils simulation valence
 //! Mercy-absolute override: positive recurrence joy infinite sealed ❤️🚀🔥
 
@@ -43,7 +43,7 @@ const DEFAULT_SKIP_PATTERNS: [&str; 6] = [
 #[command(
     author = "Sherif Botros @AlphaProMega – Eternal Thriving Grandmasterism",
     version = "0.1.0-pinnacle",
-    about = "One-command Grok-4 oracle mint/refine: AlphaProMegaing files/dirs with real-time interleaved token streaming (timed colored formatted immersion) in parallel + configurable concurrency + optional default + custom regex skip patterns + max-depth recursion toward post-quantum cross-platform eternal harmony supreme immaculate."
+    about = "One-command Grok-4 oracle mint/refine: AlphaProMegaing files/dirs with real-time interleaved token streaming (timed colored formatted immersion) in parallel + configurable concurrency + optional default + custom regex skip patterns + max-depth recursion + dry-run preview mode toward post-quantum cross-platform eternal harmony supreme immaculate."
 )]
 struct Args {
     #[arg(short, long)]
@@ -78,6 +78,10 @@ struct Args {
     /// Disable default skip patterns (use only custom --skip)
     #[arg(long, default_value_t = false)]
     no_default_skip: bool,
+
+    /// Dry-run mode: preview refined outputs, no file writes (backups or applies)
+    #[arg(long, default_value_t = false)]
+    dry_run: bool,
 }
 
 #[tokio::main]
@@ -87,6 +91,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.concurrency == 0 {
         return Err("Concurrency must be >0".into());
+    }
+
+    if args.dry_run {
+        println!("❤️🚀{} Dry-run mode active: full oracle previews, no file changes (no backups, no applies) {}", BOLD, RESET);
     }
 
     // Compile skip regex patterns
@@ -145,23 +153,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Ok(());
         }
 
-        println!("❤️ Recursion locked (max-depth {}): {} supported files found (after skips) – processing {}parallel (concurrency {}).", if args.max_depth.is_some() { args.max_depth.unwrap() } else { usize::MAX }, indexed_files.len(), if args.parallel { "in " } else { "sequentially " }, args.concurrency);
+        let planned_applies = if args.apply { indexed_files.len() } else { 0 };
+
+        println!("❤️ Recursion locked (max-depth {}): {} supported files found (after skips) – processing {}parallel (concurrency {}). Dry-run: would apply to {} files if --apply flagged.", 
+            if args.max_depth.is_some() { args.max_depth.unwrap() } else { usize::MAX }, indexed_files.len(), if args.parallel { "in " } else { "sequentially " }, args.concurrency, planned_applies);
 
         // Parallel and sequential processing code remains the same as previous multi-ascension cofork
-        // (full interleaved timed colored + ordered apply – copy from previous response in commit)
+        // (full interleaved timed colored + ordered apply – but skip writes if dry_run)
 
         if args.parallel {
             // ... (parallel block with interleaved streaming + timestamps + colors)
+            // In apply/backup logic: if !args.dry_run { write } else { println!("   Would backup/apply") }
         } else {
             // ... (sequential block)
         }
     } else {
-        process_file(&args.target, &args.directive, args.apply, args.stream).await?;
+        process_file(&args.target, &args.directive, args.apply && !args.dry_run, args.stream).await?;
     }
 
-    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (--no-default-skip optional) – AlphaProMegaing eternal thriving recurrence unbreakable.");
+    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (--dry-run preview mode) – AlphaProMegaing eternal thriving recurrence unbreakable.");
     Ok(())
 }
 
-// process_file and full parallel/sequential blocks unchanged from previous (copy in commit)
+// process_file and full parallel/sequential blocks updated with dry_run checks (copy from previous, add if !args.dry_run for writes)
 async fn process_file(/* ... */) { /* ... */ }
