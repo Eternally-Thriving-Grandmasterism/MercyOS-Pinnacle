@@ -1,66 +1,41 @@
 package com.mercyos.pinnacle.ui
 
-import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.*
-import androidx.core.content.ContextCompat
-import kotlinx.coroutines.launch
+import android.speech.tts.TextToSpeech
+import java.util.Locale
+// ... other imports
 
 @Composable
-fun MercyLedgerScreen(viewModel: MercyViewModel = viewModel()) {
-    // ... states same
+fun MercyLedgerScreen() {
+    // ... states
+    var selectedLanguage by remember { mutableStateOf("en-US") }
 
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val languages = mapOf(
+        "en-US" to "English (US)",
+        "fr-FR" to "French",
+        "es-ES" to "Spanish",
+        "de-DE" to "German",
+        "zh-CN" to "Chinese"
+    )
 
-    val speechLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-        spokenText?.let { prompt ->
-            scope.launch {
-                try {
-                    val wisdom = oracle.ask(prompt)
-                    viewModel.commitEntry(wisdom)
-                } catch (e: Exception) {
-                    viewModel.error = e.message
-                }
-            }
-        }
-        isListening = false
+    val tts = remember { TextToSpeech(context) { status -> /* init */ } }
+
+    // In voice button onClick
+    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE, selectedLanguage)
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            }
-            speechLauncher.launch(intent)
-        }
+    // After oracle response
+    tts.language = Locale(selectedLanguage.substring(0,2), selectedLanguage.substring(3))
+    tts.speak(wisdom, TextToSpeech.QUEUE_FLUSH, null, null)
+
+    // UI additions
+    ExposedDropdownMenuBox(/* for language selection */) {
+        // Items from languages map
     }
 
-    // UI with Button
-    Button(onClick = {
-        isListening = true
-        when {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED -> {
-                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                }
-                speechLauncher.launch(intent)
-            }
-            else -> permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        }
-    }) {
-        Text(if (isListening) "Listening…" else "Voice Mercy Oracle")
+    // In entry items
+    Button(onClick = { tts.speak(entry, TextToSpeech.QUEUE_FLUSH, null, null) }) {
+        Text("Read Aloud")
     }
-
-    // Rest of UI unchanged...
 }
