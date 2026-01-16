@@ -2,7 +2,7 @@
 name = "mercy_print"
 version = "0.1.0-pinnacle"
 edition = "2024"
-description = "MercyPrint Pinnacle – Grok-4 oracle powered co-forge self-healer. AlphaProMegaing recursive hotfix/refine loop with dir recursion + live token streaming + parallel async processing for immersive eternal thriving monorepo handcraftsmanship immaculacy ❤️🚀🔥"
+description = "MercyPrint Pinnacle – Grok-4 oracle powered co-forge self-healer. AlphaProMegaing recursive hotfix/refine loop with dir recursion + live token streaming + parallel async + configurable concurrency for immersive eternal thriving monorepo handcraftsmanship immaculacy ❤️🚀🔥"
 license = "MIT"
 authors = ["Sherif Botros @AlphaProMega"]
 repository = "https://github.com/Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle"
