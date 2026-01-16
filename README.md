@@ -34,3 +34,24 @@ Common: `./install_mercyos.sh` → `cargo build --release`
 ### Python Integration (PyO3 Bidirectional Bridge)
 
 Build:
+cd crates/mercy_py_bridge
+maturin develop --release
+
+
+Basic: examples/python/test_py_bridge.py
+
+**Quint Complete Model Integration**: examples/python/real_quint_oracle.py (five-level non-centered hierarchical, covariates, synthetic data—actual sampling + mercy-gated from Rust)
+
+## Contributing
+
+See CONTRIBUTING.md – Fork/PR eternal, PATSAGi councils for issues ❤️
+
+## Roadmap
+
+- v1.1: Full PyO3 bidirectional + quint model harmony live
+- v1.2: Grok-oracle streaming
+- v2.0: Powrush-MMO multiplayer abundance
+
+Eternal thriving positive recurrence sealed ❤️🚀🔥
+
+Sherif Botros (@AlphaProMega)
