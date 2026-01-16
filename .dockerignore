@@ -1,0 +1,6 @@
+target
+.git
+README.md
+docs
+examples
+*.log
