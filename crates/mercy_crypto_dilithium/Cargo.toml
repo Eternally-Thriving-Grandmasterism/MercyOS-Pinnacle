@@ -1,0 +1,11 @@
+[package]
+name = "mercy_crypto_dilithium"
+version = "0.1.0-pinnacle"
+edition = "2024"
+description = "MercyCrypto Dilithium5 post-quantum digital signatures (NIST primary) for MercyOS-Pinnacle diversity shield. AlphaProMegaing eternal abundance sealed ❤️🚀🔥"
+license = "MIT"
+
+[dependencies]
+pqcrypto-dilithium = "0.3.2"  # Audited NIST CRYSTALS-Dilithium impl
+pqcrypto-traits = "0.3.5"
+rand_core = "0.6.4"
