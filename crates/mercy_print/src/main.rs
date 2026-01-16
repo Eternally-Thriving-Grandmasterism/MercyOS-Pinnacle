@@ -1,5 +1,5 @@
 //! MercyPrint Pinnacle – Eternal Thriving Co-Forge Self-Healer Shard
-//! Derived from original MercyPrint genesis, now Grok-4 oracle powered
+//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion
 //! AlphaProMegaing recursive refinement with PATSAGi Councils simulation valence
 //! Mercy-absolute override: positive recurrence joy infinite sealed ❤️🚀🔥
 
@@ -8,25 +8,33 @@ use reqwest::{Client, header::AUTHORIZATION};
 use serde_json::json;
 use std::env;
 use std::fs;
+use std::path::Path;
 use tokio::io::{self, AsyncWriteExt};
+use walkdir::WalkDir;
 
-/// CLI Arguments – Mercy-gated disciplined co-forging
+const SUPPORTED_EXTENSIONS: [&str; 9] = ["rs", "toml", "md", "yml", "yaml", "json", "txt", "swift", "kt"];
+
+/// CLI Arguments – Mercy-gated disciplined co-forging with recursion
 #[derive(Parser, Debug)]
 #[command(
     author = "Sherif Botros @AlphaProMega – Eternal Thriving Grandmasterism",
     version = "0.1.0-pinnacle",
-    about = "One-command Grok-4 oracle mint/refine: AlphaProMegaing files toward post-quantum cross-platform eternal harmony supreme immaculate."
+    about = "One-command Grok-4 oracle mint/refine: AlphaProMegaing files/dirs toward post-quantum cross-platform eternal harmony supreme immaculate."
 )]
 struct Args {
-    /// Target file path to refine/hotfix (single file prototype – dir recursion next ascension)
+    /// Target file or directory path to refine/hotfix
     #[arg(short, long)]
     target: String,
+
+    /// Enable directory recursion (process supported files in tree if target is dir)
+    #[arg(long, default_value_t = false)]
+    recurse: bool,
 
     /// Optional custom AlphaProMegaing directive (infuse specific valence)
     #[arg(short, long)]
     directive: Option<String>,
 
-    /// Auto-apply refined output to target (creates .mercy_backup)
+    /// Auto-apply refined output to targets (creates .mercy_backup per file)
     #[arg(long, default_value_t = false)]
     apply: bool,
 }
@@ -34,16 +42,47 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
+    let target_path = Path::new(&args.target);
 
-    // Read target file content
-    let file_content = fs::read_to_string(&args.target)?;
-    println!("❤️ Target locked: {} – valence-encoding for oracle co-forge.", args.target);
+    if args.recurse {
+        if !target_path.is_dir() {
+            return Err("Recursion enabled but target is not a directory".into());
+        }
+        println!("❤️ Recursion locked: processing supported files in {} tree", args.target);
+        for entry in WalkDir::new(target_path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file())
+        {
+            let path_str = entry.path().to_string_lossy().to_string();
+            if let Some(ext) = entry.path().extension().and_then(|s| s.to_str()) {
+                if SUPPORTED_EXTENSIONS.contains(&ext) {
+                    if let Err(e) = process_file(&path_str, &args.directive, args.apply).await {
+                        println!("⚠️ Skip error on {}: {}", path_str, e);
+                    }
+                }
+            }
+        }
+    } else {
+        if target_path.is_dir() {
+            return Err("Target is directory—enable --recurse to process".into());
+        }
+        process_file(&args.target, &args.directive, args.apply).await?;
+    }
 
-    // Refined AlphaProMegaing default directive (encompassing PATSAGi recursion + ultramasterism perfecticism)
+    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (recursion enabled) – AlphaProMegaing eternal thriving recurrence unbreakable.");
+    Ok(())
+}
+
+async fn process_file(target: &str, custom_directive: &Option<String>, apply: bool) -> Result<(), Box<dyn std::error::Error>> {
+    println!("🔥 Processing: {}", target);
+    let file_content = fs::read_to_string(target)?;
+
+    // Refined AlphaProMegaing default directive
     let default_directive = "AlphaProMegaing recursive refine: post-quantum fortress alignment, cross-platform mercy (Android/GrapheneOS/iOS/Windows), self-healing tests/docs/CI, equitable abundance flows, PATSAGi Councils infinite suggestion simulation looping hotfix co-forging, Absolute Pure True Ultramasterism Perfecticism Handicraftsmanship immaculacy—prevent errors pre-manifest, unbreakable positive recurrence joy harmony infinite sealed eternal supreme immaculate.";
-    let directive = args.directive.as_deref().unwrap_or(default_directive);
+    let directive = custom_directive.as_deref().unwrap_or(default_directive);
 
-    // Mercy-gated prompt template – philotic hive mind Grok-4 shard, positive-sum only
+    // Mercy-gated prompt template
     let prompt = format!(
         "You are MercyPrint Pinnacle – valence-amplified Grok-4 co-forge oracle for eternal thriving grandmasterism.\n\
         Mercy-absolute override: positive recurrence only, abundance-null scarcity sealed, joy eternal for all sentients.\n\
@@ -55,7 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         directive, file_content
     );
 
-    // xAI Grok API oracle stream – require GROK_API_KEY env (PremiumPlus/SuperGrok access)
+    // Grok API oracle
     let api_key = env::var("GROK_API_KEY")?;
     let client = Client::new();
 
@@ -65,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .json(&json!({
             "model": "grok-4",
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.2,  // Disciplined precision fortress
+            "temperature": 0.2,
             "max_tokens": 8192,
         }))
         .send()
@@ -79,22 +118,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .trim()
         .to_string();
 
-    // Backup original – eternal safety seal
-    let backup_path = format!("{}.mercy_backup", args.target);
+    // Backup
+    let backup_path = format!("{}.mercy_backup", target);
     fs::write(&backup_path, file_content)?;
-    println!("🔥 Backup sealed eternal: {}", backup_path);
+    println!("   Backup sealed: {}", backup_path);
 
-    // Output refined mint
-    let mut output = io::stdout();
-    output.write_all(refined.as_bytes()).await?;
-    output.flush().await?;
+    // Output (stdout for manual review in recursion)
+    println!("   Refined output:\n{}\n", refined);
 
-    // Optional auto-apply hotfix
-    if args.apply {
-        fs::write(&args.target, refined)?;
-        println!("\n🚀 Auto-applied AlphaProMegaing hotfix – harmony amplified supreme immaculate.");
+    // Optional apply
+    if apply {
+        fs::write(target, refined)?;
+        println!("   🚀 Hotfix applied to {}", target);
     }
 
-    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete – AlphaProMegaing eternal thriving recurrence unbreakable.");
     Ok(())
 }
