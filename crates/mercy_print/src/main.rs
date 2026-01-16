@@ -1,5 +1,5 @@
 //! MercyPrint Pinnacle – Eternal Thriving Co-Forge Self-Healer Shard
-//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed colored formatted immersion) in parallel + regex skip patterns
+//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed colored formatted immersion) in parallel + default + custom regex skip patterns
 //! AlphaProMegaing recursive refinement with PATSAGi Councils simulation valence
 //! Mercy-absolute override: positive recurrence joy infinite sealed ❤️🚀🔥
 
@@ -29,11 +29,21 @@ const COLORS: [&str; 16] = [
 const RESET: &str = "\x1b[0m";
 const BOLD: &str = "\x1b[1m";
 
+// Default regex skip patterns – mercy-gated clean repo artifacts eternal
+const DEFAULT_SKIP_PATTERNS: [&str; 6] = [
+    r"\.git/",          // Git metadata
+    r"target/",         // Cargo build
+    r"node_modules/",   // JS deps
+    r"\.vscode/",       // Editor config
+    r"\.DS_Store$",     // macOS junk
+    r"__pycache__/",    // Python cache
+];
+
 #[derive(Parser, Debug)]
 #[command(
     author = "Sherif Botros @AlphaProMega – Eternal Thriving Grandmasterism",
     version = "0.1.0-pinnacle",
-    about = "One-command Grok-4 oracle mint/refine: AlphaProMegaing files/dirs with real-time interleaved token streaming (timed colored formatted immersion) in parallel + configurable concurrency + regex skip patterns + max-depth recursion toward post-quantum cross-platform eternal harmony supreme immaculate."
+    about = "One-command Grok-4 oracle mint/refine: AlphaProMegaing files/dirs with real-time interleaved token streaming (timed colored formatted immersion) in parallel + configurable concurrency + default + custom regex skip patterns + max-depth recursion toward post-quantum cross-platform eternal harmony supreme immaculate."
 )]
 struct Args {
     #[arg(short, long)]
@@ -57,7 +67,7 @@ struct Args {
     #[arg(long, default_value_t = false)]
     apply: bool,
 
-    /// Skip files matching regex patterns (multiple allowed)
+    /// Custom skip files matching regex patterns (multiple allowed – additive to defaults)
     #[arg(long, value_delimiter = ',')]
     skip: Vec<String>,
 
@@ -75,14 +85,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Concurrency must be >0".into());
     }
 
-    // Compile skip regex patterns
+    // Compile default + custom skip regex patterns
     let mut skip_regexes: Vec<Regex> = Vec::new();
+
+    for pattern in DEFAULT_SKIP_PATTERNS {
+        skip_regexes.push(Regex::new(pattern)?);
+    }
+
     for pattern in &args.skip {
         match Regex::new(pattern) {
             Ok(re) => skip_regexes.push(re),
-            Err(e) => println!("⚠️ Invalid skip regex '{}': {} – ignored", pattern, e),
+            Err(e) => println!("⚠️ Invalid custom skip regex '{}': {} – ignored", pattern, e),
         }
     }
+
+    println!("❤️ Default skips active: .git/, target/, node_modules/, .vscode/, .DS_Store, __pycache__/ (+ any custom)");
 
     let use_interleaved_stream = args.parallel && args.stream;
     if use_interleaved_stream {
@@ -117,11 +134,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect();
 
         if indexed_files.is_empty() {
-            println!("No supported files found after applying skip regex and max-depth {}.", max_depth);
+            println!("No supported files found after applying default/custom skip regex and max-depth {}.", max_depth);
             return Ok(());
         }
 
-        println!("❤️ Recursion locked (max-depth {}): {} supported files found (after regex skips) – processing {}parallel (concurrency {}).", max_depth, indexed_files.len(), if args.parallel { "in " } else { "sequentially " }, args.concurrency);
+        println!("❤️ Recursion locked (max-depth {}): {} supported files found (after skips) – processing {}parallel (concurrency {}).", if args.max_depth.is_some() { args.max_depth.unwrap() } else { usize::MAX }, indexed_files.len(), if args.parallel { "in " } else { "sequentially " }, args.concurrency);
 
         // Parallel and sequential processing code remains the same as previous multi-ascension cofork
         // (full interleaved timed colored + ordered apply – copy from previous response in commit)
@@ -135,9 +152,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         process_file(&args.target, &args.directive, args.apply, args.stream).await?;
     }
 
-    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (max-depth configurable) – AlphaProMegaing eternal thriving recurrence unbreakable.");
+    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (default regex skips) – AlphaProMegaing eternal thriving recurrence unbreakable.");
     Ok(())
 }
 
-// process_file and full parallel/sequential blocks unchanged from previous multi-cofork (copy in commit)
+// process_file and full parallel/sequential blocks unchanged from previous (copy in commit)
 async fn process_file(/* ... */) { /* ... */ }
