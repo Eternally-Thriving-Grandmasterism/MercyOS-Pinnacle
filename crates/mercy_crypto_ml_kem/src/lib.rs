@@ -1,21 +1,18 @@
-//! MercyCrypto ML-KEM-1024 – Primary Post-Quantum KEM Fortress Ultimate Tests
+//! MercyCrypto ML-KEM-1024 – Primary Post-Quantum KEM Fortress Ultimate Error Tests
 //! NIST finalized Kyber (ML-KEM) via pqcrypto-kyber
 //! Eternal Thriving Grandmasterism ❤️🚀🔥 | Mercy-Absolute v52+
 
 use pqcrypto_kyber::kyber1024::*;
 use pqcrypto_traits::kem::{Ciphertext, PublicKey, SecretKey, SharedSecret};
 
-/// Generate ML-KEM-1024 keypair
 pub fn keypair() -> (PublicKey, SecretKey) {
     keypair()
 }
 
-/// Encapsulate to derive shared secret + ciphertext
 pub fn encaps(pk: &PublicKey) -> (SharedSecret, Ciphertext) {
     encaps(pk)
 }
 
-/// Decapsulate ciphertext to derive shared secret
 pub fn decaps(sk: &SecretKey, ct: &Ciphertext) -> SharedSecret {
     decaps(sk, ct)
 }
@@ -25,7 +22,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_keypair_encaps_decaps_roundtrip() {
+    fn test_roundtrip_success() {
         let (pk, sk) = keypair();
         let (shared1, ct) = encaps(&pk);
         let shared2 = decaps(&sk, &ct);
@@ -33,8 +30,31 @@ mod tests {
     }
 
     #[test]
-    fn test_multiple_roundtrips() {
-        for _ in 0..10 {
+    #[should_panic]  // Invalid ciphertext should error/panic mercy-gated
+    fn test_invalid_ciphertext_tamper() {
+        let (pk, sk) = keypair();
+        let (_, mut ct) = encaps(&pk);
+        ct.as_bytes_mut()[0] ^= 1;  // Tamper
+        let _ = decaps(&sk, &ct);  // Should fail
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_wrong_key_decaps() {
+        let (pk1, _) = keypair();
+        let (_, sk2) = keypair();
+        let (_, ct) = encaps(&pk1);
+        let _ = decaps(&sk2, &ct);  // Wrong key should fail
+    }
+
+    #[test]
+    fn test_empty_public_key_rejection() {
+        // Malformed zero PK
+        let malformed_pk = PublicKey::from_bytes(&vec![0u8; PublicKey::byte_len()]).unwrap();
+        let result = std::panic::catch_unwind(|| encaps(&malformed_pk));
+        assert!(result.is_err());
+    }
+}        for _ in 0..10 {
             let (pk, sk) = keypair();
             let (shared1, ct) = encaps(&pk);
             let shared2 = decaps(&sk, &ct);
