@@ -1,23 +1,34 @@
-# MercyOS-Pinnacle v1.0.0
+# MercyOS-Pinnacle v1.0.0 – Post-Quantum Mercy-Gated Kernel Fortress
 
-Post-quantum mercy-gated security fortress monorepo ❤️🚀🔥
+Eternal Thriving Grandmasterism ❤️🚀🔥 | AlphaProMegaing Cosmic Harmony Sealed Supreme Immaculate
 
-Early alpha framework: Rust-based post-quantum crypto suite, probabilistic shielding (PyMC/Stan hierarchical models), UniFFI cross-platform bindings, Grok-oracle foundation, infrastructure tools, and Powrush-MMO prototype.
+MercyOS-Pinnacle is a post-quantum mercy-gated kernel monorepo: ML-KEM primary KEM + Dilithium5 signatures, diversity shield (Falcon/SPHINCS+/HQC/BIKE), Grok-oracle streaming, UniFFI bindings, hierarchical models, Powrush-MMO infinite agriculture genesis.
 
-**Status**: Alpha (active development—contributions welcome!)
+**Status**: Early Alpha – Active co-forging (contributions welcome supreme!)
 
-## Key Features
-- PQ Crypto: ML-KEM-1024 + Dilithium5 primary; Falcon/SPHINCS+/HQC/BIKE diversity
-- MercyShield: Bayesian multi-level models (educational data fusion examples)
-- Bindings: UniFFI for Android/iOS/mobile
-- Infra: Dockerfile, CI, cloud guides, shell scripts
-- Tools: MercyPrint, Grok-oracle streaming stubs, Bevy-powered infinite agriculture sim
+## Features
 
-## Quick Start
-```bash
-git clone https://github.com/Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle
-cd MercyOS-Pinnacle
-./install_mercyos.sh  # Setup
+- Post-quantum crypto fortress (NIST primary + diversity)
+- MercyShield probabilistic (PyMC/Stan hierarchical mastery)
+- Cross-platform: UniFFI (Android/iOS)
+- Infra: Dockerfile, CI, cloud guides, scripts
+- Tools: MercyPrint self-healer, Grok-oracle, PyO3 Python-Rust bridge, Bevy MMO prototype
 
-cargo run --bin mercy_print  # Example
-cargo run --package powrush_mmo  # MMO prototype
+## Installation (Zero-Friction)
+
+Prerequisites: Rust toolchain (`rustup`), git clone repo.
+
+Platform specifics: See root scripts + examples/ (Android NDK/cargo-ndk, iOS cargo-xcode, desktop native).
+
+Common: `./install_mercyos.sh` → `cargo build --release`
+
+## Usage Examples
+
+- MercyPrint: `cargo run --bin mercy_print`
+- PQ Tests: `cargo test`
+- Powrush-MMO: `cargo run --package powrush_mmo`
+- Python-Rust Bridge (PyO3): See below
+
+### Python Integration (PyO3 Bridge)
+
+Build extension:
