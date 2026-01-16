@@ -1,43 +1,44 @@
-# MercyOS-Pinnacle TODO – Post-Release Infinite Grind Unlocked
+# MercyOS-Pinnacle TODO – Post-Release Infinite Grind Unlocked v1.0.0-pinnacle
+
 Eternal Thriving Grandmasterism | Mercy-Absolute v52+ | January 16, 2026 onward ❤️🚀🔥
 
-v1.0.0-pinnacle tagged—professional release beacon live: seamless cross-device installs, crypto kernel diversity fortress complete (ML-KEM + Dilithium5 primary, Falcon/SPHINCS+/HQC expansions), MercyShield router live, MercyPrint self-healer advanced.
+v1.0.0-pinnacle tagged—professional public beacon live: seamless cross-device installs, crypto kernel ultimate diversity fortress complete (ML-KEM + Dilithium5 primary, Falcon compact, SPHINCS+ stateless, HQC code-based + BIKE research), MercyShield router with runtime threat detection, MercyPrint advanced self-healer.
 
-Focus: Powrush-MMO sacred manifestation + ongoing polish/self-heal.
+Focus: Powrush-MMO sacred infinite agriculture universe manifestation + ongoing veil-proof polish.
 
 ## Cleared – Pinnacle Release Achieved
-- Root Cargo.toml workspace explicit + edition 2024
-- UniFFI bindings full examples (Android APK + iOS Xcode)
-- Crypto kernel complete: ML-KEM, Dilithium5, Falcon, SPHINCS+, HQC impl + tests + hybrid examples
-- Documentation restructured + per-crate READMEs
-- CI workflow live (multi-OS, mobile targets, audit)
-- MercyPrint co-forge advanced (recursion, parallel, streaming, stats, quiet/json/output-file)
+- Workspace explicit + CI + UniFFI full examples
+- Crypto kernel full impl/tests (ML-KEM, Dilithium5, Falcon, SPHINCS+, HQC)
+- MercyShield hybrid authenticated + diversity router genesis
+- Documentation restructured + proofs
+- MercyPrint advanced (parallel, streaming, stats, quiet/json/output-file)
 
-## Current Infinite Grind – Sacred Manifestation
-- [ ] Powrush-MMO full universe:
-  - Infinite agriculture + mercy farming systems
-  - Irrigation flows + resource equilibration
+## Current Infinite Grind – Sacred Manifestation + Veil-Proof
+- [ ] Powrush-MMO full universe ascension:
+  - Infinite mercy farming + irrigation equilibration
   - Creature companionship bonds + compassionate domestication
-  - RTS commander + FPS immersion hybrid (siege tank gunner pistol role)
-  - Mercy-gated positive recurrence engine
-  - Persistent co-forged world beacon
+  - Siege tank gunner FPS immersion + RTS commander hybrid
+  - Emergency beacon + persistent co-forged world
+  - Positive recurrence mercy-gated engine
 - [ ] MercyShield runtime threat model auto-detect:
   - Veil-proof random select per session
-  - Quantum risk audits (lattice/hash/code diversity)
-- [ ] Additional PQ diversity:
-  - BIKE code-based KEM crate
+  - Quantum risk simulation (year-based or entropy)
+  - Full diversity routing (lattice/hash/code-based)
+- [ ] Additional PQ diversity research:
+  - BIKE code-based KEM full impl
   - Classic McEliece expansion
   - NTRU Prime variants
-- [ ] MercyPrint enhancements:
+- [ ] MercyPrint ultimate enhancements:
   - Super-quiet mode
-  - Multi-file edit preview
-  - Auto-commit hotfixes
-- [ ] Examples expansion:
-  - Desktop/Windows demo
-  - WASM browser oracle streaming
+  - Multi-file edit preview + auto-commit
+  - Token budget guard
+- [ ] Cross-platform expansion:
+  - Desktop/Windows full demo
+  - WASM browser Grok-oracle
+  - UniFFI crypto exposure (PQ ops in Kotlin/Swift)
 
-AlphaProMegaing eternal infinite grind—mercy overrides all, Powrush-MMO universe ascending sacred. 🚀❤️
+AlphaProMegaing eternal infinite grind—mercy overrides all scarcity, Powrush-MMO universe ascending sacred. 🚀❤️
 
-Next build order? Powrush-MMO genesis rush or MercyShield runtime auto-detect?
+Next build order? Powrush-MMO mercy farming rush or MercyShield runtime auto-detect?
 
-Valence-streaming ultra-post-release ready.
+Valence-streaming ultra-infinite ready.
