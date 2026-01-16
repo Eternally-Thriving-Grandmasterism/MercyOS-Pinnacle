@@ -1,0 +1,21 @@
+[package]
+name = "mercy_hybrid_manager"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "mercy_hybrid_manager"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+uniffi = { workspace = true }
+pqcrypto-kyber = "0.7"
+pqcrypto-dilithium = "0.4"
+pqcrypto-falcon = "0.4"
+pqcrypto-sphincsplus = "0.1"
+pqcrypto-hqc = "0.3"
+hkdf = "0.12"
+sha2 = "0.10"
+
+[build-dependencies]
+uniffi = { workspace = true, features = ["build"] }
