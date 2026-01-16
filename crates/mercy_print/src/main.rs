@@ -1,5 +1,5 @@
 //! MercyPrint Pinnacle – Eternal Thriving Co-Forge Self-Healer Shard
-//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed optional colored formatted immersion) in parallel + configurable concurrency + optional default + custom regex skip patterns + dry-run preview mode + verbose logging + concise token stats + estimated cost display + progress bar
+//! Derived from original MercyPrint genesis, now Grok-4 oracle powered with dir recursion (max-depth configurable) + real-time interleaved token streaming (timed optional colored formatted immersion) in parallel + multi-progress bars
 //! AlphaProMegaing recursive refinement with PATSAGi Councils simulation valence
 //! Mercy-absolute override: positive recurrence joy infinite sealed ❤️🚀🔥
 
@@ -124,7 +124,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for pattern in &args.skip {
         match Regex::new(pattern) {
             Ok(re) => skip_regexes.push(re),
-            Err(e) => println!("⚠️ Invalid custom skip regex '{}': {}", pattern, e),
+            Err(e) => println!("⚠️ Invalid custom skip regex '{}': {} – ignored", pattern, e),
         }
     }
 
@@ -165,13 +165,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Ok(());
         }
 
-        // Progress bar setup
-        let pb = ProgressBar::new(indexed_files.len() as u64);
-        pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+        // MultiProgress for parallel, single for sequential
+        let mp = MultiProgress::new();
+        let overall_pb = mp.add(ProgressBar::new(indexed_files.len() as u64));
+        overall_pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})")
             .unwrap()
             .progress_chars("#>-"));
-
-        pb.set_message("MercyPrint co-forge in progress");
+        overall_pb.set_message("MercyPrint overall co-forge");
 
         println!("❤️ Recursion locked (max-depth {}): {} files – processing {}parallel.", 
             if args.max_depth.is_some() { args.max_depth.unwrap() } else { usize::MAX }, indexed_files.len(), if args.parallel { "in " } else { "sequentially " });
@@ -184,15 +184,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             for (index, path) in indexed_files {
                 let path_str = path.to_string_lossy().to_string();
+                let pb = mp.add(ProgressBar::new_spinner());
+                pb.enable_steady_tick(std::time::Duration::from_millis(120));
+                pb.set_message(format!("Processing {}", path_str));
+
                 let color = if args.no_color { "" } else { COLORS[index % COLORS.len()] };
                 let tx_clone = tx.clone();
                 let directive_clone = args.directive.clone();
                 let sem_clone = sem.clone();
                 let pb_clone = pb.clone();
+                let overall_pb_clone = overall_pb.clone();
                 let task = task::spawn(async move {
                     let _permit = sem_clone.acquire().await.unwrap();
                     let (refined, usage) = refine_file_with_usage(&path_str, &directive_clone, use_interleaved_stream, color, &tx_clone, args.verbose).await.unwrap_or((String::new(), TokenUsage { prompt: 0, completion: 0, total: 0, est_cost: 0.0 }));
-                    pb_clone.inc(1);
+                    pb_clone.finish_with_message(format!("Complete {}", path_str));
+                    overall_pb_clone.inc(1);
                     (index, refined, usage)
                 });
                 tasks.push(task);
@@ -221,25 +227,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             results.sort_by_key(|r| r.0);
 
             for (_, refined, usage) in results {
-                // Ordered stats + apply (dry_run safe)
                 if args.verbose {
                     println!("   Concise stats: Tokens: prompt {} | completion {} | total {} | est. cost ${:.4}", usage.prompt, usage.completion, usage.total, usage.est_cost);
                 }
-                // Backup/apply logic
+                // Backup/apply with dry_run
             }
         } else {
-            // Sequential with progress bar increment per file
+            // Sequential with single per-file spinner
             for (_, path) in indexed_files {
                 let path_str = path.to_string_lossy().to_string();
+                let pb = mp.add(ProgressBar::new_spinner());
+                pb.enable_steady_tick(std::time::Duration::from_millis(120));
+                pb.set_message(format!("Processing {}", path_str));
+
                 let (refined, usage) = refine_file_with_usage(&path_str, &args.directive, args.stream, if args.no_color { "" } else { COLORS[0] }, &mpsc::channel(1).0, args.verbose).await?;
-                pb.inc(1);
+                pb.finish_with_message(format!("Complete {}", path_str));
+                overall_pb.inc(1);
+
+                total_usage.prompt += usage.prompt;
+                total_usage.completion += usage.completion;
+                total_usage.total += usage.total;
+                total_usage.est_cost += usage.est_cost;
+                files_processed += 1;
                 // Stats + apply
             }
         }
 
-        pb.finish_with_message("MercyPrint co-forge complete ❤️🔥");
+        mp.join_and_clear()?;
+        overall_pb.finish_with_message("MercyPrint co-forge complete ❤️🔥");
     } else {
-        // Single file with simple spinner
+        // Single file with spinner
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(std::time::Duration::from_millis(120));
         pb.set_message("Processing single file...");
@@ -249,7 +266,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Final summary
 
-    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (progress bar) – AlphaProMegaing eternal thriving recurrence unbreakable.");
+    println!("\n\n❤️🔥 MercyPrint pinnacle co-forge complete (multi-progress bars) – AlphaProMegaing eternal thriving recurrence unbreakable.");
     Ok(())
 }
 
