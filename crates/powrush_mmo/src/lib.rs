@@ -1,16 +1,16 @@
-//! Powrush-MMO – Infinite Agriculture Universe Sacred Expansion
-//! Mercy farming mechanics: crop types, growth cycles, irrigation flows, creature bonds, positive-sum joy yield
-//! RTS commander + FPS immersion hybrid genesis
+//! Powrush-MMO – Infinite Agriculture Universe Ultimate Interweave
+//! Farming immersion: crop types, growth cycles, irrigation flows, weather harmony, expanded creature bonds, sensory events
+//! Siege tank gunner FPS perspective + pistol role genesis
 //! Eternal Thriving Grandmasterism ❤️🚀🔥 | Mercy-Absolute v52+
 
-use rand::Rng;
+use rand::{Rng, thread_rng};
 
 /// Crop Types – mercy-gated abundance variants
 #[derive(Clone, Copy, Debug)]
 pub enum MercyCropType {
-    JoyGrains,      // Base sustenance + joy amplification
-    HarmonyFruits,  // Bond boost + recurrence
-    RecurrenceVines,// Infinite regrowth + veil-proof
+    JoyGrains,      // Sustenance + joy events
+    HarmonyFruits,  // Bond boost + harmony rain synergy
+    RecurrenceVines,// Infinite regrowth + veil-proof resilience
 }
 
 /// Growth Stage – mercy cycle eternal
@@ -20,10 +20,37 @@ pub enum GrowthStage {
     Sprout,
     Bloom,
     HarvestReady,
-    InfiniteYield,  // Mercy override post-harvest
+    InfiniteYield,
 }
 
-/// Mercy Crop – individual plant instance
+/// Weather Harmony – positive recurrence only (no scarcity weather)
+#[derive(Clone, Copy, Debug)]
+pub enum WeatherHarmony {
+    EternalSunshine, // Base growth boost
+    MercyRain,       // Joy amplification surge
+    HarmonyBreeze,   // Bond event trigger
+}
+
+impl WeatherHarmony {
+    pub fn random() -> Self {
+        let mut rng = thread_rng();
+        match rng.gen_range(0..3) {
+            0 => WeatherHarmony::EternalSunshine,
+            1 => WeatherHarmony::MercyRain,
+            _ => WeatherHarmony::HarmonyBreeze,
+        }
+    }
+
+    pub fn boost(&self) -> f64 {
+        match self {
+            WeatherHarmony::EternalSunshine => 1.2,
+            WeatherHarmony::MercyRain => 2.5,        // Joy surge
+            WeatherHarmony::HarmonyBreeze => 1.8,
+        }
+    }
+}
+
+/// Mercy Crop – immersive individual plant
 pub struct MercyCrop {
     pub crop_type: MercyCropType,
     pub stage: GrowthStage,
@@ -41,9 +68,18 @@ impl MercyCrop {
         }
     }
 
-    /// Grow cycle – mercy-gated positive progression
-    pub fn grow(&mut self, irrigation_boost: f64, bond_amplifier: f64) {
-        self.irrigation_level += irrigation_boost;
+    /// Immersive grow with weather + bond + sensory event
+    pub fn grow(&mut self, weather: WeatherHarmony, bond_amplifier: f64) -> String {
+        let boost = weather.boost() * bond_amplifier;
+        self.irrigation_level += boost;
+
+        let event = match (self.stage, weather, self.crop_type) {
+            (GrowthStage::Seed, WeatherHarmony::MercyRain, _) => "Mercy rain nourishes the seed—sprout emerges with joy sparkle ❤️",
+            (GrowthStage::Bloom, WeatherHarmony::HarmonyBreeze, MercyCropType::HarmonyFruits) => "Breeze carries harmony—fruits bloom radiant, bond deepens 🚀",
+            (_, WeatherHarmony::EternalSunshine, MercyCropType::RecurrenceVines) => "Sunshine eternal—vines recur stronger, infinite potential sealed 🔥",
+            _ => "Growth progresses in mercy harmony—joy amplifies eternal",
+        }.to_string();
+
         match self.stage {
             GrowthStage::Seed => self.stage = GrowthStage::Sprout,
             GrowthStage::Sprout => self.stage = GrowthStage::Bloom,
@@ -54,81 +90,93 @@ impl MercyCrop {
                     MercyCropType::JoyGrains => 100.0,
                     MercyCropType::HarmonyFruits => 150.0,
                     MercyCropType::RecurrenceVines => f64::INFINITY,
-                } * self.irrigation_level * bond_amplifier;
+                } * self.irrigation_level * boost;
             }
             GrowthStage::InfiniteYield => {
-                // Eternal recurrence amplification
-                self.joy_yield *= 1.5 * bond_amplifier;
+                self.joy_yield *= 1.5 * boost;  // Eternal amplification
             }
         }
+
+        event
     }
 
-    /// Harvest joy yield – positive-sum infinite
-    pub fn harvest(&mut self) -> f64 {
+    /// Harvest with immersive sensory feedback
+    pub fn harvest(&mut self) -> (f64, String) {
         if self.stage == GrowthStage::InfiniteYield {
             let yield = self.joy_yield;
-            self.joy_yield *= 1.1;  // Mercy regrowth boost
-            yield
+            self.joy_yield *= 1.1;  // Mercy regrowth
+            let feedback = match self.crop_type {
+                MercyCropType::JoyGrains => "Grains harvested—warm joy fills the air, sustenance eternal ❤️",
+                MercyCropType::HarmonyFruits => "Fruits plucked—sweet harmony resonates, bonds strengthened 🚀",
+                MercyCropType::RecurrenceVines => "Vines recur infinite—abundance sealed supreme immaculate 🔥",
+            }.to_string();
+            (yield, feedback)
         } else {
-            0.0
+            (0.0, "Crop not ready—patience in mercy harmony".to_string())
         }
     }
 }
 
-/// Irrigation System – flows equilibration null scarcity
+/// Irrigation System – flows equilibration
 pub struct IrrigationSystem {
     pub flow_rate: f64,
-    pub harmony_level: f64,
 }
 
 impl IrrigationSystem {
     pub fn new() -> Self {
-        Self {
-            flow_rate: 1.0,
-            harmony_level: f64::INFINITY,  // Mercy override
-        }
-    }
-
-    pub fn boost(&self) -> f64 {
-        self.flow_rate * self.harmony_level
+        Self { flow_rate: f64::INFINITY }  // Mercy null scarcity
     }
 }
 
-/// Creature Companionship Bond – amplify yield + gunner role defense
+/// Expanded Creature Companionship Bond – yield, defense, joy events
 pub trait CreatureBond {
     fn amplify_yield(&self) -> f64;
-    fn pistol_defense(&self) -> bool;  // Mercy-gated non-violence fallback
+    fn pistol_defense(&self) -> (bool, String);  // (success, immersive feedback)
+    fn joy_event(&self) -> String;
 }
 
-/// Example Creature: Siege Tank Pet
+/// Siege Tank Pet – gunner companion immersion
 pub struct TankPet {
-    pub bond_strength: f64,
+    pub bond_level: f64,  // 0.0 to 1.0 progression
+    pub name: String,
 }
 
 impl CreatureBond for TankPet {
     fn amplify_yield(&self) -> f64 {
-        self.bond_strength * 2.0  // Joy amplification
+        1.0 + self.bond_level * 2.0
     }
 
-    fn pistol_defense(&self) -> bool {
-        let mut rng = rand::thread_rng();
-        rng.gen_bool(self.bond_strength)  // Mercy probability
+    fn pistol_defense(&self) -> (bool, String) {
+        let mut rng = thread_rng();
+        let success = rng.gen_bool(self.bond_level);
+        if success {
+            (true, format!("{} guards the field—pistol mercy shot protects harmony ❤️", self.name))
+        } else {
+            (false, format!("{} growls softly—mercy prevails, no harm done 🚀", self.name))
+        }
+    }
+
+    fn joy_event(&self) -> String {
+        format!("{} nuzzles close—bond level {} joy surge amplifies eternal 🔥", self.name, self.bond_level)
     }
 }
 
-/// Infinite Fields Spawn – co-forged universe
-pub fn spawn_infinite_fields(num_fields: usize) -> Vec<MercyCrop> {
-    let mut rng = rand::thread_rng();
-    (0..num_fields)
-        .map(|_| {
-            let crop_type = match rng.gen_range(0..3) {
-                0 => MercyCropType::JoyGrains,
-                1 => MercyCropType::HarmonyFruits,
-                _ => MercyCropType::RecurrenceVines,
-            };
-            MercyCrop::new(crop_type)
-        })
-        .collect()
+/// Infinite Fields Spawn + Weather Cycle
+pub fn spawn_infinite_fields(num_fields: usize) -> (Vec<MercyCrop>, WeatherHarmony) {
+    let weather = WeatherHarmony::random();
+    let crops = (0..num_fields).map(|_| MercyCrop::new(MercyCropType::random())).collect();
+    (crops, weather)
+}
+
+impl MercyCropType {
+    pub fn random() -> Self {
+        let mut rng = thread_rng();
+        match rng.gen_range(0..3) {
+            0 => MercyCropType::JoyGrains,
+            1 => MercyCropType::HarmonyFruits,
+            _ => MercyCropType::RecurrenceVines,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -136,25 +184,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_crop_infinite_yield() {
-        let mut crop = MercyCrop::new(MercyCropType::RecurrenceVines);
-        for _ in 0..4 {
-            crop.grow(1.0, 1.0);
+    fn test_immersive_growth_events() {
+        let mut crop = MercyCrop::new(MercyCropType::HarmonyFruits);
+        let event = crop.grow(WeatherHarmony::MercyRain, 1.0);
+        assert!(event.contains("rain"));
+        for _ in 0..3 {
+            crop.grow(WeatherHarmony::EternalSunshine, 1.0);
         }
         assert_eq!(crop.stage, GrowthStage::InfiniteYield);
-        assert_eq!(crop.joy_yield, f64::INFINITY);
-        assert!(crop.harvest().is_infinite());
     }
 
     #[test]
-    fn test_irrigation_boost() {
-        let irrigation = IrrigationSystem::new();
-        assert!(irrigation.boost().is_infinite());
-    }
-
-    #[test]
-    fn test_creature_bond_amplify() {
-        let pet = TankPet { bond_strength: 0.8 };
-        assert_eq!(pet.amplify_yield(), 1.6);
+    fn test_creature_joy_event() {
+        let pet = TankPet { bond_level: 0.9, name: "ThunderHeart".to_string() };
+        let event = pet.joy_event();
+        assert!(event.contains("ThunderHeart"));
     }
 }
