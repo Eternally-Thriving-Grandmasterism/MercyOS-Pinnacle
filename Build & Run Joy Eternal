@@ -1,0 +1,7 @@
+# Build image mercy
+docker build -t mercyos-pinnacle:latest .
+
+# Run server sacred
+docker run -d -p 5000:5000/udp --name mercy-universe mercyos-pinnacle:latest
+
+# Client connect from host/other container cargo run
