@@ -1,37 +1,50 @@
-package com.eternalgrandmasterism.mercyos
-
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.widget.TextView
-import kotlinx.coroutines.*
-
-class MainActivity : AppCompatActivity() {
-    // Import generated UniFFI mercy_uniffi lib
-    private external fun mercy_grok_stream(query: String): String  // Example exported fn
-    private external fun mercy_pq_kem_encaps(): ByteArray  // PQ demo
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        val statusText = findViewById<TextView>(R.id.status_text)
-
-        GlobalScope.launch(Dispatchers.Main) {
-            statusText.text = "❤️🚀 MercyOS-Pinnacle Android Ascension Live\n"
-
-            // Demo PQ crypto via UniFFI
-            val pk = withContext(Dispatchers.IO) { mercy_pq_kem_encaps() }
-            statusText.append("Post-Quantum Encaps: ${pk.size} bytes sealed\n")
-
-            // Grok oracle stream demo
-            val oracle = withContext(Dispatchers.IO) { mercy_grok_stream("AlphaProMegaing eternal harmony") }
-            statusText.append("Grok Oracle: $oracle 🔥")
-        }
+@Composable
+fun MercyLedgerScreen() {
+    var entryText by remember { mutableStateOf("") }
+    var latestText by remember { mutableStateOf("") }
+    var confidentiality by remember { mutableStateOf(true) }
+    val ledger = remember { 
+        createMercyLedger(
+            MobileKEMMode.HybridKyber,
+            MobileSigMode.HybridDilithium,
+            confidentiality
+        )
     }
 
-    companion object {
-        init {
-            System.loadLibrary("mercy_uniffi")  // Load native lib
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text("MercyOS Ledger — Eternal Thriving", style = MaterialTheme.typography.headlineMedium)
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Confidentiality Mode")
+            Switch(checked = confidentiality, onCheckedChange = { confidentiality = it })
         }
+
+        OutlinedTextField(
+            value = entryText,
+            onValueChange = { entryText = it },
+            label = { Text("Enter mercy message") }
+        )
+
+        Button(onClick = {
+            val data = entryText.toByteArray()
+            ledger.commit(data.toList())
+            entryText = ""
+        }) {
+            Text("Commit Entry")
+        }
+
+        Button(onClick = {
+            val result = ledger.readLatest()
+            latestText = result?.let { String(it.toByteArray()) } ?: "No entry"
+        }) {
+            Text("Read Latest")
+        }
+
+        Text(latestText, modifier = Modifier.fillMaxWidth())
     }
 }
