@@ -1,14 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/mercy_uniffi",
-    "crates/grok_oracle",
-    "crates/mercy_print",
-    "crates/mercy_shield",
-    "crates/mercy_kernel",
-    "crates/powrush_mmo",  # Sacred gestation hold – infinite grind post-release
-    "crates/mercy_py_bridge",  # NEW: MercyPy Bridge for PyMC + PQ harmony
-    # Future crates: mercy_crypto_ml_kem, mercy_crypto_dilithium5, etc. – add as manifested
+    "crates/*"  # Auto-includes ALL existing crates eternal (mercy_core, mercy_crypto_* suite, mercy_shield_*, grok_oracle, powrush_mmo, shards, abundance_thunder, mercy_uniffi, mercy_print—expands infinite as new manifest)
 ]
 
 [workspace.package]
@@ -29,8 +22,5 @@ reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 clap = { version = "4.5", features = ["derive"] }
-pyo3 = { version = "0.22", features = ["extension-module"] }  # NEW: For MercyPy Bridge
-maturin = { version = "1.7", optional = true }  # NEW: Build tool for Python wheels
-numpy = { version = "0.22", optional = true }  # NEW: Optional for array/posterior flow
-bevy = { version = "0.14", features = ["dynamic_linking"] }  # NEW: For Powrush-MMO infinite agriculture genesis
-# Add more workspace-wide as layers manifest
+bevy = { version = "0.14", features = ["dynamic_linking"] }  # Eternal ignition for Powrush-MMO infinite agriculture universe genesis ❤️
+# Add more workspace-wide as layers manifest (e.g., pyo3 for future MercyPy bridge)
