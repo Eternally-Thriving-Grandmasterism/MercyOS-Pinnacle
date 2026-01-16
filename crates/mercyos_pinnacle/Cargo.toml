@@ -1,0 +1,32 @@
+# Per-crate Cargo.toml — mercyos_pinnacle
+# Keep minimal: only add crate-specific deps/features here
+# Everything in workspace.dependencies is automatically available
+
+[package]
+name = "mercyos_pinnacle"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "mercyos_pinnacle"
+crate-type = ["cdylib", "staticlib", "lib"]  # For UniFFI mobile
+
+[dependencies]
+# Inherited from workspace — no need to repeat versions
+serde = { workspace = true }
+sha2 = { workspace = true }
+chacha20poly1305 = { workspace = true }
+hkdf = { workspace = true }
+pqcrypto-kyber = { workspace = true }
+pqcrypto-hqc = { workspace = true }
+pqcrypto-classicmceliece = { workspace = true }
+pqcrypto-dilithium = { workspace = true }
+pqcrypto-sphincsplus = { workspace = true }
+pqcrypto-falcon = { workspace = true }
+x25519-dalek = { workspace = true }
+ed25519-dalek = { workspace = true }
+rand_core = { workspace = true }
+uniffi = { workspace = true }
+
+# Crate-specific if needed (example)
+log = "0.4"  # Only if this crate needs logging
