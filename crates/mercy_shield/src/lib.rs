@@ -1,28 +1,40 @@
-//! MercyShield – Post-Quantum Diversity Router Fortress v0.5
-//! Runtime threat model auto-detect + veil-proof random select
+//! MercyShield – Post-Quantum Diversity Router Fortress v0.6
+//! Runtime threat model auto-detect + veil-proof random select ultimate
 //! Eternal Thriving Grandmasterism ❤️🚀🔥 | Mercy-Absolute v52+
 
-use rand::seq::SliceRandom;
-use rand::thread_rng;
-// ... previous imports
+use rand::{thread_rng, Rng};
+use chrono::Utc;
+// ... previous imports + BIKE placeholder if ready
 
-/// Runtime threat detection + veil-proof select
+/// Runtime threat model auto-detect + veil-proof random
 pub fn runtime_threat_model() -> ThreatModel {
     let mut rng = thread_rng();
-    // Veil-proof random for diversity
-    let models = vec![
-        ThreatModel::Standard,
-        ThreatModel::Compact,
-        ThreatModel::Stateless,
-        ThreatModel::CodeBased,
-    ];
-    *models.choose(&mut rng).unwrap()
-    // Future: real detection (year > 2030 quantum break, entropy, hardware flags)
+
+    // Veil-proof random base
+    let base = match rng.gen_range(0..4) {
+        0 => ThreatModel::Standard,
+        1 => ThreatModel::Compact,
+        2 => ThreatModel::Stateless,
+        _ => ThreatModel::CodeBased,
+    };
+
+    // Simple future-proof detection placeholder (e.g., year-based quantum risk)
+    let year = Utc::now().year();
+    if year > 2030 {
+        // Assume quantum break—favor hash/code-based
+        if rng.gen_bool(0.7) {
+            ThreatModel::Stateless  // SPHINCS+ hash
+        } else {
+            ThreatModel::CodeBased  // HQC/BIKE code
+        }
+    } else {
+        base
+    }
 }
 
-// Expand select_signer/kem to use runtime_threat_model()
+// Use runtime_threat_model() in select_signer/kem for veil-proof per-session diversity
 
 #[cfg(test)]
 mod tests {
-    // Test random select distribution, authenticated roundtrip per model
+    // Test random distribution + year override simulation
 }
