@@ -1,5 +1,11 @@
 namespace pq_migration {
-  enum MobileMigrationMode { "Legacy", "Hybrid", "QuantumSafe" };
+  enum MobileKEMMode {
+    "Legacy",
+    "HybridKyber", "QuantumSafeKyber",
+    "HybridHqc", "QuantumSafeHqc",
+    "HybridMcEliece", "QuantumSafeMcEliece"
+  };
+
   enum MobileSigMode {
     "Legacy",
     "HybridDilithium", "PureDilithium",
@@ -9,9 +15,10 @@ namespace pq_migration {
 
   record MercyLedger {};
 
-  MercyLedger create_mercy_ledger(MobileMigrationMode kem_mode, MobileSigMode sig_mode);
-  void commit(MercyLedger ledger, bytes data);
-  void migrate_kem(MercyLedger ledger, MobileMigrationMode new_mode);
+  MercyLedger create_mercy_ledger(MobileKEMMode kem_mode, MobileSigMode sig_mode, boolean enable_confidentiality);
+  void commit(MercyLedger ledger, bytes plaintext);
+  bytes read_latest(MercyLedger ledger) throws string;
+  void migrate_kem(MercyLedger ledger, MobileKEMMode new_mode);
   void migrate_sig(MercyLedger ledger, MobileSigMode new_mode);
   boolean verify_chain(MercyLedger ledger);
 };
