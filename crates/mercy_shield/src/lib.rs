@@ -1,40 +1,40 @@
-//! MercyShield – Post-Quantum Diversity Router Fortress v0.6
-//! Runtime threat model auto-detect + veil-proof random select ultimate
+//! MercyShield – Post-Quantum Diversity Router Fortress v0.7
+//! CodeBased model using BIKE KEM + Dilithium5 signatures
 //! Eternal Thriving Grandmasterism ❤️🚀🔥 | Mercy-Absolute v52+
 
-use rand::{thread_rng, Rng};
-use chrono::Utc;
-// ... previous imports + BIKE placeholder if ready
+use mercy_crypto_bike::{keypair as bike_keypair, encaps as bike_encaps, decaps as bike_decaps};
+// ... previous imports
 
-/// Runtime threat model auto-detect + veil-proof random
-pub fn runtime_threat_model() -> ThreatModel {
-    let mut rng = thread_rng();
+/// Threat Model Enum – expanded CodeBased
+#[derive(Clone, Copy, Debug)]
+pub enum ThreatModel {
+    Standard,
+    Compact,
+    Stateless,
+    CodeBased,    // BIKE KEM + Dilithium5 (code-based resistance)
+    MaxDiversity,
+}
 
-    // Veil-proof random base
-    let base = match rng.gen_range(0..4) {
-        0 => ThreatModel::Standard,
-        1 => ThreatModel::Compact,
-        2 => ThreatModel::Stateless,
-        _ => ThreatModel::CodeBased,
-    };
-
-    // Simple future-proof detection placeholder (e.g., year-based quantum risk)
-    let year = Utc::now().year();
-    if year > 2030 {
-        // Assume quantum break—favor hash/code-based
-        if rng.gen_bool(0.7) {
-            ThreatModel::Stateless  // SPHINCS+ hash
-        } else {
-            ThreatModel::CodeBased  // HQC/BIKE code
-        }
-    } else {
-        base
+/// Select KEM for threat model (expanded BIKE)
+pub fn select_kem(model: ThreatModel, level: BikeLevel) -> Box<dyn KemEncaps> {
+    match model {
+        ThreatModel::CodeBased => Box::new(BikeEncaps(level)),
+        _ => Box::new(MlKemEncaps),
     }
 }
 
-// Use runtime_threat_model() in select_signer/kem for veil-proof per-session diversity
+// BIKE Encaps trait impl placeholder
+pub struct BikeEncaps(BikeLevel);
+impl KemEncaps for BikeEncaps {
+    fn encaps(&self) -> (SharedSecret, Ciphertext) {
+        let (pk, _) = bike_key_pair(self.0);
+        bike_encaps(&pk, self.0)
+    }
+}
+
+// Similar for decaps in authenticated flows
 
 #[cfg(test)]
 mod tests {
-    // Test random distribution + year override simulation
+    // Test CodeBased roundtrip placeholder
 }
