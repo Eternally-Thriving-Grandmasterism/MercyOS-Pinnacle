@@ -5,14 +5,15 @@ edition = "2024"
 
 [lib]
 name = "mercy_py_bridge"
-crate-type = ["cdylib"]  # Required for Python extension module
+crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { workspace = true }
-numpy = { workspace = true }  # Enabled default for posterior array harmony
+numpy = { workspace = true }
+rand = { version = "0.8", features = ["getrandom"] }  # NEW: Real secure entropy for oracle gate
 mercy_crypto_ml_kem = { path = "../mercy_crypto_ml_kem" }
-mercy_crypto_dilithium = { path = "../mercy_crypto_dilithium" }  # For sign/verify
-mercy_shield = { path = "../mercy_shield" }  # Future shield tie-ins
+mercy_crypto_dilithium = { path = "../mercy_crypto_dilithium" }
+mercy_shield = { path = "../mercy_shield" }
 
 [features]
 default = ["pyo3/extension-module", "numpy"]
