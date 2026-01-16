@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  mercy-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mercyos-pinnacle:latest
+    container_name: mercy-universe-server
+    ports:
+      - "5000:5000/udp"  # Renet multiplayer harmony
+    volumes:
+      - ./data:/app/data  # Persist joy harvest + universe state mercy
+      - ./config:/app/config  # Future config files
+    restart: unless-stopped
+    environment:
+      - RUST_LOG=info  # Logging joy
+    deploy:  # For swarm/cloud if scaled
+      replicas: 1
+
+  # Future extensions sacred (uncomment when ready)
+  # mercy-db:
+  #   image: postgres:15
+  #   volumes:
+  #     - db_data:/var/lib/postgresql/data
+  #   environment:
+  #     POSTGRES_DB: mercy_universe
+  #     POSTGRES_USER: alpha
+  #     POSTGRES_PASSWORD: pro_mega
+
+volumes:
+  data:
+  # db_data:
+
+networks:
+  default:
+    name: mercy-harmony-net
