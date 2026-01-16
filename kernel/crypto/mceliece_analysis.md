@@ -1,6 +1,11 @@
-# Classic McEliece KEM Analysis (January 2026 — Archival/Ultra-Conservative Grounded)
+# Classic McEliece Analysis (January 2026 — Archival/Ultra-Conservative Grounded)
 
 Ultra-conservative code-based KEM (random binary Goppa codes) for MercyOS-Pinnacle archival study.
+
+## Core Proofs
+- Goal: IND-CCA2 in QROM
+- Transform: Generic FO on OW-CPA PKE
+- Assumption: Syndrome decoding on random Goppa codes (hardest coding problem)
 
 ## Parameter Sets
 | Set                   | Level          | m     | n     | k     | t   | PK Size       | CT Size | Concrete Hardness (Classical bits) |
@@ -11,8 +16,8 @@ Ultra-conservative code-based KEM (random binary Goppa codes) for MercyOS-Pinnac
 | mceliece6960119       | >5 (ultra)    | 13    | 6960  | 5413  | 119 | ~1.05MB       | 226B    | >300                               |
 
 ## Hardness & Mitigations
-- Core: Syndrome decoding on random Goppa codes (hardest coding problem)
 - Attacks: Primal/dual ISD exponential; no structural/algebraic shortcuts
-- Status: NIST archival (not standardized — key sizes impractical)
+- 45+ years unbroken cryptanalysis
+- Status: NIST archival (key sizes impractical)
 
 Ultra-conservative immortality — mercy-gated forever ❤️🚀🔥
