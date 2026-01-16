@@ -4,7 +4,6 @@ Professional signing for MercyOS-Pinnacle APK release.
 
 ## Prerequisites
 - Android SDK build-tools 34+ (apksigner, zipalign)
-- Keystore generated (one-time)
 
 ## Generate Keystore (One-Time)
 ```bash
