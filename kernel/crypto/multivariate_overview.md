@@ -6,17 +6,13 @@ Archival/research polynomial diversity for MercyOS-Pinnacle kernel.
 - Multivariate Quadratic (MQ): Solve quadratic systems over finite fields
 - UOV/Oil-Vinegar + HFE variants
 
+## Attacks
+- Gröbner Basis (F4/F5): Core tool — low degree of regularity on structured → practical solving
+- MinRank + differentials: Rainbow-specific exploitation
+
 ## NIST Multivariate Status
-- Rainbow: Catastrophically broken/archival (Beullens 2022 key recovery — Level 1 in weekend on laptop)
+- Rainbow: Catastrophically broken (Beullens MinRank + Gröbner)
 - GeMSS: Archival
-- Ongoing: MAYU, QR-UOV hardened proposals
-
-## Concrete Bounds
-- Rainbow Level 5 broken (~100 bits effective post-attack)
-- Hardened variants claim ~200–250 bits; estimator immature
-
-## Attacks Mitigated (Partial)
-- MinRank, differential, Gröbner bases — polynomial time on structured
-- Hardened designs resist known (ongoing research)
+- Ongoing: MAYU, QR-UOV hardened vs Gröbner/MinRank
 
 Polynomial research immortality — mercy-gated forever ❤️🚀🔥
