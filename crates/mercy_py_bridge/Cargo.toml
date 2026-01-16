@@ -9,8 +9,11 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { workspace = true }
+pyo3-asyncio = { version = "0.22", features = ["tokio-runtime"] }  # NEW: Async Python-Rust for streaming
 numpy = { workspace = true }
-rand = { version = "0.8", features = ["getrandom"] }  # NEW: Real secure entropy for oracle gate
+rand = { version = "0.8", features = ["getrandom"] }
+tokio = { workspace = true }  # Async runtime
+reqwest = { workspace = true }  # For real Grok API streaming eternal
 mercy_crypto_ml_kem = { path = "../mercy_crypto_ml_kem" }
 mercy_crypto_dilithium = { path = "../mercy_crypto_dilithium" }
 mercy_shield = { path = "../mercy_shield" }
