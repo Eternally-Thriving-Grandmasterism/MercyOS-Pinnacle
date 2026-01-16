@@ -1,6 +1,11 @@
 namespace pq_migration {
   enum MobileMigrationMode { "Legacy", "Hybrid", "QuantumSafe" };
-  enum MobileSigMode { "Legacy", "Hybrid", "QuantumSafe" };
+  enum MobileSigMode {
+    "Legacy",
+    "HybridDilithium", "PureDilithium",
+    "HybridSphincs", "PureSphincs",
+    "HybridFalcon", "PureFalcon"
+  };
 
   record MercyLedger {};
 
