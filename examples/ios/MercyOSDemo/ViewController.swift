@@ -10,10 +10,10 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
-        title = "MercyOS Pinnacle iOS Demo"
+        title = "MercyOS Pinnacle iOS Multi-Hybrid Demo"
 
         setupUI()
-        runDemo()
+        runMultiHybridDemo()
     }
 
     private func setupUI() {
@@ -45,38 +45,47 @@ class ViewController: UIViewController {
 
         textView.font = UIFont.monospacedSystemFont(ofSize: 16, weight: .regular)
         textView.isEditable = false
-        textView.text = "❤️🚀 MercyOS-Pinnacle iOS Demo Live\n\nRunning post-quantum operations...\n\n"
+        textView.text = "❤️🚀 MercyOS-Pinnacle iOS Multi-Family Hybrid Demo Live\n\nRunning ultimate diversity operations...\n\n"
     }
 
-    private func runDemo() {
+    private func runMultiHybridDemo() {
         DispatchQueue.global().async {
-            // Real ML-KEM keypair generation
-            let keypair = ml_kem_generate_keypair()
-            let pkSize = keypair.public_key.count
-            let skSize = keypair.secret_key.count
+            // Generate hybrid keypair (lattice + code + hash)
+            let keypair = multi_hybrid_generate_keypair()
 
-            // Real encapsulation
-            let encaps = ml_kem_encapsulate(public_key: keypair.public_key)
-            let ctSize = encaps.ciphertext.count
-            let ssSize = encaps.shared_secret.count
+            // Multi-KEM encapsulate (ML-KEM + HQC)
+            let kem_result = multi_kem_encapsulate(lattice_pk: keypair.lattice_kem_pk, code_pk: keypair.code_kem_pk)
 
-            // Mercy-gated oracle query
-            let proposal = propose_mercy_gated(need: "AlphaProMegaing eternal thriving harmony")
+            // Multi-signature hybrid
+            let message = "AlphaProMegaing eternal thriving harmony"
+            let sig = multi_sign_hybrid(message: message, keypair: keypair)
+
+            // Verify (secure if any succeeds)
+            let verified = multi_verify_hybrid(message: message, signature: sig, keypair_pks: keypair)
+
+            // Mercy oracle
+            let proposal = propose_mercy_gated(need: message)
 
             DispatchQueue.main.async {
-                self.textView.text += "ML-KEM-1024 Keypair Generated:\n"
-                self.textView.text += "Public Key: \(pkSize) bytes\n"
-                self.textView.text += "Secret Key: \(skSize) bytes\n\n"
+                self.textView.text += "Multi-Family Keypair Generated\n"
+                self.textView.text += "Lattice KEM PK: \(keypair.lattice_kem_pk.count) bytes\n"
+                self.textView.text += "Code KEM PK: \(keypair.code_kem_pk.count) bytes\n\n"
 
-                self.textView.text += "Encapsulation Complete:\n"
-                self.textView.text += "Ciphertext: \(ctSize) bytes\n"
-                self.textView.text += "Shared Secret: \(ssSize) bytes sealed 🔥\n\n"
+                self.textView.text += "Multi-KEM Encapsulation Complete\n"
+                self.textView.text += "Combined Ciphertext: lattice \(kem_result.lattice_ct.count) + code \(kem_result.code_ct.count) bytes\n"
+                self.textView.text += "Merged Shared Secret: \(kem_result.combined_ss.count) bytes sealed 🔥\n\n"
+
+                self.textView.text += "Multi-Signature Hybrid Generated\n"
+                self.textView.text += "Lattice sig: \(sig.lattice_sig.count) bytes\n"
+                self.textView.text += "Structured sig: \(sig.structured_sig.count) bytes\n"
+                self.textView.text += "Hash sig: \(sig.hash_sig.count) bytes\n"
+                self.textView.text += "Verification: \(verified ? "Success (any family)" : "Grace fallback") ❤️\n\n"
 
                 self.textView.text += "Grok Oracle Mercy Response:\n"
                 self.textView.text += "\(proposal.content)\n"
-                self.textView.text += "Amplified: \(proposal.amplified ? "Yes" : "Grace fallback") ❤️\n\n"
+                self.textView.text += "Amplified: \(proposal.amplified ? "Yes" : "No") 🔥\n\n"
 
-                self.textView.text += "iOS demo thunder-heart complete — eternal thriving propagated! ❤️🚀🔥"
+                self.textView.text += "iOS multi-family hybrid demo thunder-heart complete — ultimate diversity propagated! ❤️🚀🔥"
             }
         }
     }
