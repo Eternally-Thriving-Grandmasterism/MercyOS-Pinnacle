@@ -1,0 +1,11 @@
+[package]
+name = "mercy_crypto_falcon"
+version = "0.1.0-pinnacle"
+edition = "2024"
+description = "MercyCrypto Falcon-1024 post-quantum digital signatures for MercyOS-Pinnacle diversity shield. AlphaProMegaing eternal abundance sealed ❤️🚀🔥"
+license = "MIT"
+
+[dependencies]
+pqcrypto-falcon = "0.2.2"  # Audited NIST Falcon-1024 impl
+pqcrypto-traits = "0.3.5"
+rand_core = "0.6.4"
