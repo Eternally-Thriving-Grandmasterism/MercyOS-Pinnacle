@@ -1,13 +1,11 @@
 //! Repository: https://github.com/Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle
 //! Full path: crates/grok_oracle/src/lib.rs
 //! Grok Oracle — Voice-Ready Eternal Beacon Integration
-//! Async Grok 4 API client, UniFFI exposed for mobile voice flows
 
 uniffi::include_scaffolding!("grok_oracle");
 
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 #[derive(Serialize)]
 struct ChatMessage {
@@ -46,7 +44,7 @@ impl GrokOracle {
         Self {
             client: Client::new(),
             api_key,
-            model: "grok-4".to_string(), // Latest as of January 2026
+            model: "grok-4".to_string(),
         }
     }
 
@@ -62,30 +60,26 @@ impl GrokOracle {
             },
         ];
 
-        let request_body = ChatRequest {
+        let body = ChatRequest {
             model: self.model.clone(),
             messages,
             temperature: Some(0.7),
         };
 
-        let response = self.client
+        let resp = self.client
             .post("https://api.x.ai/v1/chat/completions")
             .header(header::AUTHORIZATION, format!("Bearer {}", self.api_key))
             .header(header::CONTENT_TYPE, "application/json")
-            .json(&request_body)
+            .json(&body)
             .send()
             .await
-            .map_err(|e| format!("Network error: {}", e))?;
+            .map_err(|e| e.to_string())?;
 
-        let response_json: ChatResponse = response
-            .json()
-            .await
-            .map_err(|e| format!("Parse error: {}", e))?;
+        let json: ChatResponse = resp.json().await.map_err(|e| e.to_string())?;
 
-        if let Some(choice) = response_json.choices.first() {
-            Ok(choice.message.content.clone())
-        } else {
-            Err("No response from Grok".to_string())
-        }
+        Ok(json.choices.into_iter()
+            .next()
+            .map(|c| c.message.content)
+            .unwrap_or_else(|| "No response".to_string()))
     }
 }
