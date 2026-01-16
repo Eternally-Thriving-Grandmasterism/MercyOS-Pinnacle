@@ -1,31 +1,30 @@
-# Root workspace Cargo.toml — human beacon for clarity
-# This file defines the entire monorepo workspace
-# All pqcrypto dependencies are listed here for single-source-of-truth version management
-# Crates inherit them automatically
+# Root workspace Cargo.toml — Human-readable beacon for clarity & maintainability
+# This is the single source of truth for shared dependencies across the monorepo
+# All member crates inherit these automatically → no duplication, easy version bumps
+# pqcrypto crates centralized here for audit/upgrade simplicity
+# Add new shared deps to [workspace.dependencies] — crate-specific extras go in per-crate files
 
 [workspace]
 members = [
     "crates/grok_oracle",
-    "crates/mercy_hybrid_manager",
-    "crates/mercy_ledger",
+    "crates/mercyos_pinnacle",
+    "crates/mercy_hybrid_manager",  # Future split if needed
     "crates/abundance_thunder",
     "crates/powrush_mmo",
-    # ... add new crates here
+    # Add new crates here — Cargo will auto-detect
 ]
 
 [workspace.dependencies]
-bevy = { version = "0.13", features = ["dynamic"] }
-tokio = { version = "1.36", features = ["full"] }
-uniffi = { version = "0.28", features = ["build"] }
-reqwest = { version = "0.12", features = ["json"] }
+# Core shared
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+tokio = { version = "1.36", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+uniffi = { version = "0.28", features = ["build"] }
 thiserror = "1.0"
-futures = "0.3"
-hkdf = "0.12"
-sha2 = "0.10"
+rand_core = "0.6"
 
-# Latest pqcrypto crates (January 2026) — centralized here for easy audit/upgrade
+# Crypto shared
 pqcrypto-kyber = "0.8.1"
 pqcrypto-dilithium = "0.5.0"
 pqcrypto-sphincsplus = "0.5.0"
@@ -35,8 +34,12 @@ pqcrypto-classicmceliece = "0.2.0"
 pqcrypto-traits = "0.3.5"
 x25519-dalek = { version = "2", features = ["static_keys"] }
 ed25519-dalek = { version = "2", features = ["rand_core"] }
-rand_core = "0.6"
-chacha20poly1305 = "0.10"  # For envelope encryption using KEM shared secrets
+sha2 = "0.10"
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+
+# Game / abundance
+bevy = { version = "0.13", features = ["dynamic"] }
 
 [build-dependencies]
 uniffi = { version = "0.28", features = ["build"] }
