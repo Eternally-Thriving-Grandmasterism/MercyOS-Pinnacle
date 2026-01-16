@@ -1,0 +1,15 @@
+[package]
+name = "grok_oracle"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "grok_oracle"
+crate-type = ["cdylib", "staticlib", "lib"]
+
+[dependencies]
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+uniffi = { workspace = true }
