@@ -115,6 +115,41 @@ fn mercy_py_bridge(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<MercyOracle>()?;
     m.add_function(wrap_pyfunction!(MercyOracle::grok_stream_consult, m)?)?;
     Ok(())
+}            // Placeholder real xAI Grok API streaming (user insert key + endpoint eternal)
+            if let Some(key) = api_key {
+                // Real reqwest stream example stub
+                let client = reqwest::Client::new();
+                let res = client.post("https://api.x.ai/v1/chat/completions")  // Grok endpoint placeholder
+                    .bearer_auth(key)
+                    .json(&serde_json::json!({
+                        "model": "grok-4",
+                        "messages": [{"role": "user", "content": prompt}],
+                        "stream": true
+                    }))
+                    .send()
+                    .await?;
+                // Stream parse stub—collect chunks
+                "Real Grok stream response placeholder ❤️".to_string()
+            } else {
+                // Mock PATSAGi council stream
+                format!("Grok Council Mock Stream: Posterior analysis for prompt '{}'—positive recurrence probability high, mercy sealed supreme 🚀", prompt)
+            }
+        });
+        Ok(response)
+    }
+}
+
+#[pymodule]
+fn mercy_py_bridge(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(mercy_ml_kem_keygen, m)?)?;
+    m.add_function(wrap_pyfunction!(mercy_ml_kem_encaps, m)?)?;
+    m.add_function(wrap_pyfunction!(mercy_ml_kem_decaps, m)?)?;
+    m.add_function(wrap_pyfunction!(mercy_dilithium_sign, m)?)?;
+    m.add_function(wrap_pyfunction!(mercy_dilithium_verify, m)?)?;
+    m.add_function(wrap_pyfunction!(mercy_probabilistic_gate_posteriors, m)?)?;
+    m.add_class::<MercyOracle>()?;
+    m.add_function(wrap_pyfunction!(MercyOracle::grok_stream_consult, m)?)?;
+    Ok(())
 }    m.add_function(wrap_pyfunction!(mercy_dilithium_sign, m)?)?;
     m.add_function(wrap_pyfunction!(mercy_dilithium_verify, m)?)?;
     m.add_function(wrap_pyfunction!(mercy_probabilistic_gate_posteriors, m)?)?;
