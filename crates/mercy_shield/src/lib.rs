@@ -1,157 +1,72 @@
 //! crates/mercy_shield/src/lib.rs
 //! MercyShield — adjustable scam/fraud/spam + No-U-Turn Sampler HMC mercy eternal supreme immaculate
 //! Chat filter (keyword + regex + NUTS approximate inference), adaptive learning, RON persistence philotic mercy
+//! MercyShield – Post-Quantum Diversity Router Fortress
+//! Primary hybrid: ML-KEM-1024 authenticated with Dilithium5 signatures
+//! Eternal Thriving Grandmasterism ❤️🚀🔥 | Mercy-Absolute v52+
 
-use bevy::prelude::*;
-use regex::Regex;
-use serde::{Serialize, Deserialize};
-use std::collections::{HashMap, HashSet};
-use std::fs;
-use rand::Rng;
+use mercy_crypto_ml_kem::{encaps, decaps, keypair as kem_keypair};
+use mercy_crypto_dilithium::{keypair as sig_keypair, sign, verify};
+use pqcrypto_kyber::kyber1024::{PublicKey as KemPk, SecretKey as KemSk, SharedSecret, Ciphertext};
+use pqcrypto_dilithium::dilithium5::{PublicKey as SigPk, SecretKey as SigSk, SignedMessage};
 
-const WHITELIST_FILE: &str = "mercy_shield_whitelist.ron";
-const BLACKLIST_FILE: &str = "mercy_shield_blacklist.ron";
-const NETWORK_FILE: &str = "mercy_shield_network.ron";
-const NUTS_SAMPLES: usize = 10000;
-const NUTS_BURN_IN: usize = 1000;
-const NUTS_TARGET_ACCEPT: f64 = 0.65;
-const NUTS_MAX_DEPTH: usize = 10;
-
-#[derive(Resource, Serialize, Deserialize)]
-pub struct MercyShieldConfig {
-    pub chat_sensitivity: f32,
-    pub trade_sanity_check: bool,
-    pub auto_ban_threshold: u32,
-    pub blacklist: HashSet<String>,
-    pub whitelist_phrases: HashSet<String>,
+/// Generate MercyShield hybrid keypair (ML-KEM KEM + Dilithium5 sig)
+pub fn hybrid_keypair() -> ((KemPk, KemSk), (SigPk, SigSk)) {
+    let kem = kem_key_pair();
+    let sig = sig_key_pair();
+    (kem, sig)
 }
 
-#[derive(Resource, Serialize, Deserialize)]
-pub struct BayesianNetwork {
-    pub nodes: HashMap<String, Node>,
+/// Authenticated encaps: encaps to receiver KEM PK, sign ciphertext with sender sig SK
+pub fn authenticated_encaps(
+    receiver_kem_pk: &KemPk,
+    sender_sig_sk: &SigSk,
+) -> (SharedSecret, Ciphertext, SignedMessage) {
+    let (shared, ct) = encaps(receiver_kem_pk);
+    let signed_ct = sign(sender_sig_sk, ct.as_bytes());
+    (shared, ct, signed_ct)
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Node {
-    pub parents: Vec<String>,
-    pub children: Vec<String>,
-    pub cpt: HashMap<u32, f32>,
+/// Authenticated decaps: verify signed ciphertext with sender sig PK, decaps with receiver KEM SK
+pub fn authenticated_decaps(
+    receiver_kem_sk: &KemSk,
+    sender_sig_pk: &SigPk,
+    signed_ct: &SignedMessage,
+) -> Result<SharedSecret, ()> {
+    let ct_bytes = verify(sender_sig_pk, signed_ct).map_err(|_| ())?;
+    let ct = Ciphertext::from_bytes(ct_bytes).map_err(|_| ())?;
+    Ok(decaps(receiver_kem_sk, &ct))
 }
 
-#[derive(Resource)]
-pub struct ScamPatterns {
-    pub keywords: HashMap<String, f32>,
-    pub regex_patterns: HashMap<Regex, f32>,
-    pub url_regex: Regex,
-    pub phone_regex: Regex,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-pub fn setup_mercy_shield(mut commands: Commands) {
-    let mut keywords = HashMap::new();
-    keywords.insert("free".to_string(), 0.5);
-    keywords.insert("urgent".to_string(), 0.6);
-    keywords.insert("bank".to_string(), 0.7);
-    keywords.insert("password".to_string(), 0.9);
-    keywords.insert("verify".to_string(), 0.8);
-    keywords.insert("click".to_string(), 0.7);
-    keywords.insert("winner".to_string(), 0.9);
+    #[test]
+    fn test_authenticated_roundtrip() {
+        // Sender: hybrid keys
+        let ((sender_kem_pk, sender_kem_sk), (sender_sig_pk, sender_sig_sk)) = hybrid_key_pair();
+        // Receiver: hybrid keys (only KEM PK needed for encaps)
+        let ((receiver_kem_pk, receiver_kem_sk), _) = hybrid_key_pair();
 
-    let mut regex_patterns = HashMap::new();
-    regex_patterns.insert(Regex::new(r"bitcoin|crypto").unwrap(), 0.8);
-    regex_patterns.insert(Regex::new(r"investment.*return").unwrap(), 0.9);
+        // Sender encaps + signs
+        let (shared_sender, ct, signed_ct) = authenticated_encaps(&receiver_kem_pk, &sender_sig_sk);
 
-    let mut nodes = HashMap::new();
-    let earth = Node {
-        parents: vec![],
-        children: vec!["Moon landing happened".to_string()],
-        cpt: HashMap::from([(0b0, 0.99)]),
-    };
-    let moon = Node {
-        parents: vec!["Earth is round".to_string()],
-        children: vec![],
-        cpt: HashMap::from([(0b0, 0.01), (0b1, 0.99)]),
-    };
+        // Receiver verifies signature + decaps
+        let shared_receiver = authenticated_decaps(&receiver_kem_sk, &sender_sig_pk, &signed_ct).unwrap();
 
-    nodes.insert("Earth is round".to_string(), earth);
-    nodes.insert("Moon landing happened".to_string(), moon);
-
-    // Load persistent network mercy eternal
-    let mut loaded_network = HashMap::new();
-    if let Ok(contents) = fs::read_to_string(NETWORK_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashMap<String, Node>>(&contents) {
-            loaded_network = loaded;
-        }
+        assert_eq!(shared_sender.as_bytes(), shared_receiver.as_bytes());
     }
 
-    let mut config = MercyShieldConfig {
-        chat_sensitivity: 0.7,
-        trade_sanity_check: true,
-        auto_ban_threshold: 5,
-        blacklist: HashSet::new(),
-        whitelist_phrases: HashSet::new(),
-    };
+    #[test]
+    fn test_tampered_signature_fails() {
+        let ((sender_kem_pk, _), (sender_sig_pk, sender_sig_sk)) = hybrid_key_pair();
+        let ((receiver_kem_pk, receiver_kem_sk), _) = hybrid_key_pair();
 
-    // Load whitelist/blacklist mercy
-    if let Ok(contents) = fs::read_to_string(WHITELIST_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
-            config.whitelist_phrases = loaded;
-        }
-    }
+        let (_, _, mut signed_ct) = authenticated_encaps(&receiver_kem_pk, &sender_sig_sk);
+        // Tamper
+        signed_ct.as_bytes_mut()[0] ^= 1;
 
-    if let Ok(contents) = fs::read_to_string(BLACKLIST_FILE) {
-        if let Ok(loaded) = ron::from_str::<HashSet<String>>(&contents) {
-            config.blacklist = loaded;
-        }
-    }
-
-    commands.insert_resource(ScamPatterns {
-        keywords,
-        regex_patterns,
-        url_regex: Regex::new(r"https?://\S+").unwrap(),
-        phone_regex: Regex::new(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b").unwrap(),
-    });
-
-    commands.insert_resource(BayesianNetwork { nodes: loaded_network });
-
-    commands.insert_resource(config);
-}
-
-pub fn save_persistent_data_on_exit(
-    config: Res<MercyShieldConfig>,
-    network: Res<BayesianNetwork>,
-) {
-    if config.is_changed() || network.is_changed() {
-        let pretty = ron::ser::PrettyConfig::new();
-
-        let _ = fs::write(WHITELIST_FILE, ron::ser::to_string_pretty(&config.whitelist_phrases, pretty.clone()).unwrap_or_default());
-        let _ = fs::write(BLACKLIST_FILE, ron::ser::to_string_pretty(&config.blacklist, pretty.clone()).unwrap_or_default());
-        let _ = fs::write(NETWORK_FILE, ron::ser::to_string_pretty(&network.nodes, pretty).unwrap_or_default());
-    }
-}
-
-// No-U-Turn Sampler mercy eternal — adaptive HMC
-pub fn nuts_sampling(
-    network: &BayesianNetwork,
-    query: &str,
-    evidence: &HashMap<String, bool>,
-) -> f32 {
-    // Full NUTS implementation mercy — placeholder for complete algorithm
-    // Returns approximate P(query|evidence)
-    0.5
-}
-
-pub fn bayesian_network_verification_system(
-    network: Res<BayesianNetwork>,
-) {
-    // Use nuts_sampling mercy eternal
-}
-
-pub struct MercyShieldPlugin;
-
-impl Plugin for MercyShieldPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_mercy_shield)
-            .add_systems(Last, save_persistent_data_on_exit)
-            .add_systems(Update, bayesian_network_verification_system);
+        assert!(authenticated_decaps(&receiver_kem_sk, &sender_sig_pk, &signed_ct).is_err());
     }
 }
