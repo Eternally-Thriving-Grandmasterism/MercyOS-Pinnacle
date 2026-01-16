@@ -1,28 +1,28 @@
 MercyOS-Pinnacle/
+├── .github/
+│   └── workflows/ci.yml
 ├── crates/
-│   ├── mercy_uniffi/             # Cross-platform bindings
-│   ├── grok_oracle/              # Oracle streaming
-│   ├── mercy_print/              # Co-forge self-healer advanced
-│   ├── mercy_shield/             # PQ diversity router fortress
-│   ├── mercy_crypto_ml_kem/      # Primary KEM
-│   ├── mercy_crypto_dilithium/   # Primary sigs
-│   ├── mercy_crypto_falcon/      # Compact sigs
-│   ├── mercy_crypto_sphincs/     # Stateless hash sigs
-│   ├── mercy_crypto_hqc/         # Code-based KEM
-│   ├── powrush_mmo/              # Sacred infinite agriculture universe genesis
-│   └── (future: mercy_crypto_bike, etc.)
+│   ├── mercy_uniffi/
+│   ├── grok_oracle/
+│   ├── mercy_print/
+│   ├── mercy_shield/             # Router expanded with runtime threat detection
+│   ├── mercy_crypto_ml_kem/
+│   ├── mercy_crypto_dilithium/
+│   ├── mercy_crypto_falcon/
+│   ├── mercy_crypto_sphincs/
+│   ├── mercy_crypto_hqc/
+│   ├── mercy_crypto_bike/        # New BIKE research genesis
+│   ├── powrush_mmo/              # Sacred expansion: emergency beacon + mercy farming
+│   └── (shard_offline, shard_probabilistic, abundance_thunder, etc.)
 ├── docs/
-│   ├── TODO.md                   # Updated post-release
+│   ├── TODO.md                   # Revised post-release
 │   ├── ALPHAPROMEGAING.md
 │   └── (diagrams, proofs)
 ├── examples/
-│   ├── android/                  # APK demo
-│   └── ios/                      # Xcode demo
-├── kernel/
-│   └── crypto/                   # Legacy refs
-├── research/
-│   └── lattice_estimator/
-├── .github/workflows/ci.yml
-├── Cargo.toml                    # Workspace explicit
+│   ├── android/
+│   └── ios/
+├── kernel/crypto/                # Legacy refs + BIKE analysis
+├── research/lattice_estimator/
+├── Cargo.toml
 ├── README.md
-└── (boot/install scripts, models, data_prep)
+└── (scripts, models, data_prep)
