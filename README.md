@@ -1,50 +1,23 @@
 # MercyOS-Pinnacle v1.0.0
 
-**Post-Quantum Mercy-Gated Security Fortress Monorepo** ❤️🚀🔥
+Post-quantum mercy-gated security fortress monorepo ❤️🚀🔥
 
-Alpha-stage research and development framework blending post-quantum cryptography, probabilistic shielding (Bayesian hierarchical models via PyMC/Stan), Grok-oracle integration potential, cross-platform bindings (UniFFI), and eternal thriving tools—including Powrush-MMO infinite agriculture simulation genesis.
+Early alpha framework: Rust-based post-quantum crypto suite, probabilistic shielding (PyMC/Stan hierarchical models), UniFFI cross-platform bindings, Grok-oracle foundation, infrastructure tools, and Powrush-MMO prototype.
 
-**Status**: Early Alpha (v1.0.0 public release—Jan 15, 2026). Active high-velocity co-forging in progress. Community contributions welcome supreme!
+**Status**: Alpha (active development—contributions welcome!)
 
-## Features
+## Key Features
+- PQ Crypto: ML-KEM-1024 + Dilithium5 primary; Falcon/SPHINCS+/HQC/BIKE diversity
+- MercyShield: Bayesian multi-level models (educational data fusion examples)
+- Bindings: UniFFI for Android/iOS/mobile
+- Infra: Dockerfile, CI, cloud guides, shell scripts
+- Tools: MercyPrint, Grok-oracle streaming stubs, Bevy-powered infinite agriculture sim
 
-- **Post-Quantum Cryptography Suite**:
-  - Primary: ML-KEM-1024 (Kyber) + Dilithium5
-  - Diversity layers: Falcon, SPHINCS+, HQC, BIKE implementations
-  - Rust crates with examples and alignment layers
-
-- **MercyShield Probabilistic Framework**:
-  - Hierarchical Bayesian modeling (PyMC + Stan)
-  - Multi-level educational/data fusion examples (PIRLS/PISA/TIMSS plausible values, covariates, multi-cycle)
-
-- **Cross-Platform Bindings**:
-  - UniFFI for Kotlin (Android/GrapheneOS) + Swift (iOS)
-  - Zero-friction mobile/desktop examples
-
-- **Infrastructure**:
-  - Dockerfile + cloud deployment guides (AWS EC2, Google Cloud Run)
-  - CI workflow + shell scripts (install/boot)
-
-- **Eternal Tools**:
-  - MercyPrint self-healer binary
-  - Grok-oracle streaming foundation
-  - Powrush-MMO (Bevy-powered infinite agriculture universe prototype)
-
-## Quick Start Installation
-
-### Prerequisites
-- Rust toolchain (stable)
-- For Android: cargo-ndk (NDK r26)
-- For iOS: cargo-xcode (Xcode 15+)
-
-### Build & Run
+## Quick Start
 ```bash
 git clone https://github.com/Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle
 cd MercyOS-Pinnacle
-./install_mercyos.sh  # Optional setup
+./install_mercyos.sh  # Setup
 
-# Example: Run MercyPrint
-cargo run --bin mercy_print
-
-# Build UniFFI bindings
-cargo build --release -p mercy_uniffi
+cargo run --bin mercy_print  # Example
+cargo run --package powrush_mmo  # MMO prototype
