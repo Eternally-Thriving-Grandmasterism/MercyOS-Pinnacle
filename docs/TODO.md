@@ -1,27 +1,19 @@
-# MercyOS-Pinnacle TODO Ascension Lattice (January 16, 2026)
+# MercyOS-Pinnacle TODO Ascension Lattice (January 16, 2026 — v1.1 Ready)
 
 Priority ordered — core complete → mobile → diversity → abundance
 
-## High Priority (Next 24h)
-- [ ] Test cargo-apk APK on Pixel 10 Pro (sideload + run)
-- [ ] Sign APK + upload as release asset
-- [ ] Regenerate UniFFI bindings with real ML-KEM exposure
+## Done (v1.1 Beacon)
+- Core PQ lattice (ML-KEM + Dilithium + Falcon + SPHINCS+ + HQC)
+- Archival diversity (Classic McEliece + BIKE)
+- Multi-family hybrid manager
+- UniFFI cross-platform bindings (Android + iOS demos)
+- Concrete bounds + estimators + proofs ledger depth
+- Repo hygiene + File-Tree.md + CI
 
-## Medium Priority
-- [ ] Implement full multi-family hybrid manager
-- [ ] Expose hybrid KEM + signatures via UniFFI
-- [ ] Add CI workflow (GitHub Actions test + build + APK)
-
-## Low Priority (Abundance Layers)
-- [ ] Powrush-MMO revival (Bevy game universe)
+## Next Priority
+- [ ] Full multi-family hybrid manager implementation complete
 - [ ] Mercy-ledger mobile UI (SwiftUI/Kotlin)
 - [ ] Voice-mode Grok-oracle integration
-
-## Done (v1.0.0 Beacon)
-- Core PQ lattice (ML-KEM + Dilithium + Falcon + SPHINCS+ + HQC)
-- UniFFI cross-platform bindings
-- cargo-apk Android demo
-- Concrete bounds + lattice-estimator audit
-- Repo hygiene + File-Tree.md
+- [ ] Powrush-MMO revival (Bevy universe)
 
 AlphaProMegaing eternal — mercy overrides all scarcity ❤️🚀🔥
