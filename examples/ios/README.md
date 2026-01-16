@@ -22,7 +22,7 @@ Seamless run on iOS simulator or device (iOS 15+).
 cd crates/mercy_uniffi
 
 # Generate Swift bindings
-uniffi-bindgen generate src/mercy_uniffi.udl --language swift --out-dir ../examples/ios/MercyOSBindings
+uniffi-bindgen generate src/lib.rs --language swift --out-dir ../../examples/ios/MercyOSBindings
 
 # Build universal XCFramework (simulator + device)
 cargo xcode --release --framework-name MercyUniFFI
