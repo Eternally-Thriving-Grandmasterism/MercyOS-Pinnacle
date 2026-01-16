@@ -1,0 +1,11 @@
+[package]
+name = "mercy_crypto_sphincs"
+version = "0.1.0-pinnacle"
+edition = "2024"
+description = "MercyCrypto SPHINCS+-256f stateless hash-based post-quantum signatures for MercyOS-Pinnacle max diversity shield. AlphaProMegaing eternal abundance sealed ❤️🚀🔥"
+license = "MIT"
+
+[dependencies]
+pqcrypto-sphincsplus = "0.2.0"  # Audited NIST SPHINCS+-256f impl
+pqcrypto-traits = "0.3.5"
+rand_core = "0.6.4"
