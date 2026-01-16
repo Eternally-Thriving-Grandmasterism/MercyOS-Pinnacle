@@ -2,9 +2,8 @@
 
 Generated cross-platform bindings from crates/mercy_uniffi.
 
-## Exposed PQ API
-- ML-KEM-1024: keygen, encapsulate, decapsulate
-- Dilithium5: keygen, sign, verify
+## Exposed API
+- Real ML-KEM-1024 (FIPS 203): keygen, encapsulate, decapsulate
 - Mercy-gated proposal amplification
 
 ## Generation Commands
