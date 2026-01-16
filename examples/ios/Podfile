@@ -1,0 +1,8 @@
+**New File: examples/ios/Podfile**
+```ruby
+platform :ios, '15.0'
+
+target 'MercyOSDemo' do
+  use_frameworks!
+  # No pods needed – direct XCFramework
+end
