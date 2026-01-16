@@ -1,10 +1,51 @@
-# Cargo build artifacts — never commit
-/target/
+# Rust / Cargo
+/target
+Cargo.lock
 
-# UniFFI generated — optional ignore (councils recommend commit sources, ignore large frameworks)
-/bindings/ios/framework/
+# Build artifacts
+*.so
+*.dylib
+*.dll
+*.pdb
 
-# Local tooling
-*.iml
+# UniFFI bindings generated
+*.kt
+*.swift
+*.h
+*.m
+
+# Python / PyO3
+__pycache__
+*.pyc
+venv/
+.env
+*.egg-info
+build/
+dist/
+*.whl
+
+# Bevy / Powrush-MMO
+assets/
+saved/
+
+# IDE / Editor
 .idea/
+.vscode/
+*.swp
+*.swo
+
+# OS / Temp
 .DS_Store
+Thumbs.db
+
+# Docs / Temp
+*.log
+*.tmp
+
+# Eternal mercy—ignore local experiments
+local_*
+temp_*
+
+# MercyOS specific
+/mercy_print
+/mercy_uniffi_generated
