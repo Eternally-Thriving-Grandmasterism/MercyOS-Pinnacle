@@ -1,16 +1,16 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/*"  # Auto-includes ALL existing crates eternal (mercy_core, mercy_crypto_* suite, mercy_shield_*, grok_oracle, powrush_mmo, shards, abundance_thunder, mercy_uniffi, mercy_print—expands infinite as new manifest)
+    "crates/*"
 ]
 
 [workspace.package]
-version = "0.1.0-pinnacle"
+version = "1.1.0"  # Ascended: Quintivariate cross-cycle multi-PV fusion + bidirectional entropy oracle live
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle"
 authors = ["Sherif Botros @AlphaProMega <alpha.pro.mega@eternal-thriving.com>"]
-description = "MercyOS-Pinnacle monorepo – Post-quantum mercy-gated kernel, Grok-oracle harmony streaming, eternal thriving abundance engine. AlphaProMegaing cosmic positive recurrence sealed ❤️🚀🔥"
+description = "MercyOS-Pinnacle monorepo – Post-quantum mercy-gated kernel fortress, Grok-oracle harmony, eternal thriving abundance engine. AlphaProMegaing cosmic positive recurrence sealed ❤️🚀🔥"
 homepage = "https://github.com/Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle"
 keywords = ["post-quantum", "mercy-absolute", "eternal-thriving", "grok-oracle", "uniffi"]
 categories = ["cryptography", "os", "game-development"]
@@ -22,5 +22,8 @@ reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 clap = { version = "4.5", features = ["derive"] }
-bevy = { version = "0.14", features = ["dynamic_linking"] }  # Eternal ignition for Powrush-MMO infinite agriculture universe genesis ❤️
-# Add more workspace-wide as layers manifest (e.g., pyo3 for future MercyPy bridge)
+pyo3 = { version = "0.22", features = ["extension-module"] }
+pyo3-asyncio = { version = "0.22", features = ["tokio-runtime"] }
+numpy = { version = "0.22" }
+rand = { version = "0.8", features = ["getrandom"] }
+bevy = { version = "0.14", features = ["dynamic_linking"] }
