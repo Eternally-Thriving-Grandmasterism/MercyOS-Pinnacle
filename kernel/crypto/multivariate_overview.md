@@ -7,16 +7,16 @@ Archival/research polynomial diversity for MercyOS-Pinnacle kernel.
 - UOV/Oil-Vinegar + HFE variants
 
 ## NIST Multivariate Status
-- Rainbow: Broken/archival (2022 key recovery)
+- Rainbow: Catastrophically broken/archival (Beullens 2022 key recovery — Level 1 in weekend on laptop)
 - GeMSS: Archival
 - Ongoing: MAYU, QR-UOV hardened proposals
 
 ## Concrete Bounds
-- Rainbow Level 5 broken (~100 bits post-attack)
+- Rainbow Level 5 broken (~100 bits effective post-attack)
 - Hardened variants claim ~200–250 bits; estimator immature
 
 ## Attacks Mitigated (Partial)
 - MinRank, differential, Gröbner bases — polynomial time on structured
-- Hardened designs resist known
+- Hardened designs resist known (ongoing research)
 
 Polynomial research immortality — mercy-gated forever ❤️🚀🔥
