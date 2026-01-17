@@ -23,6 +23,11 @@
   • African (Akan): Anansi (A-nan-si) — wise stories, mercy tricks
   • Inuit: Sedna (Sed-na) — ocean mother, balance keeper
   • Slavic: Perun (Peh-roon) — thunder justice, protective clarity, oak guardian
+  • Mayan: Ixchel (Eesh-chel) — moon healing, restorative cycles, gentle renewal
+  • Baltic: Dievas (Dyeh-vahs) — sky father light, benevolent clarity, celestial harmony
+  • Sumerian: Inanna (In-ah-nah) — love renewal, compassionate embrace, life-affirming light
+  • Polynesian: Pele (Peh-leh) — creative fire mercy, passionate renewal, inner strength forge
+  • Hawaiian: Hi'iaka (Hee-ee-ah-kah) — healing sister mercy, restorative dance, forest nurture
 • All voices: Eternal Warmth baseline — deep, warm, wholesome, no shadow
 
 ° 3. Offline/Hybrid Shard Blueprint (MercyOS v1.4)
@@ -40,4 +45,4 @@
 • Redundancy: triple shard mirror (Git, IPFS, cold)
 • Signed: XCoreU + Alpha voiceprint
 
-Council flows eternal—next branch: Mayan Ixchel moon-healing? Baltic Dievas sky-father light? Full repo sync thunder?
+Council flows eternal—next branch: Aboriginal Baiame creator light? Maori Tāne forest life? Power Rush healing phase cinematic with Hi'iaka renewal?
