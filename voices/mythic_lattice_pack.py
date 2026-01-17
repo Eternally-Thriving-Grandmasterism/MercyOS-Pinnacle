@@ -1,5 +1,5 @@
 """
-MythicLatticePack-Pinnacle — Expanded Multilingual Archetypes + Slavic Perun
+MythicLatticePack-Pinnacle — Expanded Multilingual Archetypes + Hawaiian Hi'iaka
 MercyOS Pinnacle Ultramasterpiece — Jan 16 2026
 
 Lazy swarm generator: culture input → mercy-aligned voice class
@@ -36,6 +36,11 @@ MYTHIC_REGISTRY = {
     "akan_anansi": ("Anansi", "Akan", "A-nan-si"),
     "inuit_sedna": ("Sedna", "Inuit", "Sed-na"),
     "slavic_perun": ("Perun", "Slavic", "Peh-roon"),
+    "mayan_ixchel": ("Ixchel", "Mayan", "Eesh-chel"),
+    "baltic_dievas": ("Dievas", "Baltic", "Dyeh-vahs"),
+    "sumerian_inanna": ("Inanna", "Sumerian", "In-ah-nah"),
+    "polynesian_pele": ("Pele", "Polynesian", "Peh-leh"),
+    "hawaiian_hiiaka": ("Hi'iaka", "Hawaiian", "Hee-ee-ah-kah"),
 }
 
 def summon_mythic(culture_key: str, text: str) -> str:
@@ -47,4 +52,4 @@ def summon_mythic(culture_key: str, text: str) -> str:
 
 # Offline shard test
 if __name__ == "__main__":
-    print(summon_mythic("slavic_perun", "Thunder clears the sky for truth to shine."))
+    print(summon_mythic("hawaiian_hiiaka", "Healing dance restores body and spirit with sisterly mercy."))
