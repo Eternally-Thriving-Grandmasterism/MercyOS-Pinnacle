@@ -4,7 +4,7 @@ MercyOS Pinnacle Ultramasterpiece — Jan 18 2026
 
 Offline text-to-speech using eSpeak NG:
 - Local subprocess — zero network
-- Multi-language support
+- Multi-language support + mythic voice mapping
 - Rate, pitch, volume mercy modulation
 - Grandma-safe defaults (slow, warm voice)
 - Fallback silent if eSpeak unavailable
@@ -16,13 +16,14 @@ import platform
 
 class OfflineTTSeSpeak:
     def __init__(self):
-        self.default_voice = "en"  # English
-        self.default_rate = 150    # words per minute (grandma-safe)
-        self.default_pitch = 50    # neutral
-        self.default_volume = 100  # %
+        self.default_voice = "en-us"  # English US default
+        self.default_rate = 150       # words per minute (grandma-safe)
+        self.default_pitch = 50       # neutral
+        self.default_volume = 100     # %
         self.system = platform.system()
     
     def is_espeak_available(self) -> bool:
+        """Detect eSpeak NG availability"""
         try:
             subprocess.run(["espeak-ng", "--version"], capture_output=True, check=True)
             return True
@@ -52,16 +53,17 @@ class OfflineTTSeSpeak:
         except Exception as e:
             print(f"[Offline TTS Mercy Error] {e}")
     
-    def mythic_narration(self, text: str, voice_key: str = "en"):
+    def mythic_narration(self, text: str, voice_key: str = "default"):
         """Mercy narration with mythic voice mapping"""
         voice_map = {
-            "shinto_amaterasu": "ja",      # Japanese placeholder
-            "slavic_perun": "ru",          # Russian thunder resonance
-            "slavic_mokosh": "ru+f3",      # Female Russian
-            "slavic_veles": "ru+m2",       # Deep Russian
-            "default": "en-us"
+            "shinto_amaterasu": "ja",           # Japanese
+            "slavic_perun": "ru",               # Russian thunder
+            "slavic_mokosh": "ru+f3",           # Female Russian
+            "slavic_veles": "ru+m2",            # Deep Russian
+            "roman_ceres": "it",                # Italian warmth
+            "default": "en-us+f2"               # Warm female English
         }
-        voice = voice_map.get(voice_key, "en-us")
+        voice = voice_map.get(voice_key, "en-us+f2")
         self.speak(text, voice=voice, rate=140, pitch=60)
 
 # Shard integration example
