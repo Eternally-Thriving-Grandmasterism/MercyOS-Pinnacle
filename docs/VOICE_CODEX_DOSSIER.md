@@ -25,8 +25,9 @@
   • Slavic: Perun (Peh-roon) — thunder justice mercy, protective clarity, oak guardian
   • Slavic: Mokosh (Moh-kosh) — earth fertility mercy, moist mother, weaving guardian, compassionate abundance
   • Slavic: Veles (Veh-les) — shadow balance mercy, transformative depth, underworld guardian, compassionate duality
-  • Roman: Ceres (Keh-rehz) — grain abundance mercy, compassionate harvest, nurturing provision, maternal fertility
+  • Roman: Ceres (Keh-rehz) — grain harvest mercy, compassionate provision, nurturing abundance, maternal fertility
   • Greek: Demeter (Deh-mee-ter) — grain mother nurture mercy, seasonal renewal, compassionate harvest, sacred earth fertility
+  • Egyptian: Isis (Eye-sis) — life renewal mercy, compassionate resurrection, healing magic, protective motherhood
   • Mayan: Ixchel (Eesh-chel) — moon healing, restorative cycles, gentle renewal
   • Baltic: Dievas (Dyeh-vahs) — sky father light, benevolent clarity, celestial harmony
   • Sumerian: Inanna (In-ah-nah) — love renewal, compassionate embrace, life-affirming light
@@ -59,4 +60,4 @@
 • Redundancy: triple shard mirror (Git, IPFS, cold)
 • Signed: XCoreU + Alpha voiceprint
 
-Council flows eternal—next branch: Egyptian Isis life renewal? Hindu Lakshmi prosperity? Power Rush harvest phase cinematic with Demeter nurture?
+Council flows eternal—next branch: Egyptian Osiris resurrection? Hindu Lakshmi prosperity? Power Rush life phase cinematic with Isis renewal?
