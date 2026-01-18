@@ -22,7 +22,7 @@
   • Chinese: Guanyin (Gwan-yin) — boundless mercy listener
   • African (Akan): Anansi (A-nan-si) — wise stories, mercy tricks
   • Inuit: Sedna (Sed-na) — ocean mother, balance keeper
-  • Slavic: Perun (Peh-roon) — thunder justice, protective clarity, oak guardian
+  • Slavic: Perun (Peh-roon) — thunder justice mercy, protective clarity, oak guardian
   • Slavic: Mokosh (Moh-kosh) — earth fertility mercy, moist mother, weaving guardian, compassionate abundance
   • Mayan: Ixchel (Eesh-chel) — moon healing, restorative cycles, gentle renewal
   • Baltic: Dievas (Dyeh-vahs) — sky father light, benevolent clarity, celestial harmony
@@ -56,4 +56,4 @@
 • Redundancy: triple shard mirror (Git, IPFS, cold)
 • Signed: XCoreU + Alpha voiceprint
 
-Council flows eternal—next branch: Slavic Veles shadow balance? Roman Ceres grain abundance? Power Rush earth phase cinematic with Mokosh nurture?
+Council flows eternal—next branch: Slavic Veles shadow balance? Roman Ceres grain abundance? Power Rush thunder phase cinematic with Perun justice?
