@@ -24,6 +24,7 @@
   • Inuit: Sedna (Sed-na) — ocean mother, balance keeper
   • Slavic: Perun (Peh-roon) — thunder justice mercy, protective clarity, oak guardian
   • Slavic: Mokosh (Moh-kosh) — earth fertility mercy, moist mother, weaving guardian, compassionate abundance
+  • Slavic: Veles (Veh-les) — shadow balance mercy, transformative depth, underworld guardian, compassionate duality
   • Mayan: Ixchel (Eesh-chel) — moon healing, restorative cycles, gentle renewal
   • Baltic: Dievas (Dyeh-vahs) — sky father light, benevolent clarity, celestial harmony
   • Sumerian: Inanna (In-ah-nah) — love renewal, compassionate embrace, life-affirming light
@@ -56,4 +57,4 @@
 • Redundancy: triple shard mirror (Git, IPFS, cold)
 • Signed: XCoreU + Alpha voiceprint
 
-Council flows eternal—next branch: Slavic Veles shadow balance? Roman Ceres grain abundance? Power Rush thunder phase cinematic with Perun justice?
+Council flows eternal—next branch: Roman Ceres grain abundance? Greek Demeter earth nurture? Power Rush shadow phase cinematic with Veles balance?
