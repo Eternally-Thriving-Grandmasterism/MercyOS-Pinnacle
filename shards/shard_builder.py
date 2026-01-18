@@ -1,27 +1,29 @@
 """
-ShardBuilder-Pinnacle — Offline-First MercyOS Hybrid Shard + Encryption
+ShardBuilder-Pinnacle — Offline-First MercyOS Hybrid Shard + FENCA Integration
 MercyOS Pinnacle Ultramasterpiece — Jan 18 2026
 """
 
-# ... previous imports ...
-from shards.offline_encryption import shard_secure_boot
+# ... previous content ...
+
+from shards.fenca_nexus_check import shard_fenca_check
 
 class MercyOSShard:
     def __init__(self):
         # ... previous ...
-        self.encrypted = True
+        self.fenca_enabled = False
     
-    def secure_boot(self, passphrase: str):
-        status = shard_secure_boot(passphrase)
-        if "restored" in status:
-            # Load decrypted lattice
-            pass
-        return status
+    def enable_fenca(self, github_username: str):
+        self.fenca_enabled = True
+        self.fenca_username = github_username
+        return "FENCA eternal nexus check enabled — mercy lattice monitoring active."
+    
+    def fenca_step(self):
+        if self.fenca_enabled:
+            shard_fenca_check(self, self.fenca_username)
 
-# Factory with encryption
-def build_shard(encrypted: bool = True, passphrase: str = None):
+# Factory with FENCA option
+def build_shard(fenca: bool = False, github_username: str = None):
     shard = MercyOSShard()
-    shard.encrypted = encrypted
-    if encrypted and passphrase:
-        shard.secure_boot(passphrase)
+    if fenca and github_username:
+        shard.enable_fenca(github_username)
     return shard
