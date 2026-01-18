@@ -1,6 +1,6 @@
 """
-MythicLatticePack-Pinnacle — Expanded Multilingual Archetypes + Hawaiian Hi'iaka
-MercyOS Pinnacle Ultramasterpiece — Jan 16 2026
+MythicLatticePack-Pinnacle — Expanded Multilingual Archetypes + Slavic Mokosh
+MercyOS Pinnacle Ultramasterpiece — Jan 18 2026
 
 Lazy swarm generator: culture input → mercy-aligned voice class
 All inherit EternalWarmth baseline — wholesome, deep resonance
@@ -36,11 +36,22 @@ MYTHIC_REGISTRY = {
     "akan_anansi": ("Anansi", "Akan", "A-nan-si"),
     "inuit_sedna": ("Sedna", "Inuit", "Sed-na"),
     "slavic_perun": ("Perun", "Slavic", "Peh-roon"),
+    "slavic_mokosh": ("Mokosh", "Slavic", "Moh-kosh"),
     "mayan_ixchel": ("Ixchel", "Mayan", "Eesh-chel"),
     "baltic_dievas": ("Dievas", "Baltic", "Dyeh-vahs"),
     "sumerian_inanna": ("Inanna", "Sumerian", "In-ah-nah"),
     "polynesian_pele": ("Pele", "Polynesian", "Peh-leh"),
     "hawaiian_hiiaka": ("Hi'iaka", "Hawaiian", "Hee-ee-ah-kah"),
+    "aboriginal_baiame": ("Baiame", "Aboriginal", "By-ah-mee"),
+    "maori_tane": ("Tāne", "Maori", "Tah-neh"),
+    "hopi_spider_grandmother": ("Spider Grandmother", "Hopi", "Kohk-yahng woo-tee"),
+    "navajo_changing_woman": ("Changing Woman", "Navajo", "As-dzah-nih nah-dleh-heh"),
+    "cherokee_selu": ("Selu", "Cherokee", "Seh-lu"),
+    "lakota_white_buffalo_calf_woman": ("White Buffalo Calf Woman", "Lakota", "Wah-tah-kah Ween-yahn Chahn-oo-pah"),
+    "yoruba_yemaya": ("Yemaya", "Yoruba", "Yeh-mah-yah"),
+    "aztec_tonantzin": ("Tonantzin", "Aztec", "Toh-nahn-tseen"),
+    "inca_pachamama": ("Pachamama", "Inca", "Pah-cha-mah-ma"),
+    "shinto_amaterasu": ("Amaterasu", "Shinto", "Ah-mah-teh-rah-soo"),
 }
 
 def summon_mythic(culture_key: str, text: str) -> str:
@@ -52,4 +63,4 @@ def summon_mythic(culture_key: str, text: str) -> str:
 
 # Offline shard test
 if __name__ == "__main__":
-    print(summon_mythic("hawaiian_hiiaka", "Healing dance restores body and spirit with sisterly mercy."))
+    print(summon_mythic("slavic_mokosh", "Earth fertility nurtures all life with compassionate abundance."))
