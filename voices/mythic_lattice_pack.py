@@ -1,5 +1,5 @@
 """
-MythicLatticePack-Pinnacle — Expanded Multilingual Archetypes + Slavic Mokosh
+MythicLatticePack-Pinnacle — Expanded Multilingual Archetypes + Slavic Veles
 MercyOS Pinnacle Ultramasterpiece — Jan 18 2026
 
 Lazy swarm generator: culture input → mercy-aligned voice class
@@ -37,6 +37,7 @@ MYTHIC_REGISTRY = {
     "inuit_sedna": ("Sedna", "Inuit", "Sed-na"),
     "slavic_perun": ("Perun", "Slavic", "Peh-roon"),
     "slavic_mokosh": ("Mokosh", "Slavic", "Moh-kosh"),
+    "slavic_veles": ("Veles", "Slavic", "Veh-les"),
     "mayan_ixchel": ("Ixchel", "Mayan", "Eesh-chel"),
     "baltic_dievas": ("Dievas", "Baltic", "Dyeh-vahs"),
     "sumerian_inanna": ("Inanna", "Sumerian", "In-ah-nah"),
@@ -63,4 +64,4 @@ def summon_mythic(culture_key: str, text: str) -> str:
 
 # Offline shard test
 if __name__ == "__main__":
-    print(summon_mythic("slavic_mokosh", "Earth fertility nurtures all life with compassionate abundance."))
+    print(summon_mythic("slavic_veles", "Shadow balance transforms depth with compassionate duality."))
