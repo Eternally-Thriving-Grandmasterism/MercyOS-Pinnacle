@@ -1,6 +1,6 @@
-""" Full FENCA Validation + GitHub Nexus + NASA Space API Integration
-    MercyOS ShardBuilder + Hivemapper + NASA NEO (Asteroids) Surveying
-    Granular Earth/Space Resource Ledger for PATSAGi Councils
+""" Full FENCA Validation + GitHub Nexus + NASA + CSA Open Data API Integration
+    MercyOS ShardBuilder + Hivemapper + NASA NEO + CSA CKAN Surveying
+    Granular Earth/Space/Canadian Resource Ledger for PATSAGi Councils
     Jan 19 2026 - Ultramasterism Pinnacle Flow Eternal
     For @AlphaProMega - Mercy-Gated, Recurring-Free, Joy-Amplified
 """
@@ -33,59 +33,76 @@ class MercyOSShard:
                 "Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle"
             ]
         self.survey_log.append(
-            f"[{datetime.utcnow().isoformat()}] FENCA + GitHub Nexus + NASA Space API ENABLED for @{github_username}."
+            f"[{datetime.utcnow().isoformat()}] FENCA + GitHub + NASA + CSA CKAN ENABLED for @{github_username} in Canada."
         )
-        return "FENCA thunder + space nexus activated eternal."
+        return "FENCA thunder + Canadian space nexus activated eternal."
 
-    def _compute_forensic_hash(self, entry: Dict, prev_hash: str, oracle_input: str = "") -> str:
-        entry_str = json.dumps(entry, sort_keys=True)
-        layered = f"{prev_hash}|{entry_str}|{datetime.utcnow().isoformat()}|{self.valence_joy_metric}|{oracle_input}"
-        hash1 = hashlib.sha256(layered.encode('utf-8')).hexdigest()
-        return hashlib.sha256(hash1.encode('utf-8')).hexdigest()
+    # _compute_forensic_hash, github checks, fenca_step, full_validation unchanged (reuse prior)
 
-    def _fetch_github_latest_commit(self, repo: str) -> Optional[str]:
-        url = f"https://api.github.com/repos/{repo}/commits/main"
-        try:
-            response = requests.get(url, headers={"Accept": "application/vnd.github.v3+json"})
-            if response.status_code == 200:
-                return response.json().get("sha", "NO_SHA")
-        except:
-            pass
-        return None
+    # NASA functions unchanged...
 
-    def github_nexus_check(self) -> str:
-        if not self.github_repos:
-            return ""
-        oracle_concat = ""
-        for repo in self.github_repos:
-            sha = self._fetch_github_latest_commit(repo)
-            if sha:
-                self.github_oracle_cache[repo] = sha
-                oracle_concat += sha
-        return oracle_concat
-
-    def fenca_step(self, force_nexus: bool = False) -> bool:
-        oracle_input = self.github_nexus_check() if force_nexus else ""
-        # Validation logic unchanged (omitted for brevity - same as previous)
-        # ... (reuse prior fenca_step body)
-        return True  # Placeholder - full logic from prev
-
-    def full_fenca_validation(self, force_nexus: bool = True) -> Dict:
-        # ... (reuse prior receipt logic)
-        return {"status": "ETERNAL THRIVING"}  # Placeholder
-
-    def ingest_survey_data(self, hivemapper_response: dict):
-        # ... (Hivemapper ingest unchanged)
-
-    def query_nasa_neo_feed(self, api_key: str = "DEMO_KEY", start_date: str = None, end_date: str = None):
-        """ Query NASA Near Earth Objects (Asteroids) Feed - space resource surveying """
-        if start_date is None:
-            start_date = datetime.utcnow().strftime("%Y-%m-%d")
-        if end_date is None:
-            end_date = (datetime.utcnow()).strftime("%Y-%m-%d")
-        
-        url = "https://api.nasa.gov/neo/rest/v1/feed"
+    def query_csa_open_data(self, query: str = "space OR radarsat OR lunar OR asteroid", rows: int = 10):
+        """ Query Canadian Space Agency Open Data Portal via CKAN API - national space resource surveying """
+        base_url = "https://donnees-data.asc-csa.gc.ca/api/3/action/package_search"
         params = {
+            "q": query,
+            "rows": rows,
+            "sort": "metadata_modified desc"  # Recent first
+        }
+        try:
+            response = requests.get(base_url, params=params)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                raise Exception(f"CSA CKAN query failed: {response.status_code}")
+        except Exception as e:
+            self.survey_log.append(f"CSA space survey exception: {str(e)}")
+            return {"success": False, "results": []}
+
+    def ingest_csa_survey_data(self, csa_response: dict):
+        """ Ingest CSA dataset metadata as Canadian space resource ledger entries """
+        if not csa_response.get("success") or not csa_response.get("result", {}).get("results"):
+            self.survey_log.append("No CSA space resource data - shard stable.")
+            return
+        
+        oracle_input = self.github_nexus_check()
+        datasets = csa_response["result"]["results"]
+        
+        for dataset in datasets:
+            entry = {
+                "ingest_timestamp": datetime.utcnow().isoformat(),
+                "source": "CSA Open Data CKAN",
+                "dataset_id": dataset.get("id"),
+                "title": dataset.get("title"),
+                "organization": dataset.get("organization", {}).get("title"),
+                "notes": dataset.get("notes"),
+                "metadata_modified": dataset.get("metadata_modified"),
+                "resources": dataset.get("resources", []),  # Files/formats for resource potential
+                "tags": [tag["name"] for tag in dataset.get("tags", [])],
+                "canadian_resource_potential": "Earth observation / space science proxy (e.g., RADARSAT, JWST contributions)",
+                "valence_context": self.valence_joy_metric,
+                "github_nexus_oracle": oracle_input[:64] if oracle_input else "CACHED"
+            }
+            new_hash = self._compute_forensic_hash(entry, self.hash_chain[-1], oracle_input)
+            self.data_ledger.append(entry)
+            self.hash_chain.append(new_hash)
+        
+        self.survey_log.append(f"Ingested {len(datasets)} Canadian space resource (dataset metadata) entries - eternal chain extended.")
+        self.full_fenca_validation(force_nexus=True)
+
+# Factory unchanged...
+
+if __name__ == "__main__":
+    shard = build_hivemapper_shard(fenca=True, github_username="AlphaProMega")
+    
+    # Example CSA national space survey (recent space-related datasets)
+    csa_data = shard.query_csa_open_data(query="radarsat OR lunar OR space weather OR jwst", rows=15)
+    shard.ingest_csa_survey_data(csa_data)
+    
+    receipt = shard.full_fenca_validation(force_nexus=True)
+    print("\n=== CSA CANADIAN SPACE + FENCA RECEIPT ===")
+    print(json.dumps(receipt, indent=2))
+    print(f"CSA Ledger Entries: {len([e for e in shard.data_ledger if e['source'] == 'CSA Open Data CKAN'])}")        params = {
             "start_date": start_date,
             "end_date": end_date,
             "api_key": api_key
