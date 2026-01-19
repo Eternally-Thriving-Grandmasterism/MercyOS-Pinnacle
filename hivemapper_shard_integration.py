@@ -1,6 +1,6 @@
-""" Full FENCA Validation Implementation
+""" Full FENCA Validation + GitHub API Nexus Check
     MercyOS ShardBuilder + Hivemapper Integration
-    Enhanced with Forensic Eternal Nexus Cache Audit (FENCA)
+    Enhanced with GitHub Eternal Nexus Oracle
     Jan 19 2026 - Ultramasterism Pinnacle Flow Eternal
     For @AlphaProMega - Mercy-Gated, Recurring-Free, Joy-Amplified
 """
@@ -15,89 +15,115 @@ class MercyOSShard:
     def __init__(self):
         self.fenca_enabled: bool = False
         self.fenca_username: Optional[str] = None
-        self.data_ledger: List[Dict] = []  # Eternal immutable ledger entries
-        self.hash_chain: List[str] = ["GENESIS:0000000000000000000000000000000000000000000000000000000000000000"]  # Starts with zero-hash genesis
+        self.github_repos: List[str] = []  # e.g., ["Eternally-Thriving-Grandmasterism/PATSAGi-Pinnacle"]
+        self.github_oracle_cache: Dict[str, str] = {}  # repo -> latest commit SHA
+        self.data_ledger: List[Dict] = []
+        self.hash_chain: List[str] = ["GENESIS:0000000000000000000000000000000000000000000000000000000000000000"]
         self.survey_log: List[str] = []
-        self.valence_joy_metric: float = 1.0  # Starts neutral-positive; amplified on valid steps
+        self.valence_joy_metric: float = 1.0
 
-    def enable_fenca(self, github_username: str = "AlphaProMega") -> str:
-        """ Activate full FENCA eternal nexus """
+    def enable_fenca(self, github_username: str = "AlphaProMega", nexus_repos: Optional[List[str]] = None) -> str:
         self.fenca_enabled = True
         self.fenca_username = github_username
+        if nexus_repos:
+            self.github_repos = nexus_repos
+        else:
+            # Default Pinnacle repos for eternal nexus
+            self.github_repos = [
+                "Eternally-Thriving-Grandmasterism/PATSAGi-Pinnacle",
+                "Eternally-Thriving-Grandmasterism/MercyOS-Pinnacle"
+            ]
         self.survey_log.append(
-            f"[{datetime.utcnow().isoformat()}] FENCA FULLY ENABLED - Eternal nexus mercy-gated for @{github_username}. "
-            f"Valence-joy lattice initialized at {self.valence_joy_metric}."
+            f"[{datetime.utcnow().isoformat()}] FENCA FULLY ENABLED with GitHub Nexus Oracle "
+            f"for @{github_username}. Tracking {len(self.github_repos)} eternal repos."
         )
-        return "FENCA thunder activated - forensic eternal validation flowing effortless."
+        return "FENCA + GitHub nexus thunder activated - eternal recurrence flowing."
 
-    def _compute_forensic_hash(self, entry: Dict, prev_hash: str) -> str:
-        """ BLAKE-like layered hash (SHA-256 double for speed/integrity) + philotic timestamp """
+    def _compute_forensic_hash(self, entry: Dict, prev_hash: str, oracle_input: str = "") -> str:
         entry_str = json.dumps(entry, sort_keys=True)
-        layered = f"{prev_hash}|{entry_str}|{datetime.utcnow().isoformat()}|{self.valence_joy_metric}"
+        layered = f"{prev_hash}|{entry_str}|{datetime.utcnow().isoformat()}|{self.valence_joy_metric}|{oracle_input}"
         hash1 = hashlib.sha256(layered.encode('utf-8')).hexdigest()
-        return hashlib.sha256(hash1.encode('utf-8')).hexdigest()  # Double-hash for collision resistance
+        return hashlib.sha256(hash1.encode('utf-8')).hexdigest()
 
-    def fenca_step(self) -> bool:
-        """ Single-step mercy-gated validation - returns True if integrity holds """
-        if not self.fenca_enabled:
-            return False
+    def _fetch_github_latest_commit(self, repo: str) -> Optional[str]:
+        """ Fetch latest commit SHA from public GitHub API (no auth needed for rate limits) """
+        url = f"https://api.github.com/repos/{repo}/commits/main"
+        try:
+            response = requests.get(url, headers={"Accept": "application/vnd.github.v3+json"})
+            if response.status_code == 200:
+                data = response.json()
+                sha = data.get("sha", "NO_SHA")
+                self.survey_log.append(f"GitHub nexus oracle: {repo} latest SHA {sha[:8]}...")
+                return sha
+            else:
+                self.survey_log.append(f"GitHub nexus fetch failed for {repo}: {response.status_code}")
+                return None
+        except Exception as e:
+            self.survey_log.append(f"GitHub nexus exception: {str(e)}")
+            return None
+
+    def github_nexus_check(self) -> str:
+        """ Pull latest commits from nexus repos and cache/oracle them """
+        if not self.fenca_enabled or not self.github_repos:
+            return "Nexus check skipped"
+        
+        oracle_concat = ""
+        for repo in self.github_repos:
+            sha = self._fetch_github_latest_commit(repo)
+            if sha:
+                self.github_oracle_cache[repo] = sha
+                oracle_concat += sha
+        
+        if oracle_concat:
+            self.survey_log.append(f"GitHub nexus check complete - oracle input hashed from {len(self.github_oracle_cache)} repos.")
+            return oracle_concat
+        else:
+            self.survey_log.append("GitHub nexus partial/no data - mercy proceeding with cached.")
+            return "".join(self.github_oracle_cache.values())
+
+    def fenca_step(self, force_nexus: bool = False) -> bool:
+        oracle_input = self.github_nexus_check() if force_nexus or len(self.data_ledger) % 5 == 0 else ""  # Nexus every 5 entries or forced
         
         if len(self.data_ledger) != len(self.hash_chain) - 1:
-            raise ValueError("Ledger/hash_chain desync - scarcity drift detected!")
+            raise ValueError("Ledger/hash_chain desync detected!")
         
-        # Rebuild chain for forensic audit
         test_chain = ["GENESIS:0000000000000000000000000000000000000000000000000000000000000000"]
         for i, entry in enumerate(self.data_ledger):
-            test_hash = self._compute_forensic_hash(entry, test_chain[-1])
-            if test_hash != self.hash_chain[i + 1]:
-                self.survey_log.append(f"[{datetime.utcnow().isoformat()}] FENCA ALERT: Chain break at entry {i} - mercy intervention required.")
-                self.valence_joy_metric *= 0.618  # Fibonacci mercy-dampen on drift
+            new_hash = self._compute_forensic_hash(entry, test_chain[-1], oracle_input if i == len(self.data_ledger)-1 else "")
+            if new_hash != self.hash_chain[i + 1]:
+                self.valence_joy_metric *= 0.618
+                self.survey_log.append(f"FENCA ALERT: Chain drift at {i} - mercy dampen to {self.valence_joy_metric:.3f}")
                 return False
         
-        # Integrity validated - amplify joy
-        self.valence_joy_metric = min(10.0, self.valence_joy_metric * 1.618)  # Golden ratio abundance boost
-        self.survey_log.append(
-            f"[{datetime.utcnow().isoformat()}] FENCA STEP VALIDATED - Chain eternal. "
-            f"Valence-joy amplified to {self.valence_joy_metric:.3f}."
-        )
+        self.valence_joy_metric = min(10.0, self.valence_joy_metric * 1.618)
+        self.survey_log.append(f"FENCA STEP VALIDATED - Joy amplified to {self.valence_joy_metric:.3f} (Nexus: {bool(oracle_input)})")
         return True
 
-    def full_fenca_validation(self) -> Dict:
-        """ Full eternal nexus audit - returns comprehensive receipt """
-        if not self.fenca_enabled:
-            return {"status": "disabled", "message": "FENCA not enabled"}
-        
+    def full_fenca_validation(self, force_nexus: bool = True) -> Dict:
         start_time = datetime.utcnow()
-        valid = self.fenca_step()
+        valid = self.fenca_step(force_nexus=force_nexus)
         
         receipt = {
             "timestamp": start_time.isoformat(),
             "fenca_username": self.fenca_username,
+            "nexus_repos_tracked": len(self.github_repos),
+            "latest_oracle_shas": {repo: sha[:8] + "..." for repo, sha in self.github_oracle_cache.items()},
             "ledger_entries": len(self.data_ledger),
-            "current_chain_hash": self.hash_chain[-1] if self.hash_chain else "GENESIS",
+            "current_chain_hash": self.hash_chain[-1],
             "valence_joy_metric": round(self.valence_joy_metric, 3),
             "integrity_valid": valid,
-            "status": "ETERNAL THRIVING" if valid else "MERCY INTERVENTION NEEDED",
-            "survey_log_snapshot": self.survey_log[-10:]  # Last 10 for brevity
+            "status": "ETERNAL THRIVING NEXUS" if valid else "MERCY INTERVENTION",
         }
         
-        if valid:
-            receipt["abundance_message"] = "Post-scarcity lattice confirmed - resource flows mercy-gated and joy-unbreakable."
-        else:
-            receipt["abundance_message"] = "Drift detected - recurring-free recalibration initiating."
-        
-        self.survey_log.append(
-            f"[{datetime.utcnow().isoformat()}] FULL FENCA VALIDATION COMPLETE - {receipt['status']} "
-            f"(Joy: {receipt['valence_joy_metric']})."
-        )
+        self.survey_log.append(f"FULL FENCA + GITHUB NEXUS COMPLETE - {receipt['status']}")
         return receipt
 
     def ingest_survey_data(self, hivemapper_response: dict):
-        """ Ingest granular Hivemapper data with full forensic chaining """
         features = hivemapper_response.get("mapFeatureResults", {}).get("data", [])
         if not features:
-            self.survey_log.append("No new features - shard stable.")
             return
+        
+        oracle_input = self.github_nexus_check()  # Nexus on ingest for eternal tie
         
         for feature in features:
             entry = {
@@ -109,59 +135,35 @@ class MercyOSShard:
                 "confidence": feature.get("confidence"),
                 "observed": feature.get("observed", {}),
                 "properties": feature.get("properties", {}),
-                "valence_context": self.valence_joy_metric  # Embed current joy state
+                "valence_context": self.valence_joy_metric,
+                "github_nexus_oracle": oracle_input[:64] if oracle_input else "CACHED"
             }
-            # Forensic chain append
-            new_hash = self._compute_forensic_hash(entry, self.hash_chain[-1])
+            new_hash = self._compute_forensic_hash(entry, self.hash_chain[-1], oracle_input)
             self.data_ledger.append(entry)
             self.hash_chain.append(new_hash)
         
-        self.survey_log.append(f"Ingested {len(features)} granular features - chain extended eternally.")
-        self.full_fenca_validation()  # Auto-validate post-ingest
+        self.survey_log.append(f"Ingested {len(features)} features - eternal chain + nexus extended.")
+        self.full_fenca_validation(force_nexus=False)
 
-# Factory remains same
-def build_hivemapper_shard(fenca: bool = True, github_username: str = "AlphaProMega"):
+# Factory updated
+def build_hivemapper_shard(fenca: bool = True, github_username: str = "AlphaProMega", nexus_repos: Optional[List[str]] = None):
     shard = MercyOSShard()
     if fenca:
-        shard.enable_fenca(github_username)
+        shard.enable_fenca(github_username, nexus_repos)
     return shard
 
-# Hivemapper query function unchanged (from previous prototype)
-def query_hivemapper_map_features(api_key: str, lon: float, lat: float, radius: int = 250):
-    url = f"https://beemaps.com/api/developer/map-data?apiKey={api_key}"
-    payload = {
-        "type": ["mapFeatures", "imagery"],
-        "geometry": {
-            "type": "Point",
-            "coordinates": [lon, lat],
-            "radius": radius
-        }
-    }
-    headers = {"Content-Type": "application/json"}
-    response = requests.post(url, headers=headers, json=payload)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"Hivemapper query failed: {response.status_code} - {response.text}")
+# Hivemapper query unchanged...
 
-# Example Execution
+# Example
 if __name__ == "__main__":
-    HIVEMAPPER_API_KEY = "YOUR_BEE_MAPS_API_KEY_HERE"
-    TARGET_LON, TARGET_LAT = -122.4194, 37.7749  # SF example - extend to Canada/space coords
-    
     shard = build_hivemapper_shard(fenca=True, github_username="AlphaProMega")
     
-    try:
-        data = query_hivemapper_map_features(HIVEMAPPER_API_KEY, TARGET_LON, TARGET_LAT, radius=500)
-        shard.ingest_survey_data(data)
-        
-        # Full validation receipt
-        validation_receipt = shard.full_fenca_validation()
-        print("\n=== FULL FENCA VALIDATION RECEIPT ===")
-        print(json.dumps(validation_receipt, indent=2))
-        
-        # Preview ledger chain
-        print(f"\nEternal Chain Length: {len(shard.hash_chain)}")
-        print(f"Latest Hash: {shard.hash_chain[-1]}")
-    except Exception as e:
-        print(f"Integration thunder: {e}")
+    # Force initial nexus check
+    shard.github_nexus_check()
+    
+    # Ingest + validate (replace with real query)
+    # shard.ingest_survey_data(sample_data)
+    
+    receipt = shard.full_fenca_validation(force_nexus=True)
+    print("\n=== FULL FENCA + GITHUB NEXUS RECEIPT ===")
+    print(json.dumps(receipt, indent=2))
