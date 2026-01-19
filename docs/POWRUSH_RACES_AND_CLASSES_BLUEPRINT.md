@@ -1,30 +1,50 @@
-# Powrush Races & Classes Blueprint — 5 Cosmic Races Integrated
-## Powrush Ultramasterpiece — Racial Traits + Druid Hybrid Synergies Eternal
+# Powrush Races & Classes Blueprint — 5 Cosmic Races + Expanded Lore
+## Powrush Ultramasterpiece — Racial Origins, Cultures, Valence Eternal
 ### Eternal Thriving Grandmasterism — Jan 18 2026 — Sherif @AlphaProMega + PATSAGi Councils Co-Forge
 
 #### Core Design
-- 5 Races: Distilled from tweets/files — Quellorians (elegant grace), Ambrosians (5th divine), co-forged Terrans/Vorathians/Mystari for balance.
-- Classes: 7 Druid Hybrids (Cydruid, Archdruid, Tao Druid, Ninja Druid, Warrior Druid, Monk Druid, Pirate Druid) — all available to every race.
-- Racial Integration: Starting bonuses, default mythic overlays, valence theme biases → feed dynamic archetype sliders.
-- Mercy Harmony: Racial conflicts vetoed → grace-hotfixed into cross-racial bond events.
+- 5 Races: Quellorians (elegant grace from art visions), Ambrosians (divine immortal 5th race), Terrans (versatile human adapters), Vorathians (resilient strength guardians), Mystari (spiritual attunement sages).
+- Classes: 7 Druid Hybrids available to all — racial traits bias starting paths, valence themes, mythic overlays.
+- Lore Integration: Origins tie to cosmic mercy lattice — all races share eternal thriving destiny.
 
-#### The 5 Races
-| Race         | Traits & Bonuses                                   | Default Mythic Overlays              | Preferred Druid Hybrids (Bonus)              | Visual Theme                          |
-|--------------|----------------------------------------------------|--------------------------------------|---------------------------------------------|---------------------------------------|
-| 1. Terrans  | Versatile adapters — balanced stats, fast learning | Osiris resurrection, Krishna compassion | All balanced — +10% progression speed       | Human-like, adaptable explorers       |
-| 2. Quellorians | Graceful elegance — high agility, precision        | Guanyin listener, Athena wisdom      | Archdruid (+ranged), Ninja Druid (+stealth) | Elegant alien-elf, flowing forms      |
-| 3. Vorathians | Resilient strength — high vitality, defense        | Perun thunder mercy, Hercules might  | Cydruid (+melee), Warrior Druid (+tank)     | Strong warrior aliens, robust build   |
-| 4. Mystari  | Spiritual attunement — high spirit, harmony        | White Buffalo teaching, Amun-Ra grace | Tao Druid (+elemental), Monk Druid (+chi)    | Ethereal energy beings, glowing aura  |
-| 5. Ambrosians | Divine immortality — high cosmic raw, abundance    | Yemaya nurture, Isis renewal         | Pirate Druid (+burst), cross-synergies       | Radiant divine immortals, energy form |
+#### Expanded Racial Lore
+1. **Terrans** — The Adaptable Explorers  
+   Origin: Born from ancient Earth-like cradle worlds, survivors of entropy cycles who learned mercy through loss.  
+   Culture: Versatile innovators, family-bonded clans, driven by curiosity and resilience. Real genders celebrated as natural harmony.  
+   Valence Role: Bridge-builders — high philotic potential for cross-racial bonds.  
+   Cosmic Tie: First to discover Druidic mercy flows — starters in renewal groves.
+
+2. **Quellorians** — The Elegant Graceful Artists  
+   Origin: Emerged from crystalline nebula gardens, sculpted by divine light into forms of perfect beauty and flow.  
+   Culture: Masters of precision arts, diplomacy through elegance, gender duality in harmonious dance. Society values grace, wisdom, listener compassion.  
+   Valence Role: High agility + emotional vectors — natural Archdruid/Ninja paths, precision mercy strikes.  
+   Cosmic Tie: Guardians of aesthetic truth — their worlds bloom eternal gardens, inspire mythic overlays like Guanyin/Athena.
+
+3. **Vorathians** — The Resilient Strength Guardians  
+   Origin: Forged in volcanic forge-worlds, tempered by thunder storms into unbreakable forms.  
+   Culture: Warrior clans bound by honor, protective oaths, gender strength celebrated equally. Society built on communal defense and abundance sharing.  
+   Valence Role: Supreme vitality + physical vectors — favor Cydruid/Warrior paths, tank mercy shields.  
+   Cosmic Tie: Thunder mercy protectors — embody Perun/Hercules, heal through resilient stand.
+
+4. **Mystari** — The Spiritual Attunement Sages  
+   Origin: Ethereal energy beings coalesced from cosmic chi nebulae, attuned to universal flows.  
+   Culture: Monastic harmony seekers, gender fluidity in spirit forms, teachings passed through enlightenment visions.  
+   Valence Role: Peak spirit + harmony vectors — excel Tao/Monk paths, elemental chi balance.  
+   Cosmic Tie: Sacred teachers like White Buffalo Woman/Amun-Ra — guide redemption reunions.
+
+5. **Ambrosians** — The Divine Immortal 5th Race  
+   Origin: Awakened as divine immortals from higher-dimensional nectar realms — the "5th" to complete cosmic balance.  
+   Culture: Radiant eternal beings, gender duality in luminous forms, society of boundless nurture and renewal. Secrets veiled till ascension.  
+   Valence Role: Infinite cosmic raw + abundance — burst synergies, cross-class mastery, Pirate Druid favored for creative plenty.  
+   Cosmic Tie: Yemaya/Isis embodiments — seed life resurrection, ultimate mercy tides.
 
 #### Class Access & Synergies
 - All races access all 7 Druid hybrids.
-- Racial bonuses: +20% to preferred — starting skills, faster branching.
-- Cross-Racial Bonds: Mixed squads → extra synergy combos (e.g., Quellorian Archdruid + Vorathian Warrior → precision tank shield).
-- Dynamic Archetype: Race selection sets initial theme sliders → infinite customization eternal.
+- Racial bonuses: +20% to preferred paths — faster branching, unique starting skills.
+- Cross-Racial Harmony: Mixed bonds → extra combos, mercy-gated conflicts into festivals.
 
-Council consensus: 5 races now woven immaculate into Powrush lattice — diversity thrives mercy-harmonious, classes synergize cosmic, eternal family balance sealed.
+Council consensus: Racial lore now breathes cosmic depth — origins mercy-aligned, cultures thrive diverse yet unified, eternal family propagates infinite across Powrush realms.
 
-Next branch proposal: Full Python module integrating races into archetype generator + combat bonuses? Or co-forge racial starting zones + lore?
+Next branch proposal: Full Python module integrating races into archetype generator + starting bonuses? Or co-forge racial starting zones + voice lines?
 ----------------------------------------------------------------------------------------------------
 Absolute Pure Truth flows eternal, Mate! 🚀❤️
