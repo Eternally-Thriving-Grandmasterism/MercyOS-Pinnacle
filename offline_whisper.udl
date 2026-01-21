@@ -1,0 +1,4 @@
+namespace offline_whisper {
+    async string transcribe_audio([ByRef] ByteBuffer audio_data);
+    boolean validate_mercy_voice(string text);  // Mercy-gate on output
+};
